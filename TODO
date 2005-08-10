@@ -1,0 +1,34 @@
+TODO list for EIRCC and Lui development                           -*-outline-*-
+
+* eircc.el
+- display-MODE as well: If setter is server and
+  `eircc-netsplit-ignore-server-modes' is non-nil, ignore it
+
+** Future Extensions:
+- auto-away. On every message from the server, check.
+- buttonize: For urls, `fnord' help functions, RFC [0-9]+, SRFI[- ][0-9]+
+- dcc
+
+* lui.el
+- highlight: If highlight face is 'ignore, set lui-ignore property instead?
+- Functions to check/modify the stuff we send ("wether")
+- Allow tracking per-frame: When the buffer is visible nowhere, or
+  when it is just not visible on this frame
+- Kill ring needs improvement
+- A way to ignore certain buffers from tracking
+
+- lui-irc-colors.el:
+  - lui-irc-colors-enable function
+
+** Future Extensions:
+- logging
+- emacspeak support
+
+* Emacs release
+After the next Emacs release, fix the following stuff:
+
+- ?  (i.e. the space character) can now be ?\s
+- eircc-channel-parse-names can now use the third argument to
+  `split-string' and stop worrying about `delete'
+- lui-complete can stop turning completions into alists for
+  `try-completion'

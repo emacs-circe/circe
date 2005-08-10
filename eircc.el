@@ -1,0 +1,2040 @@
+;;; eircc.el --- Emacs IRC Client
+
+;; Copyright (C) 2005  Jorgen Schaefer
+
+;; Version: 0
+;; Keywords: IRC, chat
+;; Author: Jorgen Schaefer <forcer@forcix.cx>
+;; URL: http://www.nongnu.org/eircc/
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License
+;; as published by the Free Software Foundation; either version 2
+;; of the License, or (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program; if not, write to the Free Software
+;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+;; 02110-1301  USA
+
+;;; Commentary:
+
+;; This is yet another IRC client for Emacs. It is not as small as
+;; rcirc, and not as bulky as ERC.
+
+;; It owns a lot to both clients (primarily ERC, which I used for a
+;; long time, and helped to develop). Thanks to the authors of both.
+
+;; To use, run M-x eircc
+
+;;; Code:
+
+(defvar eircc-version "0"
+  "EIRCC version string.")
+
+(require 'lui)
+
+(defgroup eircc nil
+  "Yet Another Emacs IRC Client."
+  :prefix "eircc-"
+  :group 'applications)
+
+(defcustom eircc-default-nick (user-login-name)
+  "*The default nick for eircc."
+  :type 'string
+  :group 'eircc)
+
+(defcustom eircc-default-user eircc-default-nick
+  "*The default user name for eircc."
+  :type 'string
+  :group 'eircc)
+
+(defcustom eircc-default-realname (if (string= (user-full-name) "")
+                                      eircc-default-nick
+                                    (user-full-name))
+  "*The default real name for eircc."
+  :type 'string
+  :group 'eircc)
+
+(defcustom eircc-new-buffer-behavior 'display
+  "*How new buffers should be treated.
+
+  'display  - Show them, but don't select them
+  'switch   - Switch to that buffer
+  'ignore   - Just open it"
+  :type '(choice (const :tag "Display" display)
+                 (const :tag "Switch" switch)
+                 (const :tag "Ignore" ignore))
+  :group 'eircc)
+
+(defcustom eircc-auto-query-p t
+  "*Non-nil if queries should be opened automatically."
+  :type 'boolean
+  :group 'eircc)
+
+(defcustom eircc-auto-query-max 23
+  "*The maximum number of queries which are opened automatically.
+If more messages arrive - typically in a flood situation - they
+are displayed as if `eircc-auto-query-p' was nil."
+  :type 'integer
+  :group 'eircc)
+
+(defcustom eircc-prompt-string (concat (propertize ">"
+                                                   'face 'eircc-prompt-face)
+                                       " ")
+  "*The string to use for the prompt."
+  :type 'string
+  :group 'eircc)
+
+(defcustom eircc-my-message-prefix "> "
+  "*What should be shown before your own messages.
+It is possible to include a %s in the string where the nick
+should appear."
+  :type 'string
+  :group 'eircc)
+
+(defcustom eircc-highlight-nick-type 'sender
+  "*How to highlight occurances of our own nick.
+
+  'sender    - Highlight the nick of the sender
+  'occurance - Highlight the occurances of the nick
+  'all       - Highlight the whole line"
+  :type '(choice (const :tag "Sender" sender)
+                 (const :tag "Occurances" occurance)
+                 (const :tag "Whole line" all))
+  :group 'eircc)
+
+(defcustom eircc-ignore-list nil
+  "*List of regular expressions to ignore.
+Messages from such people are still inserted, but not shown. They
+can be displayed using \\[lui-toggle-ignored].
+
+If this ever poses a problem in combination with buffer
+truncation, please notify the author."
+  :type '(repeat regexp)
+  :group 'eircc)
+
+(defcustom eircc-ignore-functions nil
+  "*A list of functions to check whether we should ignore a message.
+These functions get five arguments: NICK, USER, HOST, COMMAND, and ARGS.
+If one of them returns a non-nil value, the message is ignored."
+  :type 'hook
+  :group 'eircc)
+
+(defcustom eircc-split-line-length 440
+  "*The maximum length of a single message.
+If a message exceeds this size, it is broken into multiple ones.
+
+IRC allows for lines up to 512 bytes. Two of them are CR LF.
+And a typical message looks like this:
+
+  :nicky!uhuser@host212223.dialin.fnordisp.net PRIVMSG #lazybastards :Hello!
+
+You can limit here the maximum length of the \"Hello!\" part.
+Good luck."
+  :type 'integer
+  :group 'eircc)
+
+(defcustom eircc-server-flood-margin 10
+  "*A margin on how much excess data we send.
+The flood protection algorithm of EIRCC works like the one
+detailed in RFC 2813, section 5.8 \"Flood control of clients\".
+
+  * If `eircc-server-flood-last-message' is less than the current
+    time, set it equal.
+  * While `eircc-server-flood-last-message' is less than
+    `eircc-server-flood-margin' seconds ahead of the current
+    time, send a message, and increase
+    `eircc-server-flood-last-message' by
+    `eircc-server-flood-penalty' for each message."
+  :type 'integer
+  :group 'eircc)
+
+(defcustom eircc-server-flood-penalty 3
+  "How much we penalize a message.
+See `eircc-server-flood-margin' for an explanation of the flood
+protection algorithm."
+  :type 'integer
+  :group 'eircc)
+
+(defcustom eircc-server-coding-system nil
+  "*Coding systems to use for IRC.
+This is either a coding system, which is then used both for
+encoding and decoding, or a cons cell with the encoding in the
+car and the decoding coding system in the cdr."
+  :type '(cons (coding-system :tag "Encoding")
+               (coding-system :tag "Decoding"))
+  :group 'eircc)
+
+(defcustom eircc-netsplit-delay 60
+  "*The number of seconds a netsplit may be dormant.
+If anything happens with a netsplit after this amount of time,
+the user is re-notified."
+  :type 'number
+  :group 'eircc)
+
+(defcustom eircc-nick-next-function 'eircc-nick-next
+  "*A function that maps a nick to a new nick.
+This is used when the initial nicks are not used. The default
+just appends dashes as long as possible, and then generates
+random nicks."
+  :type 'function
+  :group 'eircc)
+
+(defcustom eircc-receive-message-functions nil
+  "*Functions called when a message from the IRC server arrives.
+Each function is called with 5 arguments: NICK, USER, HOST,
+COMMAND, and ARGS."
+  :type 'hook
+  :group 'eircc)
+
+(defcustom eircc-server-connected-hook nil
+  "*Hook run when we successfully connected to a server.
+This is run from a 001 (RPL_WELCOME) message handler."
+  :type 'hook
+  :group 'eircc)
+
+(defcustom eircc-server-mode-hook nil
+  "*Hook run when eircc connects to a server."
+  :type 'hook
+  :group 'eircc)
+
+;;;;;;;;;;;;;
+;;; Faces ;;;
+;;;;;;;;;;;;;
+
+(defcustom eircc-track-faces-priorities '(eircc-highlight-nick-face
+                                          eircc-my-message-face
+                                          eircc-server-face)
+  "A list of faces which should show up in the tracking.
+The first face is kept if the new message has only lower faces,
+or faces that don't show up at all."
+  :type '(repeat face)
+  :group 'eircc)
+
+(defvar eircc-prompt-face 'eircc-prompt-face
+  "The face for the EIRCC prompt.")
+(defface eircc-prompt-face
+  '((t (:bold t :foreground "Black" :background "lightBlue2")))
+  "The face for the EIRCC prompt."
+  :group 'eircc)
+
+(defvar eircc-my-message-face 'eircc-my-message-face
+  "The face used to highlight our own messages.")
+(defface eircc-my-message-face '((t))
+  "The face used to highlight our own messages."
+  :group 'eircc)
+
+(defvar eircc-server-face 'eircc-server-face
+  "The face used to highlight server messages.")
+(defface eircc-server-face
+  '((t (:foreground "SlateBlue" :weight bold)))
+  "The face used to highlight server messages."
+  :group 'eircc)
+
+(defvar eircc-highlight-nick-face 'eircc-highlight-nick-face
+  "The face used to highlight messages directed to us.")
+(defface eircc-highlight-nick-face
+  '((t (:foreground "DarkTurquoise" :weight bold)))
+  "The face used to highlight messages directed to us."
+  :group 'eircc)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Private variables ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar eircc-server-name nil
+  "The name of the server we're currently connected to.")
+(make-variable-buffer-local 'eircc-server-name)
+
+(defvar eircc-server-service nil
+  "The service name or port of the server we're currently connected to.")
+(make-variable-buffer-local 'eircc-server-service)
+
+(defvar eircc-server-network nil
+  "The network name of the server we're currently connected to.")
+(make-variable-buffer-local 'eircc-server-network)
+
+(defvar eircc-server-nick nil
+  "Our current nick.")
+(make-variable-buffer-local 'eircc-server-nick)
+
+(defvar eircc-server-user nil
+  "The current user name.")
+(make-variable-buffer-local 'eircc-server-user)
+
+(defvar eircc-server-realname nil
+  "The current real name.")
+(make-variable-buffer-local 'eircc-server-realname)
+
+(defvar eircc-server-pass nil
+  "The password for the current server.
+This is required for reconnecting.")
+(make-variable-buffer-local 'eircc-server-pass)
+
+(defvar eircc-server-process nil
+  "The process of the server connection.")
+(make-variable-buffer-local 'eircc-server-process)
+
+(defvar eircc-server-registered-p nil
+  "Non-nil when we have registered with the server.")
+(make-variable-buffer-local 'eircc-server-registered-p)
+
+(defvar eircc-server-last-active-buffer nil
+  "The last active eircc buffer.")
+(make-variable-buffer-local 'eircc-server-last-active-buffer)
+
+(defvar eircc-server-chat-buffers nil
+  "A hash of chat buffers associated with this server.")
+(make-variable-buffer-local 'eircc-server-chat-buffers)
+
+(defvar eircc-server-filter-data nil
+  "The data that arrived from the server
+but has not been processed yet.")
+(make-variable-buffer-local 'eircc-server-filter-data)
+
+(defvar eircc-server-processing-p nil
+  "Non-nil when we're currently processing a message.
+Yep, this is a mutex. Why would one need a mutex in Emacs, a
+single-threaded application, you ask? Easy!
+
+When EIRCC receives a private message, it sets up a new buffer
+for this query. This involves calling the LUI setup functions.
+These in turn, though, do start flyspell. This involves starting
+an external process, in which case Emacs will wait - and when it
+waits, it does accept other stuff from, say, network exceptions.
+So, if someone sends you two messages quickly after each other,
+ispell is started for the first, but might take long enough for
+the second message to be processed first. Nice, isn't it.")
+(make-variable-buffer-local 'eircc-server-processing-p)
+
+(defvar eircc-display-table nil
+  "A hash table mapping commands to their display functions.")
+
+;;;;;;;;;;;;;;;;;;;
+;;; Server Mode ;;;
+;;;;;;;;;;;;;;;;;;;
+
+(defun eircc-server-mode ()
+  "The mode for eircc server buffers.
+Don't use this function directly, use `eircc' instead."
+  (lui-mode)
+  (make-local-variable 'lui-pre-output-hook)
+  (add-hook 'lui-pre-output-hook 'eircc-highlight-lui-output)
+  (setq major-mode 'eircc-server-mode
+        mode-name "EIRCC Server"
+        lui-input-function 'eircc-chat-input)
+  (lui-set-prompt eircc-prompt-string)
+  (goto-char (point-max))
+  (setq eircc-server-last-active-buffer (current-buffer))
+  (add-hook 'kill-buffer-hook
+            'eircc-buffer-killed)
+  (run-hooks 'eircc-server-mode-hook))
+
+(defun eircc (host service &optional network pass nick user realname)
+  "Connect to the IRC server HOST at SERVICE.
+NETWORK is the shorthand used for indicating where we're connected
+to. (defaults to HOST)
+PASS is the password.
+NICK is the nick name to use (defaults to `eircc-default-nick')
+USER is the user name to use (defaults to `eircc-default-user')
+REALNAME is the real name to use (defaults to `eircc-default-realname')"
+  (interactive "sHost: \nsPort: ")
+  (let* ((buffer-name (format "%s:%s" host service))
+         (server-buffer (get-buffer-create buffer-name)))
+    (with-current-buffer server-buffer
+      (eircc-server-mode)
+      (setq eircc-server-name host
+            eircc-server-service service
+            eircc-server-network (or network
+                                     host)
+            eircc-server-nick (or nick
+                                  eircc-default-nick)
+            eircc-server-user (or user
+                                  eircc-default-user)
+            eircc-server-realname (or realname
+                                      eircc-default-realname)
+            eircc-server-pass pass)
+      (eircc-reconnect))
+    (when (interactive-p)
+      (switch-to-buffer server-buffer))))
+
+(defmacro with-eircc-server-buffer (&rest body)
+  "Run BODY with the current buffer being the current server buffer."
+  `(let ((XXserver (cond
+                    ((eq major-mode 'eircc-server-mode)
+                     (current-buffer))
+                    (eircc-server-buffer
+                     eircc-server-buffer)
+                    (t
+                     (error "`with-eircc-server-buffer' outside of an eircc buffer.")))))
+     (when (and XXserver ;; Might be dead!
+                (bufferp XXserver)
+                (buffer-live-p XXserver))
+       (with-current-buffer XXserver
+         ,@body))))
+(put 'with-eircc-server-buffer 'lisp-indent-function 0)
+
+(defmacro with-eircc-chat-buffer (name &rest body)
+  "Run BODY with the current buffer the chat buffer of NAME.
+If no such buffer exists, do nothing."
+  `(let ((XXbuf (eircc-server-get-chat-buffer ,name)))
+     (when XXbuf
+       (with-current-buffer XXbuf
+         ,@body))))
+(put 'with-eircc-chat-buffer 'lisp-indent-function 1)
+
+(defun eircc-reconnect ()
+  "Reconnect the current server."
+  (interactive)
+  (with-eircc-server-buffer
+    (when eircc-server-process
+      (delete-process eircc-server-process))
+    (setq eircc-server-registered-p nil
+          eircc-server-process (open-network-stream eircc-server-name
+                                                    (current-buffer)
+                                                    eircc-server-name
+                                                    eircc-server-service))
+    (set-process-filter eircc-server-process #'eircc-server-filter-function)
+    (set-process-sentinel eircc-server-process #'eircc-server-sentinel)
+    (set-process-coding-system eircc-server-process
+                               (if (consp eircc-server-coding-system)
+                                   (cdr eircc-server-coding-system)
+                                 eircc-server-coding-system)
+                               (if (consp eircc-server-coding-system)
+                                   (car eircc-server-coding-system)
+                                 eircc-server-coding-system))
+    (when eircc-server-pass
+      (eircc-server-send (format "PASS %s" eircc-server-pass)))
+    (eircc-server-send (format "NICK %s" eircc-server-nick))
+    (eircc-server-send (format "USER %s 8 * :%s"
+                               eircc-server-user
+                               eircc-server-realname))))
+
+(defun eircc-server-filter-function (process string)
+  "The process filter for the eircc server."
+  (with-current-buffer (process-buffer process)
+    ;; First of all, if we use 'undecided as a coding system for
+    ;; processes, this seems to change the coding system after Emacs
+    ;; decided the first time what to use. So, we, uh, just set it
+    ;; again.
+    (set-process-coding-system process
+                               (if (consp eircc-server-coding-system)
+                                   (cdr eircc-server-coding-system)
+                                 eircc-server-coding-system)
+                               (if (consp eircc-server-coding-system)
+                                   (car eircc-server-coding-system)
+                                 eircc-server-coding-system))
+
+    ;; If you think this is written in a weird way - please refer to the
+    ;; docstring of `eircc-server-processing-p'
+    (if eircc-server-processing-p
+        (setq eircc-server-filter-data
+              (if eircc-server-filter-data
+                  (concat eircc-server-filter-data string)
+                string))
+      ;; This will be true even if another process is spawned!
+      (let ((eircc-server-processing-p t))
+        (setq eircc-server-filter-data (if eircc-server-filter-data
+                                           (concat eircc-server-filter-data
+                                                   string)
+                                         string))
+        (while (and eircc-server-filter-data
+                    (string-match "[\n\r]+" eircc-server-filter-data))
+          (let ((line (substring eircc-server-filter-data
+                                 0 (match-beginning 0))))
+            (setq eircc-server-filter-data
+                  (if (= (match-end 0)
+                         (length eircc-server-filter-data))
+                      nil
+                    (substring eircc-server-filter-data
+                               (match-end 0))))
+            (eircc-server-handler line)))))))
+
+(defun eircc-server-sentinel (process event)
+  "The process sentinel for the server."
+  (with-current-buffer (process-buffer process)
+    (eircc-mapc-chat-buffers
+     (lambda (buf)
+       (with-current-buffer buf
+         (eircc-chat-disconnected))))
+    (when (not (string-match "^deleted" event)) ; Buffer kill
+      (eircc-reconnect))))
+
+(defvar eircc-server-flood-last-message 0
+  "When we sent the last message.
+See `eircc-server-flood-margin' for an explanation of the flood
+protection algorithm.")
+(make-variable-buffer-local 'eircc-server-flood-last-message)
+
+(defvar eircc-server-flood-queue nil
+  "The queue of messages waiting to be sent to the server.
+See `eircc-server-flood-margin' for an explanation of the flood
+protection algorithm.")
+(make-variable-buffer-local 'eircc-server-flood-queue)
+
+(defvar eircc-server-flood-timer nil
+  "The timer to resume sending.")
+(make-variable-buffer-local 'eircc-server-flood-timer)
+
+(defun eircc-server-send (string &optional forcep)
+  "Send STRING to the current server.
+If FORCEP is non-nil, no flood protection is done - the string is
+sent directly. This might cause the messages to arrive in a wrong
+order.
+
+See `eircc-server-flood-margin' for an explanation of the flood
+protection algorithm."
+  (with-eircc-server-buffer
+    (let ((str (concat string "\r\n")))
+      (if forcep
+          (progn
+            (setq eircc-server-flood-last-message
+                  (+ eircc-server-flood-penalty
+                     eircc-server-flood-last-message))
+            (process-send-string eircc-server-process str))
+        (setq eircc-server-flood-queue (append eircc-server-flood-queue
+                                               (list str)))
+        (eircc-server-send-queue (current-buffer))))))
+
+(defun eircc-server-send-queue (buffer)
+  "Send messages in `eircc-server-flood-queue'.
+See `eircc-server-flood-margin' for an explanation of the flood
+protection algorithm."
+  (with-current-buffer buffer
+    (let ((now (float-time)))
+      (when eircc-server-flood-timer
+        (cancel-timer eircc-server-flood-timer)
+        (setq eircc-server-flood-timer nil))
+      (when (< eircc-server-flood-last-message
+               now)
+        (setq eircc-server-flood-last-message now))
+      (while (and eircc-server-flood-queue
+                  (< eircc-server-flood-last-message
+                     (+ now eircc-server-flood-margin)))
+        (let ((msg (car eircc-server-flood-queue)))
+          (setq eircc-server-flood-queue (cdr eircc-server-flood-queue)
+                eircc-server-flood-last-message
+                (+ eircc-server-flood-last-message
+                   eircc-server-flood-penalty))
+          (process-send-string eircc-server-process msg)))
+      (when eircc-server-flood-queue
+        (setq eircc-server-flood-timer
+              (run-at-time 2 nil #'eircc-server-send-queue buffer))))))
+
+
+(defun eircc-buffer-killed ()
+  "The current buffer is being killed. Do the necessary bookkeeping for eircc."
+  (cond
+   ((eq major-mode 'eircc-channel-mode)
+    (eircc-channel-killed))
+   ((eq major-mode 'eircc-query-mode)
+    (eircc-query-killed))
+   ((eq major-mode 'eircc-server-mode)
+    (eircc-server-send "QUIT :Server buffer killed")
+    ;; This is done by the sentinel:
+    ;;(eircc-mapc-chat-buffers
+    ;; (lambda (buf)
+    ;;   (with-current-buffer buf
+    ;;     (eircc-chat-disconnected))))
+    )))
+
+(defun eircc-server-last-active-buffer ()
+  "Return the last active buffer of this server."
+  (with-eircc-server-buffer
+    (if (and eircc-server-last-active-buffer
+             (bufferp eircc-server-last-active-buffer)
+             (buffer-live-p eircc-server-last-active-buffer))
+        eircc-server-last-active-buffer
+      (current-buffer))))
+
+;; Yes, this does not work for the RFC 1459 encoding, but that is
+;; being phased out. Hopefully. And problems should be rare.
+(defun eircc-server-my-nick-p (nick)
+  "Return non-nil when NICK is our current nick."
+  (with-eircc-server-buffer
+    (eq t
+        (compare-strings nick nil nil
+                         eircc-server-nick nil nil
+                         t))))
+
+(defun eircc-server-set-my-nick (newnick)
+  "Set our current nick to NEWNICK."
+  (with-eircc-server-buffer
+    (setq eircc-server-nick newnick)))
+
+(defun eircc-server-nick ()
+  "Return our current nick."
+  (with-eircc-server-buffer
+    eircc-server-nick))
+
+(defun eircc-nick-next (oldnick)
+  "Generate a new nick from OLDNICK."
+  (if (< (length oldnick) 9)
+      (concat oldnick "-")
+    (mapconcat (lambda (_)
+                 (make-string 1 (+ ?a (random 26))))
+               '(1 2 3 4 5 6 7 8 9)
+               "")))
+
+(defun eircc-server-message (message)
+  "Display MESSAGE as a server message."
+  (eircc-insert (propertize (format "*** %s" message)
+                            'face 'eircc-server-face)
+                t))
+
+;;; There really ought to be a hook for this!
+(defadvice select-window (after eircc-server-track-select-window
+                                (window &optional norecord))
+  "Remember the current buffer as the last active buffer.
+This is used by EIRCC to know where to put spurious messages."
+  (with-current-buffer (window-buffer window)
+    (when (or (eq major-mode 'eircc-channel-mode)
+              (eq major-mode 'eircc-query-mode)
+              (eq major-mode 'eircc-server-mode))
+      (let ((buf (current-buffer)))
+        (with-eircc-server-buffer
+          (setq eircc-server-last-active-buffer buf))))))
+(ad-activate 'select-window)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Chat Buffer Manager ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Case-insensitive hash table
+;; This does not work for the RFC 1459 encoding.
+(defun eircc-case-fold-string= (a b)
+  "Compare two strings case-insensitively."
+  (eq t
+      (compare-strings a nil nil b nil nil t)))
+
+(defun eircc-case-fold-string-hash (a)
+  "Return a hash value for the string A."
+  (sxhash (upcase a)))
+
+(define-hash-table-test 'eircc-case-fold
+  'eircc-case-fold-string=
+  'eircc-case-fold-string-hash)
+
+(defun eircc-case-fold-table ()
+  "Return a new hash table for chat buffers."
+  (make-hash-table :test 'eircc-case-fold))
+
+;; Manager interface
+
+(defun eircc-server-add-chat-buffer (target buf)
+  "Add BUF as a chat buffer for TARGET."
+  (let ((name (if (bufferp buf)
+                  buf
+                (get-buffer buf))))
+    (with-eircc-server-buffer
+      (when (not eircc-server-chat-buffers)
+        (setq eircc-server-chat-buffers (eircc-case-fold-table)))
+      (puthash target name eircc-server-chat-buffers))))
+
+(defun eircc-server-remove-chat-buffer (target)
+  "Remove TARGET from the chat buffers."
+  (with-eircc-server-buffer
+    (when eircc-server-chat-buffers
+      (remhash target eircc-server-chat-buffers))))
+
+(defun eircc-server-get-chat-buffer (target &optional create)
+  "Return the chat buffer associated with TARGET.
+If CREATE is non-nil, it is a function which is used to
+initialize a new buffer if none exists."
+  (with-eircc-server-buffer
+    (let ((entry (when eircc-server-chat-buffers
+                   (gethash target eircc-server-chat-buffers))))
+      (cond
+       (entry
+        entry)
+       (create
+        (let ((buf (generate-new-buffer target))
+              (server (current-buffer)))
+          (eircc-server-add-chat-buffer target buf)
+          (with-current-buffer buf
+            (funcall create target server))
+          (cond
+           ((eq eircc-new-buffer-behavior 'display)
+            (display-buffer buf))
+           ((eq eircc-new-buffer-behavior 'switch)
+            (switch-to-buffer buf)))
+          buf))
+       (t
+        nil)))))
+
+(defun eircc-mapc-chat-buffers (fun)
+  "Apply FUN to every chat buffer of the current server."
+  (let ((hash (with-eircc-server-buffer
+                eircc-server-chat-buffers)))
+    (when hash
+      (maphash (lambda (XXkey XXvalue) ;; XX to prevent accidental capturing
+                 (funcall fun XXvalue))
+               hash))))
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;;; Ignore Handling ;;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun eircc-ignored-p (nick user host command args)
+  (or (run-hook-with-args-until-success eircc-ignore-functions
+                                        nick user host
+                                        command args)
+      (let ((string (concat nick "!" user "@" host))
+            (target (when (and (string= command "PRIVMSG")
+                               (not (eircc-server-my-nick-p (car args)))
+                               (string-match "^\\([^ ]*\\)[:, ]" (cadr args)))
+                      (match-string 1 (cadr args)))))
+        (catch 'return
+          (mapc (lambda (regex)
+                  (when (string-match regex string)
+                    (throw 'return t))
+                  (when (and (stringp target)
+                             (string-match regex target))
+                    (throw 'return t)))
+                eircc-ignore-list)
+          nil))))
+
+(defun eircc-command-IGNORE (regex)
+  "Add an entry to the `eircc-ignore-list'."
+  (with-current-buffer (eircc-server-last-active-buffer)
+    (if (string= regex "")
+        (if (not eircc-ignore-list)
+            (eircc-server-message "Your ignore list is empty")
+          (eircc-server-message "Your ignore list:")
+          (mapc (lambda (regex)
+                  (eircc-server-message (format "- %s" regex)))
+                eircc-ignore-list))
+      (add-to-list 'eircc-ignore-list regex)
+      (eircc-server-message (format "Ignore list, meet %s"
+                                    regex)))))
+
+(defun eircc-command-UNIGNORE (regex)
+  "Remove an entry from `eircc-ignore-list'."
+  (setq eircc-ignore-list (delete regex eircc-ignore-list))
+  (with-current-buffer (eircc-server-last-active-buffer)
+    (eircc-server-message (format "Ignore list forgot about %s"
+                                  regex))))
+
+;;;;;;;;;;;;;;;;;;;;
+;;; Chat Buffers ;;;
+;;;;;;;;;;;;;;;;;;;;
+
+(defvar eircc-server-buffer nil
+  "The buffer of the server associated with the current chat buffer.")
+(make-variable-buffer-local 'eircc-server-buffer)
+
+(defvar eircc-chat-target nil
+  "The current target for the buffer.
+This is either a channel or a nick name.")
+(make-variable-buffer-local 'eircc-chat-target)
+
+(defvar eircc-chat-mode-hook nil
+  "The hook run after `eircc-chat-mode' is initialized.")
+
+(defun eircc-chat-mode (target server-buffer)
+  "The eircc chat major mode.
+This is the common mode used for both queries and channels.
+It should not be used directly.
+TARGET is the default target to send data to.
+SERVER-BUFFER is the server-buffer of this chat buffer."
+  (lui-mode)
+  (make-local-variable 'lui-pre-output-hook)
+  (add-hook 'lui-pre-output-hook 'eircc-highlight-lui-output)
+  (setq major-mode 'eircc-chat-mode
+        mode-name "EIRCC Chat"
+        lui-input-function 'eircc-chat-input
+        eircc-chat-target target
+        eircc-server-buffer server-buffer)
+  (set (make-local-variable 'lui-track-faces-priorities)
+       eircc-track-faces-priorities)
+  (lui-set-prompt eircc-prompt-string)
+  (goto-char (point-max))
+  (let ((identifier (with-eircc-server-buffer
+                      eircc-server-network)))
+    (make-local-variable 'mode-line-buffer-identification)
+    (setq mode-line-buffer-identification
+          (list (format "%%b@%-8s" identifier))))
+  (run-hooks 'eircc-chat-mode-hook))
+
+(defun eircc-chat-disconnected ()
+  "The current buffer got disconnected."
+  (eircc-server-message "Disconnected"))
+
+(defun eircc-chat-input (str)
+  "Process STR as input."
+  (cond
+   ((string= str "")
+    nil)
+   ((string-match "\\`/\\([^ ]*\\) ?\\([^\n]*\\)\\'" str)
+    (let* ((command (match-string 1 str))
+           (args (match-string 2 str))
+           (handler (intern-soft (format "eircc-command-%s"
+                                         (upcase command)))))
+      (if handler
+          (funcall handler args)
+        (eircc-server-message (format "Unknown command: %s"
+                                      command)))))
+   (t
+    (mapc #'eircc-command-SAY (split-string str "\n")))))
+
+(defun eircc-highlight-lui-output ()
+  "Highlight the string in the buffer."
+  (cond
+   ((eq eircc-highlight-nick-type 'sender)
+    (let ((regex (concat "^\\(\\* \\([^ ]*\\) "
+                         "\\|<\\([^>]*\\)> \\)"
+                         ".*" (regexp-quote (eircc-server-nick)))))
+      (goto-char (point-min))
+      (when (looking-at regex)
+        (let ((n (if (match-string 2)
+                     2
+                   3)))
+          (replace-match (propertize (match-string n)
+                                     'face 'eircc-highlight-nick-face)
+                         nil t nil
+                         n)))))
+   ((eq eircc-highlight-nick-type 'occurance)
+    (when (looking-at "^\\(\\* [^ ]* \\|<[^>]*> \\)")
+      (goto-char (match-end 0)))
+    (let ((regex (regexp-quote (eircc-server-nick))))
+      (while (re-search-forward regex nil t)
+        (replace-match (propertize (match-string 0)
+                                   'face 'eircc-highlight-nick-face)
+                       nil t))))
+   ((eq eircc-highlight-nick-type 'all)
+    (when (looking-at (concat "^\\(\\* [^ ]* \\|<[^>]*> \\).*"
+                              (regexp-quote (eircc-server-nick))
+                              ".*$"))
+      (replace-match (propertize (match-string 0)
+                                 'face 'eircc-highlight-nick-face)
+                     nil t)))))
+
+(defun eircc-insert (line &optional not-tracked-p)
+  "Insert LINE in the current EIRCC buffer."
+  ;; Simple wrapper - we might want to extend this sometime
+  (lui-insert line not-tracked-p))
+
+;;;;;;;;;;;;;;;;
+;;; Channels ;;;
+;;;;;;;;;;;;;;;;
+
+(defvar eircc-channel-mode-hook nil
+  "Hook run when channel mode is activated.")
+
+(defvar eircc-channel-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-n") 'eircc-command-NAMES)
+    (define-key map (kbd "C-c C-t") 'eircc-command-CHTOPIC)
+    map)
+  "The key map for channel mode buffers.")
+
+(defun eircc-channel-mode (target server-buffer)
+  "The eircc channel chat major mode.
+It should not be used directly.
+TARGET is the default target to send data to.
+SERVER-BUFFER is the server-buffer of this chat buffer."
+  (eircc-chat-mode target server-buffer)
+  (setq major-mode 'eircc-channel-mode
+        mode-name "EIRCC Channel")
+  (use-local-map eircc-channel-mode-map)
+  (set-keymap-parent eircc-channel-mode-map
+                     lui-mode-map)
+  (set (make-local-variable 'lui-completion-function)
+       'eircc-channel-completions)
+  (run-hooks 'eircc-channel-mode-hook))
+
+(defun eircc-channel-killed ()
+  "Called when the channel buffer got killed."
+  (when (buffer-live-p eircc-server-buffer)
+    (eircc-server-send (format "PART %s :Channel buffer killed"
+                               eircc-chat-target))
+    (eircc-server-remove-chat-buffer eircc-chat-target)))
+
+(defvar eircc-channel-users nil
+  "A hash table of channel users.")
+(make-variable-buffer-local 'eircc-channel-users)
+
+(defvar eircc-channel-receiving-names-p nil
+  "Non-nil when we're currently receving a NAMES list.")
+(make-variable-buffer-local 'eircc-server-receiving-names-p)
+
+(defvar eircc-channel-nick-prefixes "@+%"
+  "The list of nick prefixes this server knows about.
+From 005 RPL_ISUPPORT.")
+(make-variable-buffer-local 'eircc-server-nick-prefixes)
+
+(defun eircc-channel-completions (bolp)
+  "Return a list of possible completions for the current buffer.
+This is used for `lui-completion-function' in channel buffers."
+  (when eircc-channel-users
+    (let ((nicks '()))
+      (maphash (lambda (nick ignored)
+                 (setq nicks (cons (concat nick (if bolp
+                                                    ": "
+                                                  " "))
+                                   nicks)))
+               eircc-channel-users)
+      (if bolp
+          (append (eircc-commands-list)
+                  nicks)
+        nicks))))
+
+(defun eircc-channel-message-handler (nick user host command args)
+  "Update the users of a channel as appropriate."
+  (cond
+   ((string= command "NICK")
+    (eircc-mapc-chat-buffers
+     (lambda (buf)
+       (with-current-buffer buf
+         (when (and (eq major-mode 'eircc-channel-mode)
+                    (eircc-channel-user-p nick))
+           (eircc-channel-remove-user nick)
+           (eircc-channel-add-user (car args)))
+         (when (and (eq major-mode 'eircc-query-mode)
+                    (eircc-case-fold-string= nick
+                                             eircc-chat-target))
+           (setq eircc-chat-target (car args)))))))
+   ((string= command "QUIT")
+    (eircc-mapc-chat-buffers
+     (lambda (buf)
+       (with-current-buffer buf
+         (when (and (eq major-mode 'eircc-channel-mode)
+                    (eircc-channel-user-p nick))
+           (eircc-channel-remove-user nick))))))
+   ((string= command "JOIN")
+    (with-eircc-chat-buffer (car args)
+      (eircc-channel-add-user nick)))
+   ((string= command "PART")
+    (with-eircc-chat-buffer (car args)
+      (eircc-channel-remove-user nick)))
+   ((string= command "KICK")
+    (with-eircc-chat-buffer (car args)
+      (eircc-channel-remove-user (cadr args))))
+   ((string= command "005")             ; RPL_ISUPPORT
+    (catch 'exit
+      (mapc (lambda (setting)
+              (when (string-match "PREFIX=([^)]*)\\(.*\\)" setting)
+                (setq eircc-channel-nick-prefixes (match-string 1 setting))))
+            (cdr args))))
+   ((string= command "353")             ; RPL_NAMREPLY
+    (with-eircc-chat-buffer (nth 2 args)
+      (when (not eircc-channel-receiving-names-p)
+        (setq eircc-channel-users nil
+              eircc-channel-receiving-names-p t))
+      (mapc #'eircc-channel-add-user
+            (eircc-channel-parse-names (nth 3 args)))))
+   ((string= command "366")             ; RPL_ENDOFNAMES
+    (setq eircc-channel-receiving-names-p nil))
+   ))
+
+;;; User management
+
+(defun eircc-channel-add-user (user)
+  "Add USER as a channel user."
+  (when (not eircc-channel-users)
+    (setq eircc-channel-users (eircc-case-fold-table)))
+  (puthash user user eircc-channel-users))
+
+(defun eircc-channel-remove-user (user)
+  "Remove USER as a chanel user."
+  (when eircc-channel-users
+    (remhash user eircc-channel-users)))
+
+(defun eircc-channel-user-p (user)
+  "Return non-nil when USER is a channel user."
+  (cond
+   (eircc-channel-users
+    (gethash user eircc-channel-users))
+   ((eq major-mode 'eircc-query-mode)
+    (eircc-case-fold-string= user eircc-chat-target))))
+
+(defun eircc-channel-parse-names (name-string)
+  "Parse the NAMES reply in NAME-STRING.
+This uses `eircc-channel-nick-prefixes'."
+  (delete ""
+          (split-string name-string
+                        (format "\\(^\\| \\)[%s]*" eircc-channel-nick-prefixes))))
+
+(defun eircc-mapc-user-channels (user fun)
+  "Return a list of channels for USER."
+  ;; ;; The trivial implementation doesn't work due to Emacs' dynamic
+  ;; ;; scoping. Please wait while I puke outside.
+  ;; (eircc-mapc-chat-buffers
+  ;;  (lambda (XXbuf) ; XX to prevent accidental capturing
+  ;;    (when (with-current-buffer XXbuf
+  ;;            (eircc-channel-user-p user))
+  ;;      (funcall fun XXbuf)))))
+  (let ((hash (with-eircc-server-buffer
+                eircc-server-chat-buffers)))
+    (when hash
+      (maphash (lambda (XXignored XXbuf)
+                 (when (with-current-buffer XXbuf
+                         (eircc-channel-user-p user))
+                   (funcall fun XXbuf)))
+               hash))))
+(put 'eircc-mapc-user-channels 'lisp-indent-function 1)
+
+;;;;;;;;;;;;;;;
+;;; Queries ;;;
+;;;;;;;;;;;;;;;
+
+(defvar eircc-query-mode-hook nil
+  "Hook run when query mode is activated.")
+
+(defun eircc-query-mode (target server-buffer)
+  "The eircc query chat major mode.
+It should not be used directly.
+TARGET is the default target to send data to.
+SERVER-BUFFER is the server-buffer of this chat buffer."
+  (eircc-chat-mode target server-buffer)
+  (setq major-mode 'eircc-query-mode
+        mode-name "EIRCC Query")
+  (set (make-local-variable 'lui-completion-function)
+       'eircc-query-completions)
+  (run-hooks 'eircc-query-mode-hook))
+
+(defun eircc-query-killed ()
+  "Called when the query buffer got killed."
+  (when (buffer-live-p eircc-server-buffer)
+    (eircc-server-remove-chat-buffer eircc-chat-target)))
+
+(defun eircc-query-completions (bolp)
+  "Return a list of possible completions in a query.
+That is, commands, our nick, and the other nick.
+This is used for `lui-completion-function' in query buffers."
+  (append (list (eircc-server-nick)
+                eircc-chat-target)
+          (eircc-commands-list)))
+
+(defun eircc-server-auto-query-buffer (who)
+  "Return a buffer for a query with `WHO'.
+This adheres to `eircc-auto-query-p' and `eircc-auto-query-max'."
+  (or (eircc-server-get-chat-buffer who)
+      (when (and eircc-auto-query-p
+                 (< (eircc-server-query-count)
+                    eircc-auto-query-max))
+        (eircc-server-get-chat-buffer who 'eircc-query-mode))))
+
+(defun eircc-server-query-count ()
+  "Return the number of queries on the current server."
+  (let ((num 0))
+    (eircc-mapc-chat-buffers
+     (lambda (buf)
+       (with-current-buffer buf
+         (when (eq major-mode 'eircc-query-mode)
+           (setq num (+ num 1))))))
+    num))
+
+;;;;;;;;;;;;;;;;
+;;; Commands ;;;
+;;;;;;;;;;;;;;;;
+
+(defun eircc-commands-list ()
+  "Return a list of possible EIRCC commands."
+  (mapcar (lambda (symbol)
+            (let ((str (symbol-name symbol)))
+              (if (string-match "^eircc-command-\\(.*\\)" str)
+                  (concat "/" (match-string 1 str))
+                str)))
+          (apropos-internal "^eircc-command-")))
+
+(defun eircc-command-SAY (line)
+  "Say LINE to the current target."
+  (interactive "sSay: ")
+  (if (not eircc-chat-target)
+      (eircc-server-message "No target for current buffer")
+    (mapc (lambda (line)
+            (eircc-insert (propertize
+                           (format "%s%s"
+                                   (format eircc-my-message-prefix
+                                           (eircc-server-nick))
+                                   line)
+                           'face 'eircc-my-message-face))
+            (eircc-server-send (format "PRIVMSG %s :%s"
+                                       eircc-chat-target
+                                       line)))
+          (eircc-split-line line))))
+
+(defun eircc-split-line (longline)
+  "Return a list of lines which are not too long for poor IRC.
+The length is specified in `eircc-split-line-length'."
+  (if (< (length longline)
+         eircc-split-line-length)
+      (list longline)
+    (with-temp-buffer
+      (insert longline)
+      (let ((fill-column eircc-split-line-length))
+        (fill-region (point-min) (point-max)
+                     nil t))
+      (split-string (buffer-string) "\n"))))
+
+(defun eircc-command-ME (line)
+  "Make LINE as an action"
+  (interactive "s* forcer ")
+  (if (not eircc-chat-target)
+      (eircc-server-message "No target for current buffer")
+    (eircc-insert (propertize
+                   (format "* %s %s"
+                           (eircc-server-nick)
+                           line)
+                   'face 'eircc-my-message-face))
+    (eircc-server-send (format "PRIVMSG %s :\C-aACTION %s\C-a"
+                               eircc-chat-target line))))
+
+(defun eircc-command-MSG (who &optional what)
+  "Send a message.
+If WHAT is given, WHO is the nick. Else, WHO contains both the
+nick and the message."
+  (when (not what)
+    (if (string-match "^\\([^ ]*\\) \\(.*\\)" who)
+        (setq what (match-string 2 who)
+              who (match-string 1 who))
+      (eircc-server-message "Usage: /MSG <who> <what>")))
+  (when what
+    (let ((buf (eircc-server-auto-query-buffer who)))
+      (if buf
+          (with-current-buffer buf
+            (eircc-command-SAY what))
+        (with-current-buffer (eircc-server-last-active-buffer)
+          (eircc-server-send (format "PRIVMSG %s :%s" who what))
+          (eircc-insert (propertize
+                         (format "-> *%s* %s" who what)
+                         'face 'eircc-my-message-face)))))))
+
+(defun eircc-command-QUERY (who)
+  "Open a query with WHO."
+  (interactive "sQuery with: ")
+  (let* ((eircc-new-buffer-behavior 'ignore) ; We do this manually
+         (buf (eircc-server-get-chat-buffer who 'eircc-query-mode))
+         (window (get-buffer-window buf)))
+    (if window
+        (select-window window)
+      (switch-to-buffer buf))))
+
+(defun eircc-command-JOIN (channel)
+  "Join CHANNEL. This can also contain a key."
+  (interactive "sChannel: ")
+  (eircc-server-send (format "JOIN %s" channel)))
+
+(defun eircc-command-PART (reason)
+  "Part the current channel because of REASON."
+  (interactive "sReason: ")
+  (if (not eircc-chat-target)
+      (eircc-server-message "No target for current buffer")
+    (eircc-server-send (format "PART %s :%s"
+                               eircc-chat-target
+                               reason))))
+
+(defun eircc-command-WHOIS (whom)
+  "Request WHOIS information about WHOM."
+  (interactive "sWhois: ")
+  (eircc-server-send (format "WHOIS %s" whom)))
+
+(defun eircc-command-WHOWAS (whom)
+  "Request WHOWAS information about WHOM."
+  (interactive "sWhois: ")
+  (eircc-server-send (format "WHOWAS %s" whom)))
+
+(defun eircc-command-NICK (newnick)
+  "Change nick to NEWNICK."
+  (interactive "sNew nick: ")
+  (eircc-server-send (format "NICK %s" newnick)))
+
+(defun eircc-command-NAMES (&optional channel)
+  "List the names of the current channel or CHANNEL."
+  (interactive)
+  (if (not eircc-chat-target)
+      (eircc-server-message "No target for current buffer")
+    (eircc-server-send (format "NAMES %s"
+                               (if (and channel
+                                        (string-match "[^ ]" channel))
+                                   channel
+                                 eircc-chat-target)))))
+
+(defun eircc-command-PING (target)
+  "Send a CTCP PING request to TARGET."
+  (interactive "sWho: ")
+  (eircc-server-send (format "PRIVMSG %s :\C-aPING %s\C-a"
+                             target
+                             (float-time))))
+
+(defun eircc-command-QUOTE (line)
+  "Send LINE verbatim to the server."
+  (interactive "Line: ")
+  (eircc-server-send line)
+  (with-current-buffer (eircc-server-last-active-buffer)
+    (eircc-server-message (format "Sent to server: %s"
+                                  line))))
+
+(defun eircc-command-CTCP (who &optional command argument)
+  "Send a CTCP message COMMAND to WHO, with ARGUMENT.
+If COMMAND is not given, WHO is parsed to contain all of who,
+command and argument."
+  (when (not command)
+    (if (string-match "^\\([^ ]*\\) \\([^ ]*\\) ?\\(.*\\)" who)
+        (setq command (match-string 2 who)
+              argument (match-string 3 who)
+              who (match-string 1 who))
+      (eircc-server-message "Usage: /CTCP <who> <what>")))
+  (when command
+    (with-current-buffer (or (eircc-server-get-chat-buffer who)
+                             (eircc-server-last-active-buffer))
+      (eircc-server-send (format "PRIVMSG %s :\C-a%s%s%s\C-a"
+                                 who
+                                 command
+                                 (if argument
+                                     " "
+                                   "")
+                                 (or argument
+                                     ""))))))
+
+(defun eircc-command-SV (&optional ignored)
+  "Tell the current channel about your client and Emacs version."
+  (interactive)
+  (eircc-command-SAY (format (concat "I'm using EIRCC version %s "
+                                     "with %s %s (of %s)")
+                             eircc-version
+                             (if (featurep 'xemacs)
+                                 "XEmacs" ; I have no idea how
+                               "GNU Emacs")
+                             emacs-version
+                             (format-time-string "%Y-%m-%d"
+                                                 emacs-build-time))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Display Handlers ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun eircc-set-display-handler (command function)
+  "Store FUNCTION as the display function for COMMAND.
+This uses `eircc-display-table'."
+  (when (not eircc-display-table)
+    (setq eircc-display-table (make-hash-table :test 'equal)))
+  (puthash command function eircc-display-table))
+
+(defun eircc-display-handler (command)
+  "Return the display function for COMMAND.
+This uses `eircc-display-table'."
+  (when eircc-display-table
+    (gethash command eircc-display-table)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Message Handlers ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun eircc-server-handler (line)
+  "Handle LINE from the server."
+  (let* ((parsed (eircc-server-parse-line line))
+         (nick (aref parsed 0))
+         (user (aref parsed 1))
+         (host (aref parsed 2))
+         (command (aref parsed 3))
+         (args (aref parsed 4))
+         (ignoredp (eircc-ignored-p nick user host command args)))
+    (if (and (or (string= command "PRIVMSG")
+                 (string= command "NOTICE"))
+             (string-match "^\C-a\\([^ ]*\\)\\( \\(.*\\)\\)?\C-a$"
+                           (cadr args)))
+        (when (not ignoredp)
+          (let ((ctcp (match-string 1 (cadr args)))
+                (arg (match-string 3 (cadr args))))
+            (eircc-server-ctcp-handler nick user host
+                                       (string= command "PRIVMSG")
+                                       ctcp
+                                       (car args)
+                                       (or arg
+                                           ""))))
+      (unwind-protect
+          (progn
+            (run-hook-with-args 'eircc-receive-message-functions
+                                nick user host command args)
+            (when (not ignoredp)
+              (eircc-server-display nick user host command args))
+            (eircc-server-internal-handler nick user host command args))
+        (eircc-server-internal-handler nick user host command args)))))
+
+(defun eircc-server-display (nick user host command args)
+  "Display the message."
+  (when (not (eircc-ignored-p nick user host command args))
+    (let ((display (eircc-display-handler command)))
+      (if display
+          (funcall display nick user host command args)
+        (or (eircc-server-default-display-command nick user host
+                                                  command args)
+            (with-current-buffer (eircc-server-last-active-buffer)
+              (eircc-server-message
+               (format "[%s from %s%s] %s"
+                       command
+                       nick
+                       (if (or user host)
+                           (format " (%s@%s)" user host)
+                         "")
+                       (mapconcat #'identity
+                                  args
+                                  " ")))))))))
+
+(defun eircc-server-ctcp-handler (nick user host requestp ctcp target text)
+  "Handle a CTCP message."
+  (let ((command (concat "CTCP-" ctcp (if requestp
+                                          ""
+                                        "-REPLY")))
+        (args (list target text)))
+    (run-hook-with-args 'eircc-receive-message-functions
+                        nick user host command args)
+    (let ((display (eircc-display-handler command)))
+      (if display
+          (funcall display nick user host command args)
+        (with-current-buffer (eircc-server-last-active-buffer)
+          (if requestp
+              (eircc-server-message
+               (format "Unknown CTCP request %s from %s (%s@%s): %s"
+                       ctcp
+                       nick user host
+                       text))
+            (eircc-server-message (format "CTCP %s reply from %s (%s@%s): %s"
+                                          ctcp nick user host text))))))))
+
+(defun eircc-server-parse-line (line)
+  "Parse an IRC line.
+This returns a vector with five elements: The nick, user, host,
+command, and args of the message."
+  (let ((nick nil)
+        (user nil)
+        (host nil)
+        (command nil)
+        (args nil))
+    (with-temp-buffer
+      (insert line)
+      (goto-char (point-min))
+      (cond
+       ((looking-at "^:\\([^! ]*\\)!\\([^@ ]*\\)@\\([^ ]*\\) ")
+        (setq nick (match-string 1)
+              user (match-string 2)
+              host (match-string 3))
+        (replace-match ""))
+       ((looking-at "^:\\([^ ]*\\) ")
+        (setq nick (match-string 1))
+        (replace-match "")))
+      (when (looking-at "[^ ]*")
+        (setq command (match-string 0))
+        (replace-match ""))
+      (if (re-search-forward " :\\(.*\\)" nil t)
+          (progn
+            (setq args (list (match-string 1)))
+            (replace-match ""))
+        (goto-char (point-max)))
+      (while (re-search-backward " " nil t)
+        (setq args (cons (buffer-substring (+ 1 (point))
+                                           (point-max))
+                         args))
+        (delete-region (point) (point-max))))
+    (vector nick user host command args)))
+
+(defun eircc-server-internal-handler (nick user host command args)
+  "Handle this message for internal bookkeeping."
+  (cond
+   ;; Stay connected. Priority reply.
+   ((string= command "PING")
+    (eircc-server-send (format "PONG %s" (car args))
+                       t))
+   ;; Remember my nick
+   ((and (string= command "NICK")
+         (eircc-server-my-nick-p nick))
+    (eircc-server-set-my-nick (car args)))
+   ;; Quitting
+   ((string= command "QUIT")
+    (when (eircc-server-my-nick-p nick)
+      (eircc-mapc-chat-buffers
+       (lambda (buf)
+         (with-current-buffer buf
+           (eircc-chat-disconnected))))))
+   ;; Create new channel buffers
+   ((string= command "JOIN")
+    (when (eircc-server-my-nick-p nick)
+      (eircc-server-add-chat-buffer
+       (car args)
+       (eircc-server-get-chat-buffer (car args)
+                                     'eircc-channel-mode))))
+   ;; Initialization
+   ((string= command "001")             ; RPL_WELCOME
+    (eircc-server-set-my-nick (car args))
+    (setq eircc-server-registered-p t)
+    (run-hooks 'eircc-server-connected-hook))
+   ;; If we didn't get our nick yet...
+   ((and (not eircc-server-registered-p)
+         (string= command "433"))       ; ERR_NICKNAMEINUSE
+    (eircc-server-send (format "NICK %s" (funcall eircc-nick-next-function
+                                                  (cadr args)))))
+   ((and (not eircc-server-registered-p)
+         (string= command "437"))       ; ERRL_UNAVAILRESOURCE
+    (eircc-server-send (format "NICK %s" (funcall eircc-nick-next-function
+                                                  (cadr args)))))
+   )
+  (eircc-channel-message-handler nick user host command args)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;
+;;; CTCP Functions ;;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+(eircc-set-display-handler "CTCP-ACTION" 'eircc-ctcp-display-ACTION)
+(defun eircc-ctcp-display-ACTION (nick user host command args)
+  "Show an ACTION."
+  (if (eircc-server-my-nick-p (car args)) ; Query
+      (let ((buf (eircc-server-auto-query-buffer nick)))
+        (if buf
+            (with-current-buffer buf
+              (eircc-insert (format "* %s %s" nick (cadr args))))
+          (with-current-buffer (eircc-server-last-active-buffer)
+            (eircc-insert (format "* -> %s %s" nick (cadr args))))))
+    (with-current-buffer (eircc-server-get-chat-buffer (car args)
+                                                       'eircc-channel-mode)
+      (eircc-insert (format "* %s %s" nick (cadr args))))))
+
+(add-hook 'eircc-receive-message-functions 'eircc-ctcp-VERSION-handler)
+(defun eircc-ctcp-VERSION-handler (nick user host command args)
+  "Handle a CTCP VERSION request."
+  (when (string= command "CTCP-VERSION")
+    (eircc-server-send (format "NOTICE %s :\C-aVERSION EIRCC: Emacs IRC Client, version %s\C-a"
+                               nick eircc-version))))
+
+(eircc-set-display-handler "CTCP-VERSION" 'eircc-ctcp-display-VERSION)
+(defun eircc-ctcp-display-VERSION (nick user host command args)
+  "Show a CTCP VERSION."
+  (with-current-buffer (eircc-server-last-active-buffer)
+    (if (eircc-server-my-nick-p (car args))
+        (eircc-server-message (format "CTCP VERSION request from %s (%s@%s)"
+                                      nick user host))
+      (eircc-server-message
+       (format "CTCP VERSION request from %s (%s@%s) to %s"
+               nick user host (car args))))))
+
+(add-hook 'eircc-receive-message-functions 'eircc-ctcp-PING-handler)
+(defun eircc-ctcp-PING-handler (nick user host command args)
+  "Handle a CTCP PING request."
+  (when (string= command "CTCP-PING")
+    (eircc-server-send (format "NOTICE %s :\C-aPING %s\C-a"
+                               nick (cadr args)))))
+
+(eircc-set-display-handler "CTCP-PING" 'eircc-ctcp-display-PING)
+(defun eircc-ctcp-display-PING (nick user host command args)
+  "Show a CTCP PING request."
+  (with-current-buffer (eircc-server-last-active-buffer)
+    (eircc-server-message (format "CTCP PING request%s from %s (%s@%s): %s%s"
+                                  (if (eircc-server-my-nick-p (car args))
+                                      ""
+                                    (format " to %s" (car args)))
+                                  nick user host
+                                  (cadr args)
+                                  (let ((number (string-to-number
+                                                 (cadr args))))
+                                    (if number
+                                        (format " (%.2f seconds ago)"
+                                                (- (float-time)
+                                                   number))
+                                      ""))))))
+
+(eircc-set-display-handler "CTCP-PING-REPLY" 'eircc-ctcp-display-PING-reply)
+(defun eircc-ctcp-display-PING-reply (nick user host command args)
+  "Show a CTCP PING reply."
+  (with-current-buffer (eircc-server-last-active-buffer)
+    (let ((ping-time (string-to-number (cadr args))))
+      (if ping-time
+          (eircc-server-message
+           (format (concat "CTCP PING reply from %s (%s@%s):"
+                           " %.2f seconds")
+                   nick user host
+                   (- (float-time)
+                      ping-time)))
+        (eircc-server-message (format (concat "CTCP PING reply (unparseable)"
+                                              " from %s (%s@%s): %s"
+                                              nick user host
+                                              (cadr args))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Display Functions ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(eircc-set-display-handler "PING" 'eircc-display-PING)
+(defun eircc-display-PING (nick user host command args)
+  "(Don't) Show a PING message."
+  t)
+
+(eircc-set-display-handler "PRIVMSG" 'eircc-display-PRIVMSG)
+(defun eircc-display-PRIVMSG (nick user host command args)
+  "Show a PRIVMSG message."
+  (cond
+   ((eircc-server-my-nick-p (car args)) ; Query
+    (let ((buf (eircc-server-auto-query-buffer nick)))
+      (if buf
+          (with-current-buffer buf
+            (eircc-insert (format "<%s> %s" nick (cadr args))))
+        (with-current-buffer (eircc-server-last-active-buffer)
+          (eircc-insert (format "*%s* %s" nick (cadr args)))))))
+   (t                                   ; Channel talk
+    (with-current-buffer (eircc-server-get-chat-buffer (car args)
+                                                       'eircc-channel-mode)
+      (eircc-insert (format "<%s> %s" nick (cadr args)))))))
+
+(eircc-set-display-handler "NOTICE" 'eircc-display-NOTICE)
+(defun eircc-display-NOTICE (nick user host command args)
+  "Show a NOTICE message."
+  (let ((queryp (eircc-server-my-nick-p (car args))))
+    (if nick
+        (with-current-buffer (or (eircc-server-get-chat-buffer (if queryp
+                                                                   nick
+                                                                 (car args)))
+                                 (eircc-server-last-active-buffer))
+          (eircc-insert (format "-%s- %s" nick (cadr args))))
+      (with-eircc-server-buffer
+        (eircc-insert (propertize (format "-Server Notice- %s" (cadr args))
+                                  'face 'eircc-server-face)
+                      t)))))
+
+(eircc-set-display-handler "NICK" 'eircc-display-NICK)
+(defun eircc-display-NICK (nick user host command args)
+  "Show a NICK message."
+  (eircc-mapc-user-channels nick
+    (lambda (buf)
+      (with-current-buffer buf
+        (eircc-server-message
+         (format "Nick change: %s (%s@%s) is now known as %s"
+                 nick user host (car args)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Netsplit Handling ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar eircc-netsplit-list nil
+  "A list of recorded netsplits.
+Every item is a list with four elements:
+- The quit message for this split.
+- The time when last we heard about a join in this split
+- The time when last we heard about a quit in this split
+- A hash table noting which nicks did leave")
+(make-variable-buffer-local 'eircc-netsplit-list)
+
+(defun eircc-netsplit-reason-p (reason)
+  "Return non-nil if REASON is the quit message of a netsplit.
+This is true when it contains exactly two hosts, with a single
+space in between them. The hosts must include at least one dot,
+and must not include colons or slashes (else they might be
+URLs). (Thanks to irssi for this criteria list)"
+  (if (string-match "^[^ :/]+\\.[^ :/]* [^ :/]+\\.[^ :/]*$"
+                    reason)
+      t
+    nil))
+
+(defun eircc-netsplit-join (nick)
+  "Search for NICK in the netsplit lists.
+This either returns a pair whose car is the quit message of this
+split, and the cadr the time we last heard anything of the split
+of that user. If the NICK isn't split, this returns nil."
+  (with-eircc-server-buffer
+    (catch 'return
+      (mapc (lambda (entry)
+              (let ((table (nth 3 entry)))
+                (when (gethash nick table)
+                  (let ((name (nth 0 entry))
+                        (time (nth 1 entry)))
+                    (remhash nick table)
+                    (when (= 0 (hash-table-count table))
+                      (setq eircc-netsplit-list
+                            (delq entry eircc-netsplit-list)))
+                    (setcar (cdr entry)
+                            (float-time))
+                    (throw 'return (list name time))))))
+            eircc-netsplit-list)
+      nil)))
+
+(defun eircc-netsplit-quit (reason nick)
+  "Add NICK as splitted when REASON indicates a netsplit.
+This either returns the time when last we heard about this split,
+or nil when this isn't a split."
+  (when (eircc-netsplit-reason-p reason)
+    (with-eircc-server-buffer
+      (let ((entry (assoc reason eircc-netsplit-list)))
+        (if entry
+            (let ((time (nth 2 entry))
+                  (table (nth 3 entry)))
+              (setcar (cddr entry)
+                      (float-time))
+              (puthash nick nick table)
+              time)
+          ;; New split!
+          (let ((table (eircc-case-fold-table)))
+            (puthash nick nick table)
+            (setq eircc-netsplit-list
+                  (cons (list reason 0 (float-time) table)
+                        eircc-netsplit-list))
+            0))))))
+
+(eircc-set-display-handler "QUIT" 'eircc-display-QUIT)
+(defun eircc-display-QUIT (nick user host command args)
+  "Show a QUIT message."
+  (let* ((split (eircc-netsplit-quit (car args)
+                                     nick))
+         (message (if split
+                      (if (< (+ split eircc-netsplit-delay)
+                             (float-time))
+                          (format "Netsplit: %s (Use /WL to see who left)"
+                                  (car args))
+                        nil)
+                    (format "Quit: %s (%s@%s) has left IRC: %s"
+                            nick user host (car args)))))
+    (when message
+      (eircc-mapc-user-channels nick
+        (lambda (buf)
+          (with-current-buffer buf
+            (eircc-server-message message)))))))
+
+(eircc-set-display-handler "JOIN" 'eircc-display-JOIN)
+(defun eircc-display-JOIN (nick user host command args)
+  "Show a JOIN message."
+  (let* ((split (eircc-netsplit-join nick))
+         (message (if split
+                      (if (< (+ (cadr split) eircc-netsplit-delay)
+                             (float-time))
+                          (format "Netmerge: %s (Use /WL to see who's still missing)"
+                                  (car split))
+                        nil)
+                    (format "Join: %s (%s@%s) is now on the channel"
+                            nick user host))))
+    (when message
+      (with-current-buffer (eircc-server-get-chat-buffer (car args)
+                                                         'eircc-channel-mode)
+        (eircc-server-message message)))))
+
+(defun eircc-command-WL (&optional split)
+  "Show the people who left in a netsplit.
+Without any arguments, shows shows the current netsplits and how
+many people are missing. With an argument, which must be a
+number, it shows the missing people due to that split."
+  (let ((eircc-netsplit-list (with-eircc-server-buffer
+                               eircc-netsplit-list)))
+    (if (or (not split)
+            (and (stringp split)
+                 (string= split "")))
+        (if (null eircc-netsplit-list)
+            (eircc-server-message "No net split at the moment")
+          (let ((n 0))
+            (mapc (lambda (entry)
+                    (eircc-server-message (format "(%d) Missing %d people due to %s"
+                                                  n
+                                                  (hash-table-count (nth 3 entry))
+                                                  (car entry)))
+                    (setq n (+ n 1)))
+                  eircc-netsplit-list)))
+      (let* ((index (if (numberp split)
+                        split
+                      (string-to-number split)))
+             (entry (nth index eircc-netsplit-list)))
+        (if (not entry)
+            (eircc-server-message (format "No split number %s - use /WL to see a list"
+                                          split))
+          (eircc-server-message (format "Missing people due to %s:"
+                                        (car entry)))
+          (maphash (lambda (key value)
+                     (eircc-server-message
+                      (format "- %s" value)))
+                   (nth 3 entry)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Default Formatting ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom eircc-format-strings
+  '(("PART" 0 "Part: {origin}: {1}")
+    ("MODE" 0 "Mode change: {1-} by {origin}")
+    ("TOPIC" 0 "Topic change: {origin}: {1}")
+    ("INVITE" active "Invite: {origin} invites you to {1}")
+    ("KICK" 0 "Kick: {1} kicked by {origin}: {2}")
+    ("ERROR" active "Error: {*}")
+    ("001" active "{1}")
+    ("002" active "{1}")
+    ("003" active "{1}")
+    ("004" active "{1-}")
+    ("005" active "{1-}")
+    ("302" active "User hosts: {1}")
+    ("303" active "Users online: {1}")
+    ("301" 0 "User away: {1}")
+    ("305" active "{1}")
+    ("306" active "{1}")
+    ("311" active "{1} is {2}@{3} ({5})")
+    ("312" active "{1} is on {2} ({3})")
+    ("313" active "{1} {2}")
+    ("317" active "{1} is {2} seconds idle (Signon {3})")
+    ("318" active "{2}")
+    ("319" active "{1} is on {2}")
+    ("314" active "{1} was {2}@{3} ({5})")
+    ("369" active "{1} {2}")
+    ("322" active "{1-}")
+    ("323" active "{1-}")
+    ("325" 1 "Unique operator on {1} is {2}")
+    ("324" 1 "Channel mode for {1}: {2-}")
+    ("331" 1 "No topic for {1} set")
+    ("332" 1 "Topic for {1}: {2}")
+    ("333" 1 "Topic for {1} set by {2} at {3}")
+    ("341" active "Inviting {2} to {1}")
+    ("346" 1 "Invite mask: {2}")
+    ("347" 1 "{2}")
+    ("348" 1 "Except mask: {2}")
+    ("349" 1 "{2}")
+    ("351" active "{1-}")
+    ("352" active "{5} ({2}@{3}) in {1} on {4}: {6-}")
+    ("315" active "{2}")
+    ("353" 2 "Names: {3}")
+    ("366" 1 "{2}")
+    ("364" active "{1-}")
+    ("365" active "{1-}")
+    ("367" 1 "Ban mask: {2}")
+    ("368" 1 "{2}")
+    ("401" active "No such nick: {1}")
+    ("402" active "No such server: {1}")
+    ("403" active "No such channel: {1}")
+    ("404" 1 "Can not send to channel {1}")
+    ("405" active "Can not join {1}: {2}")
+    ("406" active "{1-}")
+    ("407" active "{1-}")
+    ("408" active "No such service: {1}")
+    ;; I got bored, someone else add the rest
+    ("422" active "{1}")
+    ("432" active "Erroneous nick name: {1}")
+    ("433" active "Nick name in use: {1}")
+    ("437" active "Nick/channel is temporarily unavailable: {1}")
+    ("441" 2 "User not not channel: {1}")
+    ("442" active "You are not on {1}")
+    ("443" 2 "User {1} is already on channel {2}")
+    ("467" 1 "{2}")
+    ("471" 1 "{2}")
+    ("472" active "{1-}")
+    ("473" active "{1-}")
+    ("474" active "{1-}")
+    ("475" active "{1-}")
+    ("476" active "{1-}")
+    ("477" active "{1-}")
+    ("481" 1 "{2-}")
+    ("484" active "{1-}")
+    ("371" active "{1}")
+    ("374" active "{1}")
+    ("375" active "{1}")
+    ("372" active "{1}")
+    ("376" active "{1}")
+    ("381" active "{1}")
+    ("382" active "{1-}")
+    ("391" active "Time on {1}: {2}")
+    ("200" active "{1-}")
+    ("201" active "{1-}")
+    ("203" active "{1-}")
+    ("204" active "{1-}")
+    ("205" active "{1-}")
+    ("206" active "{1-}")
+    ("207" active "{1-}")
+    ("208" active "{1-}")
+    ("209" active "{1-}")
+    ("261" active "{1-}")
+    ("262" active "{1-}")
+    ("211" active "{1-}")
+    ("212" active "{1-}")
+    ("219" active "{1-}")
+    ("242" active "{1}")
+    ("243" active "{1-}")
+    ("221" active "User mode: {1-}")
+    ("234" active "Service: {1-}")
+    ("235" active "{1-}")
+    ("250" active "{1}")
+    ("251" active "{1}")
+    ("252" active "{1-}")
+    ("253" active "{1-}")
+    ("254" active "{1-}")
+    ("255" active "{1}")
+    ("256" active "{1-}")
+    ("257" active "{1}")
+    ("258" active "{1}")
+    ("259" active "{1}")
+    ("263" active "{1-}")
+    ("265" active "{1-}")
+    ("266" active "{1-}")
+    )
+  "A list of strings used to format IRC message.
+Each element of the list consists of four parts:
+
+  command  - A string naming the command this applies to
+  target   - The target of this message (see below)
+  format   - The format for this string (see below)
+  trackedp - Optional boolean saying that this message
+             should cause Lui tracking in the mode line
+
+The target can be any of:
+
+  'active  - The last active buffer of this server
+  'nick    - The nick who sent this message
+  number   - The index of the argument of the target
+
+The format is a string is documented in `eircc-format-string'."
+  :type '(repeat (list (string :tag "Message")
+                       (choice :tag "Destination Window"
+                               (const :tag "Active Window" active)
+                               (const :tag "Originating Nick" nick)
+                               (number :tag "Index"))
+                       (string :tag "Format")))
+  :group 'eircc)
+
+(defun eircc-server-default-display-command (nick user host command args)
+  "Format and display a message according to `eircc-format-strings'."
+  (let ((spec (assoc command eircc-format-strings)))
+    (when spec
+      (let* ((target+name (eircc-format-target spec nick user host
+                                               command args))
+             (target (car target+name))
+             (name (cdr target+name))
+             (format (nth 2 spec)))
+        (if target
+            (with-current-buffer target
+              (eircc-server-message (eircc-format-string format nick user host
+                                                         command args)))
+          (with-current-buffer (eircc-server-last-active-buffer)
+            (eircc-server-message
+             (format "[%s] %s"
+                     name
+                     (eircc-format-string format nick user host
+                                          command args))))))
+      t)))
+
+(defun eircc-format-target (spec nick user host command args)
+  "Return the target buffer and name.
+The buffer might be nil if it is not alive."
+  (cond
+   ((eq (nth 1 spec) 'nick)
+    (cons (eircc-server-get-chat-buffer nick)
+          nick))
+   ((numberp (nth 1 spec))
+    (let ((name (nth (nth 1 spec)
+                     args)))
+      (cons (eircc-server-get-chat-buffer name)
+            name)))
+   ((eq (nth 1 spec) 'active)
+    (let ((buf (eircc-server-last-active-buffer)))
+      (cons buf
+            (buffer-name buf))))
+   (t
+    (error "Bad target in format string: %s" (nth 1 spec)))))
+
+;;;;;;;;;;;;;;;;;;
+;;; Formatting ;;;
+;;;;;;;;;;;;;;;;;;
+
+(defun eircc-format-string (fmt nick user host command args)
+  "Format an IRC message according to FMT.
+The format string may contain the following markup:
+
+  {nick}    - The NICK argument is inserted
+  {user}    - The USER argument is inserted
+  {host}    - The HOST argument is inserted
+  {origin}  - {nick} ({user}@{host})
+  {command} - The COMMAND argument is inserted
+  {3}       - The fourth element of ARGS is inserted
+  {*}       - All ARGS, separated by spaces, are inserted
+  {2-}      - All ARGS beginning from the third are inserted,
+              separated by spaces"
+  (with-temp-buffer
+    (insert fmt)
+    (goto-char (point-min))
+    (while (re-search-forward "{\\([^}]*\\)}" nil t)
+      (let ((m (match-string 1)))
+        (cond
+         ((string= m "nick")
+          (replace-match (or nick "(unknown")
+                         nil t))
+         ((string= m "user")
+          (replace-match (or user "(unknown)")
+                         nil t))
+         ((string= m "host")
+          (replace-match (or host "(unknown)")
+                         nil t))
+         ((string= m "command")
+          (replace-match (or command "(unknown)")
+                         nil t))
+         ((string= m "origin")
+          (if (or user host)
+              (replace-match (format "%s (%s@%s)"
+                                     (or nick "(unknown)")
+                                     (or user "(unknown)")
+                                     (or host "(unknown)"))
+                             nil t)
+            (replace-match (or nick "(unknown)")
+                           nil t)))
+         ((string= m "*")
+          (replace-match (mapconcat #'identity args " ")
+                         nil t))
+         (t
+          (let ((n+rest (save-match-data
+                          (if (string-match "\\([0-9]+\\)\\(-\\)?" m)
+                              (cons (string-to-number (match-string 1 m))
+                                    (match-string 2 m))
+                            nil))))
+            (cond
+             ((not n+rest)
+              (error "Bad format string: %s" fmt))
+             ((null (cdr n+rest))
+              (replace-match (or (nth (car n+rest) args)
+                                 "(unknown)")
+                             nil t))
+             (t
+              (replace-match (mapconcat #'identity
+                                        (or (nthcdr (car n+rest) args)
+                                            '("(unknown)"))
+                                        " ")
+                             nil t))))))))
+    (goto-char (point-min))
+    (when (looking-at "^\\*\\*\\*")
+      (add-text-properties (point-min) (point-max)
+                           '(face eircc-server-face)))
+    (buffer-string)))
+
+;;;;;;;;;;;;;;;;;;
+;;; Extensions ;;;
+;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;
+;;; Auto-Join
+(defcustom eircc-server-auto-join-channels nil
+  "*The default channels to join.
+Each element in this list has a regular expression matching a
+server or network name, and a list of channels to join.
+The car can also be a symbol, which is called as a function and
+should return non-nil if we should join the appropriate
+channels."
+  :type '(repeat (cons (regexp :tag "Server or Network")
+                       (repeat :tag channels
+                               string)))
+  :group 'eircc)
+
+(add-hook 'eircc-server-connected-hook 'eircc-auto-join)
+(defun eircc-auto-join ()
+  "Join default channels, as per `eircc-server-auto-join-channels'."
+  (catch 'exit
+    (mapc (lambda (entry)
+            (when (if (symbolp (car entry))
+                      (funcall (car entry))
+                    (string-match (car entry) eircc-server-network))
+              (mapc #'eircc-command-JOIN
+                    (cdr entry))
+              (throw 'exit t)))
+          eircc-server-auto-join-channels)))
+
+;;;;;;;;;;;;;;;;;;;
+;;; Topic Handling
+(defvar eircc-channel-topic ""
+  "The current topic of the channel.")
+(make-variable-buffer-local 'eircc-channel-topic)
+
+(defun eircc-command-TOPIC (newtopic)
+  "Change the topic of the current channel to NEWTOPIC."
+  (interactive "sNew topic: ")
+  (cond
+   ((not eircc-chat-target)
+    (eircc-server-message "No target for current buffer"))
+   ((string= newtopic "")
+    (eircc-server-send (format "TOPIC %s" eircc-chat-target)))
+   (t
+    (eircc-server-send (format "TOPIC %s :%s"
+                               eircc-chat-target
+                               newtopic)))))
+
+(defun eircc-command-CHTOPIC (&optional ignored)
+  "Insert the topic of the current channel."
+  (interactive)
+  (if (not eircc-chat-target)
+      (eircc-server-message "No target for current buffer")
+    (lui-replace-input (format "/TOPIC %s" eircc-channel-topic))
+    (goto-char (point-max))))
+
+(add-hook 'eircc-receive-message-functions 'eircc-topic-handler)
+(defun eircc-topic-handler (nick user host command args)
+  "Manage the topic."
+  (cond
+   ((string= command "331")             ; RPL_NOTOPIC
+    (with-eircc-chat-buffer (cadr args)
+      (setq eircc-channel-topic "")))
+   ((string= command "332")             ; RPL_TOPIC
+    (with-eircc-chat-buffer (cadr args)
+      (setq eircc-channel-topic (nth 2 args))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Nickserv Authentication
+(defcustom eircc-nickserv-alist
+  '(("freenode"
+     "NickServ" "NickServ" "services."
+     "/msg\\s-NickServ\\s-\C-bIDENTIFY\C-b\\s-<password>"
+     "PRIVMSG NickServ :IDENTIFY %s"))
+  "*A list of nickserv configurations.
+Each element of this list is a list with the following items:
+
+  NETWORK   - A regular expression matching the network or server name
+  NICK      - The nick of the nickserv
+  USER      - The user name of the nickserv
+  HOST      - The hostname of the nickserv
+  NOTICE    - A regular expression matching the message from nickserv
+  REPLY     - The message sent to the nickserv, where %s is the password
+
+See also `eircc-nickserv-password'."
+  :type '(repeat (list (regexp :tag "Network")
+                       (string :tag "Nick")
+                       (string :tag "User")
+                       (string :tag "Host")
+                       (regexp :tag "Notice")
+                       (string :tag "Reply")))
+  :group 'eircc)
+
+(defcustom eircc-nickserv-passwords nil
+  "*A list of nickserv passwords.
+Each entry consists of two elements, the network name and the
+password for this network."
+  :type '(repeat (list (string :tag "Network")
+                       (string :tag "Password")))
+  :group 'eircc)
+
+(defvar eircc-nickserv-registered-p nil
+  "Non-nil when we did register with nickserv here.")
+(make-variable-buffer-local 'eircc-nickserv-registered-p)
+
+(add-hook 'eircc-receive-message-functions 'eircc-nickserv-handler)
+(defun eircc-nickserv-handler (nick user host command args)
+  "Register automatically with nickserv."
+  (with-eircc-server-buffer
+    (when (string= command "001")
+      ;; Reconnect!
+      (setq eircc-nickserv-registered-p nil))
+    (when (and (not eircc-nickserv-registered-p)
+               eircc-nickserv-passwords
+               (string= command "NOTICE"))
+      (catch 'return
+        (mapc (lambda (entry)
+                (when (and (string= (nth 0 entry)
+                                    eircc-server-network)
+                           (string= (nth 1 entry)
+                                    nick)
+                           (string= (nth 2 entry)
+                                    user)
+                           (string= (nth 3 entry)
+                                    host)
+                           (string-match (nth 4 entry)
+                                         (cadr args)))
+                  (let ((pass (assoc eircc-server-network
+                                     eircc-nickserv-passwords)))
+                    (when pass
+                      (eircc-server-send (format (nth 5 entry)
+                                                 (cadr pass)))
+                      (setq eircc-nickserv-registered-p t)
+                      (throw 'return t)))))
+              eircc-nickserv-alist)))))
+
+(provide 'eircc)
+;;; eircc.el ends here

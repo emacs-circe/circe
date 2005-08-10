@@ -1,0 +1,84 @@
+EIRC is an IRC client written in Emacs Lisp,                      -*-outline-*-
+running on our favorite work environment.
+
+Project homepage: http://www.nongnu.org/eircc/
+
+
+* Overview
+EIRCC was initially written in three or four days because the author
+got terribly annoyed at bugs in ERC. Nontheless, many ideas are taken
+directly from ERC, and that client has served the author well for a
+long time. Thanks to all the people who worked on ERC!
+
+
+* Lui
+EIRCC uses Lui, the Linewise User Interface. This provides many
+features with a clean interface so that EIRCC doesn't have to worry
+about the whole displaying stuff. Lui can also be used by other
+clients, so that for example the tracking feature is extensible.
+
+
+* Installation
+To install EIRCC, put all files in a directory, say, ~/.elisp/eircc/
+Then add the following code to your .emacs:
+
+  (add-to-list 'load-path "~/.elisp/eircc/")
+  (autoload 'eircc "eircc" "Connect to an IRC server" t)
+
+Now you can run M-x eircc and connect to an IRC server of your choice.
+
+If you use XEmacs, the second line there should read
+
+  (autoload 'eircc "eircc-xemacs" "Connect to an IRC server" t)
+
+
+* Sample Configuration
+EIRC is extensively configurable, and quite well extensible. What
+follows is the configuration of the author.
+
+
+(autoload 'eircc "eircc" "Connect to an IRC server" t)
+
+(when (file-directory-p "~/.elisp/eircc")
+  (add-to-list 'load-path "~/.elisp/eircc"))
+
+;; This defines the password variables below
+(when (file-exists-p "~/.private.el")
+  (load-file "~/.private.el"))
+
+(setq eircc-default-realname "http://www.forcix.cx/"
+      eircc-ignore-list nil
+      eircc-server-coding-system '(latin-1 . undecided)
+      eircc-server-auto-join-channels
+      '(("^freenode$" "#emacs" "#scheme" "#scsh" "#darcs" "#wiki" "#css"
+                      "#latex" "#ideologies" "##linguistics")
+        ("^IRCnet" "#StarWars" "+linux.de"))
+      eircc-nickserv-passwords `(("freenode" ,freenode-passwd)))
+
+(setq lui-max-buffer-size 30000
+      lui-flyspell-p t
+      lui-flyspell-alist '(("+linux.de" "german8")
+                           ("." "american")))
+
+(eval-after-load "eircc"
+  '(progn
+     (require 'lui-irc-colors)
+     (add-to-list 'lui-pre-output-hook 'lui-irc-colors)
+     (add-to-list 'eircc-receive-message-functions
+                  'fc-bitlbee-auth)))
+
+(defun fc-bitlbee-auth (nick user host command args)
+  "Authenticate to a bitlbee server."
+  (when (and (string= command "JOIN")
+             (eircc-server-my-nick-p nick))
+    (with-eircc-server-buffer
+      (when (string= eircc-server-network "bitlbee")
+        (eircc-server-send (format "PRIVMSG #bitlbee :identify %s"
+                                   bitlbee-passwd))))))
+
+(defun irc ()
+  "Connect to IRC."
+  (interactive)
+  (eircc "irc.freenode.net" "6667" "freenode")
+  (eircc "sarg" "23523" "IRCnet" muh-passwd)
+  (eircc "localhost" "6668" "bitlbee"))
