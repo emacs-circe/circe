@@ -3,7 +3,7 @@
 ;; Copyright (C) 2005  Jorgen Schaefer
 
 ;; Version: 1.0
-;; Keywords: Lui, EIRCC, IRC
+;; Keywords: Lui, CIRCE, IRC
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: http://www.nongnu.org/eircc/
 
@@ -38,7 +38,7 @@
 
 (defgroup lui-irc-colors nil
   "LUI IRC colors faces."
-  :group 'eircc)
+  :group 'circe)
 
 (defface lui-irc-colors-inverse-face
   '((t (:inverse-video t)))

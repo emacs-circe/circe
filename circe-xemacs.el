@@ -1,4 +1,4 @@
-;; XEmacs compatibility for EIRCC
+;; XEmacs compatibility for CIRCE
 ;; Thanks a lot to Brian Palmer!
 
 (unless (fboundp 'compare-strings)
@@ -71,6 +71,6 @@
 
 
 (require 'lui-xemacs)
-(require 'eircc)
+(require 'circe)
 
-(provide 'eircc-xemacs)
+(provide 'circe-xemacs)

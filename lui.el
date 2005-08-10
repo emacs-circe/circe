@@ -234,7 +234,7 @@ The first face found in this list is used."
 (defface lui-time-stamp-face
   '((t (:foreground "SlateBlue" :weight bold)))
   "*Lui mode face used for time stamps."
-  :group 'eircc)
+  :group 'lui)
 
 (defvar lui-highlight-face 'lui-highlight-face
   "Face name for highlighting.")
