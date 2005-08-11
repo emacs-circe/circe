@@ -162,6 +162,20 @@ protection algorithm."
   :type 'integer
   :group 'circe)
 
+(defcustom circe-display-server-modes-p nil
+  "Whether Circe should show server modes.
+This is disabled by default, since server mode changes are almost
+always channel modes after a split."
+  :type 'boolean
+  :group 'circe)
+
+(defcustom circe-server-max-reconnect-attempts 5
+  "How often Circe should attempt to reconnect to the server.
+If this is 0, Circe will not reconnect at all. If this is nil,
+it will try to reconnect forever (not recommended)."
+  :type 'integer
+  :group 'circe)
+
 (defcustom circe-server-coding-system nil
   "*Coding systems to use for IRC.
 This is either a coding system, which is then used both for
@@ -242,6 +256,12 @@ or faces that don't show up at all."
 (defface circe-highlight-nick-face
   '((t (:foreground "DarkTurquoise" :weight bold)))
   "The face used to highlight messages directed to us."
+  :group 'circe)
+
+(defvar circe-originator-face 'circe-highlight-originator-face
+  "The face used to highlight the originator of a message.")
+(defface circe-originator-face '((t))
+  "The face used to highlight the originator of a message."
   :group 'circe)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -389,32 +409,45 @@ If no such buffer exists, do nothing."
          ,@body))))
 (put 'with-circe-chat-buffer 'lisp-indent-function 1)
 
+(defvar circe-server-reconnect-attempts 0
+  "The number of reconnect attempts that Circe has done so far.
+See `circe-server-max-reconnect-attempts'.")
+(make-variable-buffer-local 'circe-server-reconnect-attempts)
+
 (defun circe-reconnect ()
   "Reconnect the current server."
   (interactive)
   (with-circe-server-buffer
-    (when circe-server-process
-      (delete-process circe-server-process))
-    (setq circe-server-registered-p nil
-          circe-server-process (open-network-stream circe-server-name
-                                                    (current-buffer)
-                                                    circe-server-name
-                                                    circe-server-service))
-    (set-process-filter circe-server-process #'circe-server-filter-function)
-    (set-process-sentinel circe-server-process #'circe-server-sentinel)
-    (set-process-coding-system circe-server-process
-                               (if (consp circe-server-coding-system)
-                                   (cdr circe-server-coding-system)
-                                 circe-server-coding-system)
-                               (if (consp circe-server-coding-system)
-                                   (car circe-server-coding-system)
-                                 circe-server-coding-system))
-    (when circe-server-pass
-      (circe-server-send (format "PASS %s" circe-server-pass)))
-    (circe-server-send (format "NICK %s" circe-server-nick))
-    (circe-server-send (format "USER %s 8 * :%s"
-                               circe-server-user
-                               circe-server-realname))))
+    (when (or (interactive-p) ;; Always reconnect if the user wants it
+              (not circe-server-max-reconnect-attempts)
+              (< circe-server-reconnect-attempts
+                 circe-server-max-reconnect-attempts))
+      (setq circe-server-reconnect-attempts (+ circe-server-reconnect-attempts
+                                               1))
+      (when circe-server-process
+        (delete-process circe-server-process))
+      (setq circe-server-registered-p nil
+            circe-server-process (open-network-stream circe-server-name
+                                                      (current-buffer)
+                                                      circe-server-name
+                                                      circe-server-service))
+      (set-process-filter circe-server-process
+                          #'circe-server-filter-function)
+      (set-process-sentinel circe-server-process
+                            #'circe-server-sentinel)
+      (set-process-coding-system circe-server-process
+                                 (if (consp circe-server-coding-system)
+                                     (cdr circe-server-coding-system)
+                                   circe-server-coding-system)
+                                 (if (consp circe-server-coding-system)
+                                     (car circe-server-coding-system)
+                                   circe-server-coding-system))
+      (when circe-server-pass
+        (circe-server-send (format "PASS %s" circe-server-pass)))
+      (circe-server-send (format "NICK %s" circe-server-nick))
+      (circe-server-send (format "USER %s 8 * :%s"
+                                 circe-server-user
+                                 circe-server-realname)))))
 
 (defun circe-server-filter-function (process string)
   "The process filter for the circe server."
@@ -1365,7 +1398,8 @@ command, and args of the message."
    ;; Initialization
    ((string= command "001")             ; RPL_WELCOME
     (circe-server-set-my-nick (car args))
-    (setq circe-server-registered-p t)
+    (setq circe-server-registered-p t
+          circe-server-reconnect-attempts 0)
     (run-hooks 'circe-server-connected-hook))
    ;; If we didn't get our nick yet...
    ((and (not circe-server-registered-p)
@@ -1391,12 +1425,21 @@ command, and args of the message."
       (let ((buf (circe-server-auto-query-buffer nick)))
         (if buf
             (with-current-buffer buf
-              (circe-insert (format "* %s %s" nick (cadr args))))
+              (circe-insert (format "* %s %s"
+                                    (propertize nick
+                                                'face 'circe-originator-face)
+                                    (cadr args))))
           (with-current-buffer (circe-server-last-active-buffer)
-            (circe-insert (format "* -> %s %s" nick (cadr args))))))
+            (circe-insert (format "*-> %s %s"
+                                  (propertize nick
+                                              'face 'circe-originator-face)
+                                  (cadr args))))))
     (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                        'circe-channel-mode)
-      (circe-insert (format "* %s %s" nick (cadr args))))))
+      (circe-insert (format "* %s %s"
+                            (propertize nick
+                                        'face 'circe-originator-face)
+                            (cadr args))))))
 
 (add-hook 'circe-receive-message-functions 'circe-ctcp-VERSION-handler)
 (defun circe-ctcp-VERSION-handler (nick user host command args)
@@ -1476,13 +1519,22 @@ command, and args of the message."
     (let ((buf (circe-server-auto-query-buffer nick)))
       (if buf
           (with-current-buffer buf
-            (circe-insert (format "<%s> %s" nick (cadr args))))
+            (circe-insert (format "<%s> %s"
+                                  (propertize nick
+                                              'face 'circe-originator-face)
+                                  (cadr args))))
         (with-current-buffer (circe-server-last-active-buffer)
-          (circe-insert (format "*%s* %s" nick (cadr args)))))))
+          (circe-insert (format "*%s* %s"
+                                (propertize nick
+                                            'face 'circe-originator-face)
+                                (cadr args)))))))
    (t                                   ; Channel talk
     (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                        'circe-channel-mode)
-      (circe-insert (format "<%s> %s" nick (cadr args)))))))
+      (circe-insert (format "<%s> %s"
+                            (propertize nick
+                                        'face 'circe-originator-face)
+                            (cadr args)))))))
 
 (circe-set-display-handler "NOTICE" 'circe-display-NOTICE)
 (defun circe-display-NOTICE (nick user host command args)
@@ -1493,7 +1545,10 @@ command, and args of the message."
                                                                    nick
                                                                  (car args)))
                                  (circe-server-last-active-buffer))
-          (circe-insert (format "-%s- %s" nick (cadr args))))
+          (circe-insert (format "-%s- %s"
+                                (propertize nick
+                                            'face 'circe-originator-face)
+                                (cadr args))))
       (with-circe-server-buffer
         (circe-insert (propertize (format "-Server Notice- %s" (cadr args))
                                   'face 'circe-server-face)
@@ -1508,6 +1563,23 @@ command, and args of the message."
         (circe-server-message
          (format "Nick change: %s (%s@%s) is now known as %s"
                  nick user host (car args)))))))
+
+(circe-set-display-handler "MODE" 'circe-display-MODE)
+(defun circe-display-MODE (nick user host command args)
+  "Show a MODE message."
+  (when (or circe-display-server-modes-p
+            user) ; If this is set, it is not a server mode
+    (with-current-buffer (circe-server-get-chat-buffer (car args))
+      (circe-server-message
+       (format "Mode change: %s by %s%s"
+               (mapconcat #'identity (cdr args) " ")
+               nick
+               (if user
+                   (format " (%s@%s)"
+                           user
+                           (or host
+                               "(unknown)"))
+                 ""))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Netsplit Handling ;;;
@@ -1653,7 +1725,6 @@ number, it shows the missing people due to that split."
 
 (defcustom circe-format-strings
   '(("PART" 0 "Part: {origin}: {1}")
-    ("MODE" 0 "Mode change: {1-} by {origin}")
     ("TOPIC" 0 "Topic change: {origin}: {1}")
     ("INVITE" active "Invite: {origin} invites you to {1}")
     ("KICK" 0 "Kick: {1} kicked by {origin}: {2}")
