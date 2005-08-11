@@ -5,7 +5,7 @@
 ;; Version: 0
 ;; Keywords: IRC, chat
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
-;; URL: http://www.nongnu.org/eircc/
+;; URL: http://www.nongnu.org/circe/
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
