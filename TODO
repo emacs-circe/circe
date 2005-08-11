@@ -4,26 +4,26 @@ Website:
 - Make new screenshots
 - Mention version number after the next release
 
-Code:
-- circe.el: display-MODE: If setter is server and
-  `circe-netsplit-ignore-server-modes' is non-nil, ignore it
-- circe.el: Counter for reconnects; set to 0 on successful connect,
-  increment on each reconnect, if above
-  `circe-server-max-reconnect-attempts', stop.
-- circe.el: Face for "message originator"
-- circe-highlight-nicks.el: Extension to highlight all nicks in the
-  channel in the current message
-- circe.el: flyspell should ignore nicks in the current channel (Not
-  easily possible?)
+* Pre Version 1:
 - lui.el: Functions to check/modify the stuff we send ("wether")
+- lui.el: A way to ignore certain buffers from tracking
+- circe-highlight-nicks.el: Extension to highlight all nicks in the
+  channel in the current message. Establish coding conventions for
+  circe modules.
+- lui-irc-colors.el: lui-irc-colors-enable function. Establish coding
+  conventions for lui modules.
+- autoloads, Makefile
+
+* Post Version 1:
 - lui.el: Allow tracking per-frame: When the buffer is visible
   nowhere, or when it is just not visible on this frame
-- lui.el: Kill ring needs improvement
-- lui.el: A way to ignore certain buffers from tracking
-- lui-irc-colors.el:
-  - lui-irc-colors-enable function
+- lui.el: Kill ring needs improvement (see comments)
 - lui.el: Improve the 'ignored stuff, and add it to circe again.
   We'll need two ignore lists there, though. (/fool and /unfool)
+  Store the ignored stuff in a text property? Does that keep overlays?
+  If not, walk the area and hide/unhide overlays as well.
+  Maybe even use a lui-ignored-face as a way to recognize them? (=> Darken
+  as possibility)
 
 ** Future Extensions:
 - circe.el: auto-away. On every message from the server, check.
@@ -32,6 +32,11 @@ Code:
 - dcc
 - lui-logging.el: logging
 - lui-speak.el: emacspeak support
+
+* Wishlist
+- circe.el: flyspell should ignore nicks in the current channel
+  - This is not easily possible, sadly. It would require managing a
+    private dictionary file per channel.
 
 * Emacs release
 After the next Emacs release, fix the following stuff:
