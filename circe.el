@@ -55,7 +55,7 @@
 (defvar circe-prompt-face 'circe-prompt-face
   "The face for the Circe prompt.")
 (defface circe-prompt-face
-  '((t (:bold t :foreground "Black" :background "lightBlue2")))
+  '((t (:bold t :foreground "Black" :background "LightSeaGreen")))
   "The face for the Circe prompt."
   :group 'circe)
 
@@ -68,14 +68,14 @@
 (defvar circe-server-face 'circe-server-face
   "The face used to highlight server messages.")
 (defface circe-server-face
-  '((t (:foreground "SlateBlue" :weight bold)))
+  '((t (:foreground "SteelBlue" :weight bold)))
   "The face used to highlight server messages."
   :group 'circe)
 
 (defvar circe-highlight-nick-face 'circe-highlight-nick-face
   "The face used to highlight messages directed to us.")
 (defface circe-highlight-nick-face
-  '((t (:foreground "DarkTurquoise" :weight bold)))
+  '((t (:foreground "CadetBlue3" :weight bold)))
   "The face used to highlight messages directed to us."
   :group 'circe)
 
