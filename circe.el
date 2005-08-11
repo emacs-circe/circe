@@ -44,6 +44,51 @@
   :prefix "circe-"
   :group 'applications)
 
+
+;;;;;;;;;;;;;
+;;; Faces ;;;
+;;;;;;;;;;;;;
+
+;; These come before the `defcustom's since they are used for some of
+;; the default values.
+
+(defvar circe-prompt-face 'circe-prompt-face
+  "The face for the Circe prompt.")
+(defface circe-prompt-face
+  '((t (:bold t :foreground "Black" :background "lightBlue2")))
+  "The face for the Circe prompt."
+  :group 'circe)
+
+(defvar circe-my-message-face 'circe-my-message-face
+  "The face used to highlight our own messages.")
+(defface circe-my-message-face '((t))
+  "The face used to highlight our own messages."
+  :group 'circe)
+
+(defvar circe-server-face 'circe-server-face
+  "The face used to highlight server messages.")
+(defface circe-server-face
+  '((t (:foreground "SlateBlue" :weight bold)))
+  "The face used to highlight server messages."
+  :group 'circe)
+
+(defvar circe-highlight-nick-face 'circe-highlight-nick-face
+  "The face used to highlight messages directed to us.")
+(defface circe-highlight-nick-face
+  '((t (:foreground "DarkTurquoise" :weight bold)))
+  "The face used to highlight messages directed to us."
+  :group 'circe)
+
+(defvar circe-originator-face 'circe-highlight-originator-face
+  "The face used to highlight the originator of a message.")
+(defface circe-originator-face '((t))
+  "The face used to highlight the originator of a message."
+  :group 'circe)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Customization Variables ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defcustom circe-default-nick (user-login-name)
   "*The default nick for circe."
   :type 'string
@@ -218,10 +263,6 @@ This is run from a 001 (RPL_WELCOME) message handler."
   :type 'hook
   :group 'circe)
 
-;;;;;;;;;;;;;
-;;; Faces ;;;
-;;;;;;;;;;;;;
-
 (defcustom circe-track-faces-priorities '(circe-highlight-nick-face
                                           circe-my-message-face
                                           circe-server-face)
@@ -229,39 +270,6 @@ This is run from a 001 (RPL_WELCOME) message handler."
 The first face is kept if the new message has only lower faces,
 or faces that don't show up at all."
   :type '(repeat face)
-  :group 'circe)
-
-(defvar circe-prompt-face 'circe-prompt-face
-  "The face for the Circe prompt.")
-(defface circe-prompt-face
-  '((t (:bold t :foreground "Black" :background "lightBlue2")))
-  "The face for the Circe prompt."
-  :group 'circe)
-
-(defvar circe-my-message-face 'circe-my-message-face
-  "The face used to highlight our own messages.")
-(defface circe-my-message-face '((t))
-  "The face used to highlight our own messages."
-  :group 'circe)
-
-(defvar circe-server-face 'circe-server-face
-  "The face used to highlight server messages.")
-(defface circe-server-face
-  '((t (:foreground "SlateBlue" :weight bold)))
-  "The face used to highlight server messages."
-  :group 'circe)
-
-(defvar circe-highlight-nick-face 'circe-highlight-nick-face
-  "The face used to highlight messages directed to us.")
-(defface circe-highlight-nick-face
-  '((t (:foreground "DarkTurquoise" :weight bold)))
-  "The face used to highlight messages directed to us."
-  :group 'circe)
-
-(defvar circe-originator-face 'circe-highlight-originator-face
-  "The face used to highlight the originator of a message.")
-(defface circe-originator-face '((t))
-  "The face used to highlight the originator of a message."
   :group 'circe)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
