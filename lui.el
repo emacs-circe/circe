@@ -131,10 +131,13 @@ This can be one of the following values:
   A number
       The first sequence of non-whitespace characters is
       right-aligned at this column, and the rest is filled to
-      this column."
+      this column.
+  nil
+      Turn filling off."
   :type '(choice (string :tag "Fill Prefix")
                  (const :tag "Variable Fill Prefix" variable)
-                 (integer :tag "Fill Column"))
+                 (integer :tag "Fill Column")
+                 (const :tage "No filling" nil))
   :group 'lui)
 
 (defcustom lui-fill-column 70
@@ -160,10 +163,13 @@ This can be one of the following values:
       At a column just right to `lui-fill-column'
   'left
       At the left side of the output. The output is thereby moved
-      to the right."
+      to the right.
+  nil
+      Do not add any time stamp."
   :type '(choice (const :tag "Right" right)
                  (integer :tag "Column")
-                 (const :tag "Left" left))
+                 (const :tag "Left" left)
+                 (const :tag "None" nil))
   :group 'lui)
 
 (defcustom lui-time-stamp-only-when-changed-p t
