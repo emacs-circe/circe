@@ -1,6 +1,6 @@
 Circe is a Client for IRC in Emacs                                -*-outline-*-
 
-Project homepage: http://www.nongnu.org/eircc/
+Project homepage: http://www.nongnu.org/circe/
 
 
 * Overview
@@ -8,9 +8,6 @@ Circe was initially written in three or four days because the author
 got terribly annoyed at bugs in ERC. Nontheless, many ideas are taken
 directly from ERC, and that client has served the author well for a
 long time. Thanks to all the people who worked on ERC!
-
-It used to be called EIRCC, so don't be confused about that name
-occuring from time to time.
 
 
 * Lui
