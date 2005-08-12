@@ -1209,7 +1209,7 @@ This adheres to `circe-auto-query-p' and `circe-auto-query-max'."
   (mapcar (lambda (symbol)
             (let ((str (symbol-name symbol)))
               (if (string-match "^circe-command-\\(.*\\)" str)
-                  (concat "/" (match-string 1 str))
+                  (concat "/" (match-string 1 str) " ")
                 str)))
           (apropos-internal "^circe-command-")))
 
