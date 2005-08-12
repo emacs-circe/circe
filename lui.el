@@ -629,6 +629,15 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
                                       faces)))))
       (setq buffer-undo-list undo))))
 
+(defvar lui-prompt-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "<end>") 'lui-prompt-end-of-line)
+    (define-key map (kbd "C-e") 'lui-prompt-end-of-line)
+    map)
+  "Keymap for Lui prompts.
+Since \\[end-of-line] can't move out of fields, this DTRT for an
+unexpecting user.")
+
 (defun lui-set-prompt (prompt)
   "Set PROMPT as the current Lui prompt."
   (let ((inhibit-read-only t))
@@ -638,16 +647,18 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
       (if (> lui-input-marker (point))
           (delete-region (point) lui-input-marker)
         (set-marker lui-input-marker (point)))
-      (let ((ov (make-overlay lui-output-marker lui-input-marker nil t)))
-        ;; What does this?
-        ;; (overlay-put ov 'inhibit-line-move-field-capture t)
-        (overlay-put ov 'field 'lui-prompt)
-        (overlay-put ov 'evaporate t)
-        (overlay-put ov 'read-only t)
-        ;; Apparently, overlay read-only doesn't work.
-        (add-text-properties lui-output-marker lui-input-marker
-                             '(read-only t rear-nonsticky t))
-        ))))
+      (add-text-properties lui-output-marker lui-input-marker
+                           `(read-only t
+                             rear-nonsticky t
+                             field lui-prompt
+                             keymap ,lui-prompt-map)))))
+
+(defun lui-prompt-end-of-line (&optional N)
+  "Move past the prompt, and then to the end of the line.
+This uses `end-of-line'."
+  (interactive "p")
+  (goto-char lui-input-marker)
+  (call-interactively 'end-of-line))
 
 (defun lui-faces-in-region (beg end)
   "Returns a face that describes the region between BEG and END."
