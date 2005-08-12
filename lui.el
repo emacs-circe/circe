@@ -45,7 +45,7 @@
 (defvar lui-version "2"
   "Lui version string.")
 
-(require 'icomplete)
+(require 'incomplete)
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -282,7 +282,7 @@ It is often a good idea to make this variable buffer-local.")
 (defvar lui-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'lui-send-input)
-    (define-key map (kbd "TAB") 'icomplete)
+    (define-key map (kbd "TAB") 'incomplete)
     (define-key map (kbd "M-p") 'lui-previous-input)
     (define-key map (kbd "M-n") 'lui-next-input)
     (define-key map (kbd "C-c C-u") 'lui-kill-to-beginning-of-line)
@@ -341,8 +341,8 @@ It can be customized for an application by specifying a
   (when lui-flyspell-p
     (require 'flyspell)
     (lui-flyspell-change-dictionary))
-  (set (make-local-variable 'icomplete-function)
-       'lui-icomplete)
+  (set (make-local-variable 'incomplete-function)
+       'lui-incomplete)
   (run-hooks 'lui-mode-hook))
 
 (defun lui-scroll-to-bottom (window display-start)
@@ -385,7 +385,7 @@ If point is not in the input area, self-insert."
 ;;; Completion ;;;
 ;;;;;;;;;;;;;;;;;;
 
-(defun lui-icomplete ()
+(defun lui-incomplete ()
   "Return the string to be completed at point."
   (let ((end (point))
         (begin (save-excursion (if (not (re-search-backward "\\s-"
