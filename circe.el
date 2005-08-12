@@ -62,16 +62,16 @@
 (defvar circe-server-face 'circe-server-face
   "The face used to highlight server messages.")
 (defface circe-server-face
-  '((((class color)) (:foreground "SteelBlue"))
-    (t :foreground "blue" :weight bold))
+  '((((type tty)) :foreground "blue" :weight bold)
+    (t (:foreground "SteelBlue")))
   "The face used to highlight server messages."
   :group 'circe)
 
 (defvar circe-highlight-nick-face 'circe-highlight-nick-face
   "The face used to highlight messages directed to us.")
 (defface circe-highlight-nick-face
-  '((((class color)) (:foreground "CadetBlue3" :weight bold))
-    (t (:foreground "cyan" :weight bold)))
+  '((((type tty)) (:foreground "cyan" :weight bold))
+    (t (:foreground "CadetBlue3" :weight bold)))
   "The face used to highlight messages directed to us."
   :group 'circe)
 
@@ -81,7 +81,7 @@
   "The face used to highlight our own messages."
   :group 'circe)
 
-(defvar circe-originator-face 'circe-highlight-originator-face
+(defvar circe-originator-face 'circe-originator-face
   "The face used to highlight the originator of a message.")
 (defface circe-originator-face '((t))
   "The face used to highlight the originator of a message."
@@ -828,7 +828,7 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
     (mapc #'circe-command-SAY (split-string str "\n")))))
 
 (defun circe-highlight-lui-output ()
-  "Highlight the string in the buffer."
+  "Highlight the nick of the user in the buffer."
   (cond
    ((eq circe-highlight-nick-type 'sender)
     (let ((regex (concat "^\\(\\* \\([^ ]*\\) "
