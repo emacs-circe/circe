@@ -479,6 +479,10 @@ REALNAME is the real name to use (defaults to `circe-default-realname')"
     (when (interactive-p)
       (switch-to-buffer server-buffer))))
 
+(defvar circe-server-buffer nil
+  "The buffer of the server associated with the current chat buffer.")
+(make-variable-buffer-local 'circe-server-buffer)
+
 (defmacro with-circe-server-buffer (&rest body)
   "Run BODY with the current buffer being the current server buffer."
   `(let ((XXserver (cond
@@ -938,10 +942,6 @@ initialize a new buffer if none exists."
 ;;; Chat Buffers ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
-(defvar circe-server-buffer nil
-  "The buffer of the server associated with the current chat buffer.")
-(make-variable-buffer-local 'circe-server-buffer)
-
 (defvar circe-chat-target nil
   "The current target for the buffer.
 This is either a channel or a nick name.")
@@ -1279,7 +1279,9 @@ nick and the message."
 (defun circe-command-QUERY (who)
   "Open a query with WHO."
   (interactive "sQuery with: ")
-  (let* ((circe-new-buffer-behavior 'ignore) ; We do this manually
+  (let* ((who (when (string-match "[^ ]+" who)
+                (match-string 0 who)))
+         (circe-new-buffer-behavior 'ignore) ; We do this manually
          (buf (circe-server-get-chat-buffer who 'circe-query-mode))
          (window (get-buffer-window buf)))
     (if window
