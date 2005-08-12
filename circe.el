@@ -38,6 +38,7 @@
   "Circe version string.")
 
 (require 'lui)
+(require 'lui-format)
 
 (defgroup circe nil
   "Yet Another Emacs IRC Client."
@@ -209,7 +210,7 @@ protection algorithm."
   :type 'integer
   :group 'circe)
 
-(defcustom circe-display-server-modes-p nil
+(defcustom circe-show-server-modes-p nil
   "Whether Circe should show server modes.
 This is disabled by default, since server mode changes are almost
 always channel modes after a split."
@@ -273,6 +274,90 @@ The first face is kept if the new message has only lower faces,
 or faces that don't show up at all."
   :type '(repeat face)
   :group 'circe)
+
+;;;;;;;;;;;;;;;
+;;; Formats ;;;
+;;;;;;;;;;;;;;;
+
+(defgroup circe-format nil
+  "Format strings for Circe.
+All these formats always allow the {mynick} and {target} format
+strings."
+  :prefix "circe-format-"
+  :group 'circe)
+
+(defcustom circe-format-not-tracked '(circe-format-server-message
+                                      circe-format-server-notice
+                                      circe-format-server-numeric)
+  "*A list of formats that should not trigger tracking."
+  :type '(repeat symbol)
+  :group 'circe-format)
+
+(defcustom circe-format-server-message "*** {body}"
+  "*The format for generic server messages.
+{body} - The body of the message."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-self-say "> {body}"
+  "*The format for messages to queries or channels.
+{body} - The body of the message."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-self-action "* {mynick} {body}"
+  "*The format for actions to queries or channels.
+{body} - The body of the action."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-self-message "-> *{target}* {body}"
+  "*The format for messages sent to other people outside of queries.
+{target} - The target nick.
+{body} - The body of the message."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-action "* {nick} {body}"
+  "*The format for actions in queries or channels.
+{nick} - The nick doing the action.
+{body} - The body of the action."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-message-action "* *{nick}* {body}"
+  "*The format for actions in messages outside of queries.
+{nick} - The nick doing the action.
+{body} - The body of the action."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-say "<{nick}> {body}"
+  "*The format for normal channel or query talk.
+{nick} - The nick talking.
+{body} - The message."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-message "*{nick}* {body}"
+  "*The format for a message outside of a query.
+{nick} - The originator.
+{body} - The message."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-notice "-{nick}- {body}"
+  "*The format for a notice.
+{nick} - The originator.
+{body} - The notice."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-notice "-Server Notice- {body}"
+  "*The format for a server notice.
+{body} - The notice."
+  :type 'string
+  :group 'circe-format)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private variables ;;;
@@ -355,7 +440,7 @@ the second message to be processed first. Nice, isn't it.")
 Don't use this function directly, use `circe' instead."
   (lui-mode)
   (make-local-variable 'lui-pre-output-hook)
-  (add-hook 'lui-pre-output-hook 'circe-highlight-lui-output)
+  (add-hook 'lui-pre-output-hook 'circe-highlight-nick)
   (setq major-mode 'circe-server-mode
         mode-name "Circe Server"
         lui-input-function 'circe-chat-input)
@@ -628,9 +713,55 @@ protection algorithm."
 
 (defun circe-server-message (message)
   "Display MESSAGE as a server message."
-  (circe-insert (propertize (format "*** %s" message)
-                            'face 'circe-server-face)
-                t))
+  (circe-display 'circe-format-server-message
+                 :body (propertize (format "*** %s" message)
+                                   'face 'circe-server-face)))
+
+(defun circe-display (format &rest keywords)
+  "Display FORMAT formatted with KEYWORDS in the current Circe buffer.
+See `lui-format' for a description of the format.
+
+If FORMAT contains the word server, the resulting string receives
+a `circe-server-face'. If FORMAT contains the word self, the
+whole string receives a `circe-my-message-face'. If FORMAT is in
+`circe-format-not-tracked', a message of this type is never
+tracked by Lui.
+
+Keywords with the name :nick receive a `circe-originator-face'.
+
+It is always possible to use the mynick or target formats."
+  (let* ((name (symbol-name format))
+         (face (cond
+                ((string-match "\\<server\\>" name)
+                 'circe-server-face)
+                ((string-match "\\<self\\>" name)
+                 'circe-my-message-face)))
+         (keywords (append `(:mynick ,(circe-server-nick)
+                             :target ,circe-chat-target)
+                           (circe-display-add-nick-property
+                            (if (and (not (null keywords))
+                                     (null (cdr keywords)))
+                                (car keywords)
+                              keywords))))
+         (text (lui-format format keywords)))
+    (lui-insert (if face
+                    (propertize text 'face face)
+                  text)
+                (memq format circe-format-not-tracked))))
+
+(defun circe-display-add-nick-property (keywords)
+  "Add a face to the value of the :nick property in KEYWORDS."
+  (let ((keyword nil))
+    (mapcar (lambda (entry)
+              (cond
+               ((or (eq keyword :nick)
+                    (eq keyword 'nick))
+                (setq keyword nil)
+                (propertize entry 'face 'circe-originator-face))
+               (t
+                (setq keyword entry)
+                entry)))
+            keywords)))
 
 ;;; There really ought to be a hook for this!
 (defadvice select-window (after circe-server-track-select-window
@@ -645,6 +776,44 @@ This is used by Circe to know where to put spurious messages."
         (with-circe-server-buffer
           (setq circe-server-last-active-buffer buf))))))
 (ad-activate 'select-window)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Nick Highlighting ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun circe-highlight-nick ()
+  "Highlight the nick of the user in the buffer."
+  (let ((body (text-property-any (point-min) (point-max)
+                                 'lui-format-argument 'body)))
+    (when body
+      (goto-char body)
+      (cond
+       ((eq circe-highlight-nick-type 'sender)
+        (when (search-forward (circe-server-nick) nil t)
+          (circe-highlight-extend-properties
+           (point-min) (point-max)
+           'face 'circe-originator-face
+           '(face circe-highlight-nick-face))))
+       ((eq circe-highlight-nick-type 'occurance)
+        (while (search-forward (circe-server-nick) nil t)
+          (add-text-properties (match-beginning 0)
+                               (match-end 0)
+                               '(face circe-highlight-nick-face))))
+       ((eq circe-highlight-nick-type 'all)
+        (when (search-forward (circe-server-nick) nil t)
+          (add-text-properties (point-min)
+                               (point-max)
+                               '(face circe-highlight-nick-face))))))))
+
+(defun circe-highlight-extend-properties (from to prop val properties)
+  "Extend property PROP with value VAL with PROPERTIES between FROM and TO.
+Between FROM and TO, on every region of text which has the
+property PROP set to VAL, add PROPERTIES."
+  (let ((beg (text-property-any from to prop val)))
+    (while beg
+      (let ((end (next-single-property-change beg prop)))
+        (add-text-properties beg end properties)
+        (setq beg (text-property-any end to prop val))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Chat Buffer Manager ;;;
@@ -789,7 +958,7 @@ TARGET is the default target to send data to.
 SERVER-BUFFER is the server-buffer of this chat buffer."
   (lui-mode)
   (make-local-variable 'lui-pre-output-hook)
-  (add-hook 'lui-pre-output-hook 'circe-highlight-lui-output)
+  (add-hook 'lui-pre-output-hook 'circe-highlight-nick)
   (setq major-mode 'circe-chat-mode
         mode-name "Circe Chat"
         lui-input-function 'circe-chat-input
@@ -826,43 +995,6 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
                                       command)))))
    (t
     (mapc #'circe-command-SAY (split-string str "\n")))))
-
-(defun circe-highlight-lui-output ()
-  "Highlight the nick of the user in the buffer."
-  (cond
-   ((eq circe-highlight-nick-type 'sender)
-    (let ((regex (concat "^\\(\\* \\([^ ]*\\) "
-                         "\\|<\\([^>]*\\)> \\)"
-                         ".*" (regexp-quote (circe-server-nick)))))
-      (goto-char (point-min))
-      (when (looking-at regex)
-        (let ((n (if (match-string 2)
-                     2
-                   3)))
-          (replace-match (propertize (match-string n)
-                                     'face 'circe-highlight-nick-face)
-                         nil t nil
-                         n)))))
-   ((eq circe-highlight-nick-type 'occurance)
-    (when (looking-at "^\\(\\* [^ ]* \\|<[^>]*> \\)")
-      (goto-char (match-end 0)))
-    (let ((regex (regexp-quote (circe-server-nick))))
-      (while (re-search-forward regex nil t)
-        (replace-match (propertize (match-string 0)
-                                   'face 'circe-highlight-nick-face)
-                       nil t))))
-   ((eq circe-highlight-nick-type 'all)
-    (when (looking-at (concat "^\\(\\* [^ ]* \\|<[^>]*> \\).*"
-                              (regexp-quote (circe-server-nick))
-                              ".*$"))
-      (replace-match (propertize (match-string 0)
-                                 'face 'circe-highlight-nick-face)
-                     nil t)))))
-
-(defun circe-insert (line &optional not-tracked-p)
-  "Insert LINE in the current Circe buffer."
-  ;; Simple wrapper - we might want to extend this sometime
-  (lui-insert line not-tracked-p))
 
 ;;;;;;;;;;;;;;;;
 ;;; Channels ;;;
@@ -1094,12 +1226,8 @@ This adheres to `circe-auto-query-p' and `circe-auto-query-max'."
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
     (mapc (lambda (line)
-            (circe-insert (propertize
-                           (format "%s%s"
-                                   (format circe-my-message-prefix
-                                           (circe-server-nick))
-                                   line)
-                           'face 'circe-my-message-face))
+            (circe-display 'circe-format-self-say
+                           :body line)
             (circe-server-send (format "PRIVMSG %s :%s"
                                        circe-chat-target
                                        line)))
@@ -1123,11 +1251,8 @@ The length is specified in `circe-split-line-length'."
   (interactive "s* forcer ")
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
-    (circe-insert (propertize
-                   (format "* %s %s"
-                           (circe-server-nick)
-                           line)
-                   'face 'circe-my-message-face))
+    (circe-display 'circe-format-self-action
+                   :body line)
     (circe-server-send (format "PRIVMSG %s :\C-aACTION %s\C-a"
                                circe-chat-target line))))
 
@@ -1147,9 +1272,9 @@ nick and the message."
             (circe-command-SAY what))
         (with-current-buffer (circe-server-last-active-buffer)
           (circe-server-send (format "PRIVMSG %s :%s" who what))
-          (circe-insert (propertize
-                         (format "-> *%s* %s" who what)
-                         'face 'circe-my-message-face)))))))
+          (circe-display 'circe-format-self-message
+                         :target who
+                         :body what))))))
 
 (defun circe-command-QUERY (who)
   "Open a query with WHO."
@@ -1435,21 +1560,18 @@ command, and args of the message."
       (let ((buf (circe-server-auto-query-buffer nick)))
         (if buf
             (with-current-buffer buf
-              (circe-insert (format "* %s %s"
-                                    (propertize nick
-                                                'face 'circe-originator-face)
-                                    (cadr args))))
+              (circe-display 'circe-format-action
+                             :nick nick
+                             :body (cadr args)))
           (with-current-buffer (circe-server-last-active-buffer)
-            (circe-insert (format "*-> %s %s"
-                                  (propertize nick
-                                              'face 'circe-originator-face)
-                                  (cadr args))))))
+            (circe-display 'circe-format-message-action
+                           :nick nick
+                           :body (cadr args)))))
     (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                        'circe-channel-mode)
-      (circe-insert (format "* %s %s"
-                            (propertize nick
-                                        'face 'circe-originator-face)
-                            (cadr args))))))
+      (circe-display 'circe-format-action
+                     :nick nick
+                     :body (cadr args)))))
 
 (add-hook 'circe-receive-message-functions 'circe-ctcp-VERSION-handler)
 (defun circe-ctcp-VERSION-handler (nick user host command args)
@@ -1529,22 +1651,19 @@ command, and args of the message."
     (let ((buf (circe-server-auto-query-buffer nick)))
       (if buf
           (with-current-buffer buf
-            (circe-insert (format "<%s> %s"
-                                  (propertize nick
-                                              'face 'circe-originator-face)
-                                  (cadr args))))
+            (circe-display 'circe-format-say
+                           :nick nick
+                           :body (cadr args)))
         (with-current-buffer (circe-server-last-active-buffer)
-          (circe-insert (format "*%s* %s"
-                                (propertize nick
-                                            'face 'circe-originator-face)
-                                (cadr args)))))))
+          (circe-display 'circe-format-message
+                         :nick nick
+                         :body (cadr args))))))
    (t                                   ; Channel talk
     (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                        'circe-channel-mode)
-      (circe-insert (format "<%s> %s"
-                            (propertize nick
-                                        'face 'circe-originator-face)
-                            (cadr args)))))))
+      (circe-display 'circe-format-say
+                     :nick nick
+                     :body (cadr args))))))
 
 (circe-set-display-handler "NOTICE" 'circe-display-NOTICE)
 (defun circe-display-NOTICE (nick user host command args)
@@ -1555,14 +1674,12 @@ command, and args of the message."
                                                                    nick
                                                                  (car args)))
                                  (circe-server-last-active-buffer))
-          (circe-insert (format "-%s- %s"
-                                (propertize nick
-                                            'face 'circe-originator-face)
-                                (cadr args))))
+          (circe-display 'circe-format-notice
+                         :nick nick
+                         :body (cadr args)))
       (with-circe-server-buffer
-        (circe-insert (propertize (format "-Server Notice- %s" (cadr args))
-                                  'face 'circe-server-face)
-                      t)))))
+        (circe-display 'circe-format-server-notice
+                       :body (cadr args))))))
 
 (circe-set-display-handler "NICK" 'circe-display-NICK)
 (defun circe-display-NICK (nick user host command args)
@@ -1577,7 +1694,7 @@ command, and args of the message."
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick user host command args)
   "Show a MODE message."
-  (when (or circe-display-server-modes-p
+  (when (or circe-show-server-modes-p
             user) ; If this is set, it is not a server mode
     (with-current-buffer (circe-server-get-chat-buffer (car args))
       (circe-server-message
@@ -1738,7 +1855,7 @@ number, it shows the missing people due to that split."
     ("TOPIC" 0 "Topic change: {origin}: {1}")
     ("INVITE" active "Invite: {origin} invites you to {1}")
     ("KICK" 0 "Kick: {1} kicked by {origin}: {2}")
-    ("ERROR" active "Error: {*}")
+    ("ERROR" active "Error: {0-}")
     ("001" active "{1}")
     ("002" active "{1}")
     ("003" active "{1}")
@@ -1860,7 +1977,7 @@ The target can be any of:
   'nick    - The nick who sent this message
   number   - The index of the argument of the target
 
-The format is a string is documented in `circe-format-string'."
+FIXME Docstring"
   :type '(repeat (list (string :tag "Message")
                        (choice :tag "Destination Window"
                                (const :tag "Active Window" active)
@@ -1870,27 +1987,34 @@ The format is a string is documented in `circe-format-string'."
   :group 'circe)
 
 (defun circe-server-default-display-command (nick user host command args)
-  "Format and display a message according to `circe-format-strings'."
+  "FIXME! Docstring"
   (let ((spec (assoc command circe-format-strings)))
     (when spec
-      (let* ((target+name (circe-format-target spec nick user host
-                                               command args))
+      (let* ((target+name (circe-display-target spec nick user host
+                                                command args))
              (target (car target+name))
              (name (cdr target+name))
-             (format (nth 2 spec)))
-        (if target
-            (with-current-buffer target
-              (circe-server-message (circe-format-string format nick user host
-                                                         command args)))
-          (with-current-buffer (circe-server-last-active-buffer)
-            (circe-server-message
-             (format "[%s] %s"
-                     name
-                     (circe-format-string format nick user host
-                                          command args))))))
+             (format (nth 2 spec))
+             (origin (if (or user host)
+                         (format "%s (%s@%s)"
+                                 (or nick "(unknown)")
+                                 (or user "(unknown)")
+                                 (or host "(unknown)"))
+                       (or nick "(unknown)"))))
+        (with-current-buffer (or target
+                                 (circe-server-last-active-buffer))
+          (let ((circe-format-server-numeric (if target
+                                                 (format "*** %s" format)
+                                               (format "*** [%s] %s" name format))))
+            (circe-display 'circe-format-server-numeric
+                           :nick nick :user user :host host
+                           :origin origin
+                           :command command
+                           :target name
+                           :indexed-args args))))
       t)))
 
-(defun circe-format-target (spec nick user host command args)
+(defun circe-display-target (spec nick user host command args)
   "Return the target buffer and name.
 The buffer might be nil if it is not alive."
   (cond
@@ -1908,78 +2032,6 @@ The buffer might be nil if it is not alive."
             (buffer-name buf))))
    (t
     (error "Bad target in format string: %s" (nth 1 spec)))))
-
-;;;;;;;;;;;;;;;;;;
-;;; Formatting ;;;
-;;;;;;;;;;;;;;;;;;
-
-(defun circe-format-string (fmt nick user host command args)
-  "Format an IRC message according to FMT.
-The format string may contain the following markup:
-
-  {nick}    - The NICK argument is inserted
-  {user}    - The USER argument is inserted
-  {host}    - The HOST argument is inserted
-  {origin}  - {nick} ({user}@{host})
-  {command} - The COMMAND argument is inserted
-  {3}       - The fourth element of ARGS is inserted
-  {*}       - All ARGS, separated by spaces, are inserted
-  {2-}      - All ARGS beginning from the third are inserted,
-              separated by spaces"
-  (with-temp-buffer
-    (insert fmt)
-    (goto-char (point-min))
-    (while (re-search-forward "{\\([^}]*\\)}" nil t)
-      (let ((m (match-string 1)))
-        (cond
-         ((string= m "nick")
-          (replace-match (or nick "(unknown")
-                         nil t))
-         ((string= m "user")
-          (replace-match (or user "(unknown)")
-                         nil t))
-         ((string= m "host")
-          (replace-match (or host "(unknown)")
-                         nil t))
-         ((string= m "command")
-          (replace-match (or command "(unknown)")
-                         nil t))
-         ((string= m "origin")
-          (if (or user host)
-              (replace-match (format "%s (%s@%s)"
-                                     (or nick "(unknown)")
-                                     (or user "(unknown)")
-                                     (or host "(unknown)"))
-                             nil t)
-            (replace-match (or nick "(unknown)")
-                           nil t)))
-         ((string= m "*")
-          (replace-match (mapconcat #'identity args " ")
-                         nil t))
-         (t
-          (let ((n+rest (save-match-data
-                          (if (string-match "\\([0-9]+\\)\\(-\\)?" m)
-                              (cons (string-to-number (match-string 1 m))
-                                    (match-string 2 m))
-                            nil))))
-            (cond
-             ((not n+rest)
-              (error "Bad format string: %s" fmt))
-             ((null (cdr n+rest))
-              (replace-match (or (nth (car n+rest) args)
-                                 "(unknown)")
-                             nil t))
-             (t
-              (replace-match (mapconcat #'identity
-                                        (or (nthcdr (car n+rest) args)
-                                            '("(unknown)"))
-                                        " ")
-                             nil t))))))))
-    (goto-char (point-min))
-    (when (looking-at "^\\*\\*\\*")
-      (add-text-properties (point-min) (point-max)
-                           '(face circe-server-face)))
-    (buffer-string)))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Extensions ;;;
