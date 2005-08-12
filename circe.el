@@ -59,24 +59,26 @@
   "The face for the Circe prompt."
   :group 'circe)
 
-(defvar circe-my-message-face 'circe-my-message-face
-  "The face used to highlight our own messages.")
-(defface circe-my-message-face '((t))
-  "The face used to highlight our own messages."
-  :group 'circe)
-
 (defvar circe-server-face 'circe-server-face
   "The face used to highlight server messages.")
 (defface circe-server-face
-  '((t (:foreground "SlateBlue" :weight bold)))
+  '((((class color)) (:foreground "SteelBlue"))
+    (t :foreground "blue" :weight bold))
   "The face used to highlight server messages."
   :group 'circe)
 
 (defvar circe-highlight-nick-face 'circe-highlight-nick-face
   "The face used to highlight messages directed to us.")
 (defface circe-highlight-nick-face
-  '((t (:foreground "Cyan1")))
+  '((((class color)) (:foreground "CadetBlue3" :weight bold))
+    (t (:foreground "cyan" :weight bold)))
   "The face used to highlight messages directed to us."
+  :group 'circe)
+
+(defvar circe-my-message-face 'circe-my-message-face
+  "The face used to highlight our own messages.")
+(defface circe-my-message-face '((t))
+  "The face used to highlight our own messages."
   :group 'circe)
 
 (defvar circe-originator-face 'circe-highlight-originator-face
