@@ -45,6 +45,8 @@
 (defvar lui-version "2"
   "Lui version string.")
 
+(require 'icomplete)
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Customization ;;;
@@ -137,7 +139,7 @@ This can be one of the following values:
   :type '(choice (string :tag "Fill Prefix")
                  (const :tag "Variable Fill Prefix" variable)
                  (integer :tag "Fill Column")
-                 (const :tage "No filling" nil))
+                 (const :tag "No filling" nil))
   :group 'lui)
 
 (defcustom lui-fill-column 70
@@ -280,7 +282,7 @@ It is often a good idea to make this variable buffer-local.")
 (defvar lui-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'lui-send-input)
-    (define-key map (kbd "TAB") 'lui-complete)
+    (define-key map (kbd "TAB") 'icomplete)
     (define-key map (kbd "M-p") 'lui-previous-input)
     (define-key map (kbd "M-n") 'lui-next-input)
     (define-key map (kbd "C-c C-u") 'lui-kill-to-beginning-of-line)
@@ -339,6 +341,8 @@ It can be customized for an application by specifying a
   (when lui-flyspell-p
     (require 'flyspell)
     (lui-flyspell-change-dictionary))
+  (set (make-local-variable 'icomplete-function)
+       'lui-icomplete)
   (run-hooks 'lui-mode-hook))
 
 (defun lui-scroll-to-bottom (window display-start)
@@ -381,52 +385,18 @@ If point is not in the input area, self-insert."
 ;;; Completion ;;;
 ;;;;;;;;;;;;;;;;;;
 
-(defun lui-complete ()
-  "Complete the input at point.
-This uses the `lui-completion-function'."
-  (interactive)
-  (if (< (point) lui-input-marker)
-      (self-insert-command 1)
-    (let ((window (get-buffer-window "*Completions*")))
-      (if (and (eq last-command this-command)
-               window
-               (window-live-p window)
-               (window-buffer window)
-               (buffer-name (window-buffer window)))
-          (with-current-buffer (window-buffer window)
-            (if (pos-visible-in-window-p (point-max) window)
-                (set-window-start window (point-min))
-              (save-selected-window
-                (select-window window)
-                (scroll-up))))
-        (let* ((end (point))
-               (beg (save-excursion
-                      (if (not (re-search-backward "\\s-" lui-input-marker t))
-                          lui-input-marker
-                        (forward-char)
-                        (point))))
-               (input (buffer-substring-no-properties beg end))
-               (completions (when lui-completion-function
-                              (mapcar #'list
-                                      (funcall lui-completion-function
-                                               (= beg lui-input-marker)))))
-               (completion (try-completion input completions)))
-          (cond
-           ((eq completion t)
-            nil)
-           ((null completion)
-            (message "No completions for %s" input)
-            (ding))
-           ((not (string= input completion))
-            (delete-region beg end)
-            (insert completion))
-           (t
-            (message "Making completion list")
-            (with-output-to-temp-buffer "*Completions*"
-              (display-completion-list (sort (all-completions input
-                                                              completions)
-                                             #'string<)))
-            (message "Making completion list...done"))))))))
+(defun lui-icomplete ()
+  "Return the string to be completed at point."
+  (let ((end (point))
+        (begin (save-excursion (if (not (re-search-backward "\\s-"
+                                                            lui-input-marker
+                                                            t))
+                                   lui-input-marker
+                                 (forward-char)
+                                 (point)))))
+    (cons (buffer-substring-no-properties begin end)
+          (funcall lui-completion-function (= begin
+                                              lui-input-marker)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
