@@ -714,7 +714,7 @@ protection algorithm."
 (defun circe-server-message (message)
   "Display MESSAGE as a server message."
   (circe-display 'circe-format-server-message
-                 :body (propertize (format "*** %s" message)
+                 :body (propertize message
                                    'face 'circe-server-face)))
 
 (defun circe-display (format &rest keywords)
@@ -1977,7 +1977,10 @@ The target can be any of:
   'nick    - The nick who sent this message
   number   - The index of the argument of the target
 
-FIXME Docstring"
+The strings itself are formatted using `lui-format'. Possible
+format strings are {mynick}, {target}, {nick}, {user}, {host},
+{origin}, {command}, {target}, and indexed arguments for the
+arguments to the IRC message."
   :type '(repeat (list (string :tag "Message")
                        (choice :tag "Destination Window"
                                (const :tag "Active Window" active)
@@ -1987,7 +1990,7 @@ FIXME Docstring"
   :group 'circe)
 
 (defun circe-server-default-display-command (nick user host command args)
-  "FIXME! Docstring"
+  "Show a default message according to `circe-format-strings'."
   (let ((spec (assoc command circe-format-strings)))
     (when spec
       (let* ((target+name (circe-display-target spec nick user host
@@ -2003,9 +2006,10 @@ FIXME Docstring"
                        (or nick "(unknown)"))))
         (with-current-buffer (or target
                                  (circe-server-last-active-buffer))
-          (let ((circe-format-server-numeric (if target
-                                                 (format "*** %s" format)
-                                               (format "*** [%s] %s" name format))))
+          (let ((circe-format-server-numeric
+                 (if target
+                     (format "*** %s" format)
+                   (format "*** [%s] %s" name format))))
             (circe-display 'circe-format-server-numeric
                            :nick nick :user user :host host
                            :origin origin
