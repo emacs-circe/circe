@@ -139,13 +139,6 @@ are displayed as if `circe-auto-query-p' was nil."
   :type 'string
   :group 'circe)
 
-(defcustom circe-my-message-prefix "> "
-  "*What should be shown before your own messages.
-It is possible to include a %s in the string where the nick
-should appear."
-  :type 'string
-  :group 'circe)
-
 (defcustom circe-highlight-nick-type 'sender
   "*How to highlight occurances of our own nick.
 
