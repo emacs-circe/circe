@@ -227,6 +227,14 @@ The first face found in this list is used."
   :type 'hook
   :group 'lui)
 
+(defcustom lui-pre-input-hook nil
+  "*A hook run before Lui interprets the user input.
+It is called with the buffer narrowed to the input line.
+Functions can modify the input if they really want to, but the
+user won't see the modifications, so that's a bad idea."
+  :type 'hook
+  :group 'lui)
+
 (defcustom lui-pre-output-hook nil
   "*The hook run before output is formatted."
   :type 'hook
@@ -381,6 +389,9 @@ If point is not in the input area, self-insert."
   (interactive)
   (if (< (point) lui-input-marker)
       (self-insert-command 1)
+    (save-restriction
+      (narrow-to-region lui-input-marker (point-max))
+      (run-hooks 'lui-pre-input-hook))
     (let ((input (buffer-substring lui-input-marker (point-max))))
       (delete-region lui-input-marker (point-max))
       (ring-insert lui-input-ring input)
