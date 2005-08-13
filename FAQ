@@ -1,0 +1,13 @@
+Frequently Asked Questions about Circe, a Client for IRC on Emacs -*-outline-*-
+
+* General
+No questions yet.
+
+
+* XEmacs
+Q: How do I use Circe in XEmacs?
+A: Use (require 'circe-xemacs) instead of (require 'circe).
+
+Q: Why can't I use the (circe "irc.freenode.net" "6667") on XEmacs?
+A: XEmacs doesn't like a port as a string argument there. Please use
+   an for this in that environment.
