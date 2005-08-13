@@ -1649,6 +1649,35 @@ command, and args of the message."
                                               nick user host
                                               (cadr args))))))))
 
+(add-hook 'circe-receive-message-functions 'circe-ctcp-TIME-handler)
+(defun circe-ctcp-TIME-handler (nick user host command args)
+  "Handle a CTCP TIME request."
+  (when (string= command "CTCP-TIME")
+    (circe-server-send
+     (format "NOTICE %s :\C-aTIME %s\C-a"
+             nick
+             (if (not (= 2 (random 3)))
+                 (current-time-string)
+               (condition-case nil
+                   (with-temp-buffer
+                     (call-process "ddate" nil (current-buffer))
+                     (buffer-substring (point-min)
+                                       (- (point-max)
+                                          1)))
+                 (error
+                  (current-time-string))))))))
+
+(circe-set-display-handler "CTCP-TIME" 'circe-ctcp-display-TIME)
+(defun circe-ctcp-display-TIME (nick user host command args)
+  "Show a CTCP TIME request."
+  (with-current-buffer (circe-server-last-active-buffer)
+    (circe-server-message (format "CTCP TIME request%s from %s (%s@%s)"
+                                  (if (circe-server-my-nick-p (car args))
+                                      ""
+                                    (format " to %s" (car args)))
+                                  nick user host))))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Display Functions ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
