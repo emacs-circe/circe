@@ -1444,8 +1444,7 @@ This uses `circe-display-table'."
             (run-hook-with-args 'circe-receive-message-functions
                                 nick user host command args)
             (when (not ignoredp)
-              (circe-server-display nick user host command args))
-            (circe-server-internal-handler nick user host command args))
+              (circe-server-display nick user host command args)))
         (circe-server-internal-handler nick user host command args)))))
 
 (defun circe-server-display (nick user host command args)
