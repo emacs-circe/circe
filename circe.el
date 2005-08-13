@@ -1759,6 +1759,16 @@ command, and args of the message."
                                "(unknown)"))
                  ""))))))
 
+(circe-set-display-handler "PART" 'circe-display-PART)
+(defun circe-display-PART (nick user host command args)
+  "Show a PART message."
+  (with-current-buffer (circe-server-get-char-buffer (car args))
+    (circe-server-message
+     (if (null (cdr args))
+         (format "Part: %s (%s@%s)" nick user host)
+       (format "Part: %s (%s@%s): %s"
+               nick user host (cadr args))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Netsplit Handling ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1902,8 +1912,7 @@ number, it shows the missing people due to that split."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom circe-format-strings
-  '(("PART" 0 "Part: {origin}: {1}")
-    ("TOPIC" 0 "Topic change: {origin}: {1}")
+  '(("TOPIC" 0 "Topic change: {origin}: {1}")
     ("INVITE" active "Invite: {origin} invites you to {1}")
     ("KICK" 0 "Kick: {1} kicked by {origin}: {2}")
     ("ERROR" active "Error: {0-}")
