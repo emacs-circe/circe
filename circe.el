@@ -1871,7 +1871,17 @@ or nil when this isn't a split."
     (when message
       (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                          'circe-channel-mode)
-        (circe-server-message message)))))
+        (circe-server-message message)))
+    ;; Check query buffers. We do this even when the message should be
+    ;; ignored by a netsplit, since this can't flood.
+    (circe-mapc-user-channels nick
+      (lambda (buf)
+        (with-current-buffer buf
+          (when (eq major-mode 'circe-query-mode)
+            (circe-server-message
+             (format "Join: %s (%s@%s) is now on %s"
+                     nick user host (car args)))))))))
+
 
 (defun circe-command-WL (&optional split)
   "Show the people who left in a netsplit.
