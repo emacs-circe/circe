@@ -1730,6 +1730,11 @@ command, and args of the message."
 (circe-set-display-handler "NICK" 'circe-display-NICK)
 (defun circe-display-NICK (nick user host command args)
   "Show a NICK message."
+  (when (circe-server-my-nick-p nick)
+    (with-circe-server-buffer
+      (circe-server-message
+       (format "Nick change: You are now known as %s"
+               (car args)))))
   (circe-mapc-user-channels nick
     (lambda (buf)
       (with-current-buffer buf
@@ -2056,12 +2061,16 @@ arguments to the IRC message."
                  (if target
                      (format "*** %s" format)
                    (format "*** [%s] %s" name format))))
-            (circe-display 'circe-format-server-numeric
-                           :nick nick :user user :host host
-                           :origin origin
-                           :command command
-                           :target name
-                           :indexed-args args))))
+            (condition-case err
+                (circe-display 'circe-format-server-numeric
+                               :nick nick :user user :host host
+                               :origin origin
+                               :command command
+                               :target name
+                               :indexed-args args)
+              (error
+               (error "Error in format %S, args %S: %S"
+                      circe-format-server-numeric args err))))))
       t)))
 
 (defun circe-display-target (spec nick user host command args)
