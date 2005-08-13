@@ -2101,16 +2101,34 @@ channels."
 
 (add-hook 'circe-server-connected-hook 'circe-auto-join)
 (defun circe-auto-join ()
-  "Join default channels, as per `circe-server-auto-join-channels'."
-  (catch 'exit
-    (mapc (lambda (entry)
-            (when (if (symbolp (car entry))
-                      (funcall (car entry))
-                    (string-match (car entry) circe-server-network))
-              (mapc #'circe-command-JOIN
-                    (cdr entry))
-              (throw 'exit t)))
-          circe-server-auto-join-channels)))
+  "Join default channels, as per `circe-server-auto-join-channels'.
+This also makes sure to re-join channels for which buffers still
+exist."
+  (let ((rejoins (make-hash-table :test 'circe-case-fold)))
+    (catch 'exit
+      (when circe-server-chat-buffers
+        (maphash (lambda (key value)
+                   (circe-server-message (format "Should join %s"
+                                                 (buffer-name value)))
+                   (puthash (buffer-name value)
+                            (buffer-name value)
+                            rejoins))
+                 circe-server-chat-buffers))
+      (mapc (lambda (entry)
+              (when (if (symbolp (car entry))
+                        (funcall (car entry))
+                      (string-match (car entry) circe-server-network))
+                (mapc (lambda (channel)
+                        (message "Auto-joining %s" channel)
+                        (circe-command-JOIN channel)
+                        (remhash channel rejoins))
+                      (cdr entry))
+                (throw 'exit t)))
+            circe-server-auto-join-channels))
+    (maphash (lambda (key value)
+               (message "Re-joining %s" value)
+               (circe-command-JOIN value))
+             rejoins)))
 
 ;;;;;;;;;;;;;;;;;;;
 ;;; Topic Handling
