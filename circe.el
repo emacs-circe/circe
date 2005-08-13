@@ -651,8 +651,8 @@ protection algorithm."
           (process-send-string circe-server-process msg)))
       (when circe-server-flood-queue
         (setq circe-server-flood-timer
-              (run-at-time 2 nil #'circe-server-send-queue buffer))))))
-
+              (run-at-time (+ 0.2 circe-server-flood-penalty) ; So we get a free spot
+                           nil #'circe-server-send-queue buffer))))))
 
 (defun circe-buffer-killed ()
   "The current buffer is being killed. Do the necessary bookkeeping for circe."
