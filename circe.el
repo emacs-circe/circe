@@ -1762,12 +1762,66 @@ command, and args of the message."
 (circe-set-display-handler "PART" 'circe-display-PART)
 (defun circe-display-PART (nick user host command args)
   "Show a PART message."
-  (with-current-buffer (circe-server-get-char-buffer (car args))
+  (with-current-buffer (circe-server-get-chat-buffer (car args))
     (circe-server-message
      (if (null (cdr args))
          (format "Part: %s (%s@%s)" nick user host)
        (format "Part: %s (%s@%s): %s"
                nick user host (cadr args))))))
+
+;;; These are here to display the time distance.
+(defun circe-duration-string (duration)
+  "Return a description of a DURATION in seconds."
+  (let ((parts `((,(* 12 30 24 60 60) "year")
+                 (,(* 30 24 60 60) "month")
+                 (,(* 24 60 60) "day")
+                 (,(* 60 60) "hour")
+                 (60 "minute")
+                 (1 "second")))
+        (result nil))
+    (while parts
+      (let* ((tmp (mod duration (caar parts)))
+             (divisor (/ (- duration tmp)
+                         (caar parts))))
+        (setq result (if (not (= tmp duration))
+                         (cons (format "%d %s%s"
+                                       divisor
+                                       (cadr (car parts))
+                                       (if (= divisor 1)
+                                           ""
+                                         "s"))
+                               result))
+              duration tmp
+              parts (cdr parts))))
+    (mapconcat #'identity
+               (nreverse result)
+               " ")))
+
+(circe-set-display-handler "333" 'circe-display-333)
+(defun circe-display-333 (nick user host command args)
+  "Show a 333 numeric (topic set by...)"
+  (with-current-buffer (circe-server-get-chat-buffer (cadr args))
+    (let ((time (string-to-number (nth 3 args))))
+      (circe-server-message
+       (format "Topic set by %s on %s (%s ago)"
+               (nth 2 args)
+               (current-time-string (seconds-to-time time))
+               (circe-duration-string (- (float-time)
+                                         time)))))))
+
+(circe-set-display-handler "317" 'circe-display-317)
+(defun circe-display-317 (nick user host command args)
+  "Show a 317 numeric (idle since)"
+  (with-current-buffer (circe-server-last-active-buffer)
+    (let ((idle (string-to-number (nth 2 args)))
+          (time (string-to-number (nth 3 args))))
+      (circe-server-message
+       (format "%s is %s idle (Signon on %s, %s ago)"
+               (nth 0 args)
+               (circe-duration-string idle)
+               (current-time-string (seconds-to-time time))
+               (circe-duration-string (- (float-time)
+                                         time)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Netsplit Handling ;;;
@@ -1939,18 +1993,17 @@ number, it shows the missing people due to that split."
     ("311" active "{1} is {2}@{3} ({5})")
     ("312" active "{1} is on {2} ({3})")
     ("313" active "{1} {2}")
-    ("317" active "{1} is {2} seconds idle (Signon {3})")
     ("318" active "{2}")
     ("319" active "{1} is on {2}")
     ("314" active "{1} was {2}@{3} ({5})")
     ("369" active "{1} {2}")
+    ("320" active "{1-}")
     ("322" active "{1-}")
     ("323" active "{1-}")
     ("325" 1 "Unique operator on {1} is {2}")
     ("324" 1 "Channel mode for {1}: {2-}")
     ("331" 1 "No topic for {1} set")
     ("332" 1 "Topic for {1}: {2}")
-    ("333" 1 "Topic for {1} set by {2} at {3}")
     ("341" active "Inviting {2} to {1}")
     ("346" 1 "Invite mask: {2}")
     ("347" 1 "{2}")
@@ -2172,7 +2225,7 @@ exist."
   (cond
    ((not circe-chat-target)
     (circe-server-message "No target for current buffer"))
-   ((string= newtopic "")
+   ((string-match newtopic "^\\s-$")
     (circe-server-send (format "TOPIC %s" circe-chat-target)))
    (t
     (circe-server-send (format "TOPIC %s :%s"
