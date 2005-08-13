@@ -1305,6 +1305,11 @@ nick and the message."
   (interactive "sWhois: ")
   (circe-server-send (format "WHOWAS %s" whom)))
 
+(defun circe-command-WHOAMI (&optional ignored)
+  "Request WHOIS information about yourself."
+  (interactive "sWhois: ")
+  (circe-server-send (format "WHOIS %s" (circe-server-nick))))
+
 (defun circe-command-NICK (newnick)
   "Change nick to NEWNICK."
   (interactive "sNew nick: ")
