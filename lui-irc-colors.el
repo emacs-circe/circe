@@ -268,18 +268,18 @@ This is an appropriate function for `lui-pre-output-hook'."
                      '(underline)
                    nil)
                  (if fg
-                     (list (lui-irc-color-face 'fg fg))
+                     (list (lui-irc-colors-face 'fg fg))
                    nil)
                  (if bg
-                     (list (lui-irc-color-face 'bg bg))
+                     (list (lui-irc-colors-face 'bg bg))
                    nil))))
 
-(defun lui-irc-color-face (type n)
+(defun lui-irc-colors-face (type n)
   "Return a face appropriate for face number N.
 TYPE is either 'fg or 'bg."
   (if (and (<= 0 n)
            (<= n 15))
-      (intern (format "lui-irc-color-%s-%s-face" type n))
+      (intern (format "lui-irc-colors-%s-%s-face" type n))
     'default-face))
 
 (provide 'lui-irc-colors)
