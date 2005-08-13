@@ -665,13 +665,15 @@ protection algorithm."
    ((eq major-mode 'circe-query-mode)
     (circe-query-killed))
    ((eq major-mode 'circe-server-mode)
-    (circe-server-send "QUIT :Server buffer killed")
+    (unwind-protect
+        (circe-server-send "QUIT :Server buffer killed")
+      t))
     ;; This is done by the sentinel:
     ;;(circe-mapc-chat-buffers
     ;; (lambda (buf)
     ;;   (with-current-buffer buf
     ;;     (circe-chat-disconnected))))
-    )))
+    ))
 
 (defun circe-server-last-active-buffer ()
   "Return the last active buffer of this server."
@@ -1037,8 +1039,10 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
 (defun circe-channel-killed ()
   "Called when the channel buffer got killed."
   (when (buffer-live-p circe-server-buffer)
-    (circe-server-send (format "PART %s :Channel buffer killed"
-                               circe-chat-target))
+    (unwind-protect
+        (circe-server-send (format "PART %s :Channel buffer killed"
+                                   circe-chat-target))
+      t)
     (circe-server-remove-chat-buffer circe-chat-target)))
 
 (defvar circe-channel-users nil
