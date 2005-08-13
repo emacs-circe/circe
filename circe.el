@@ -1282,7 +1282,9 @@ nick and the message."
     (let ((buf (circe-server-auto-query-buffer who)))
       (if buf
           (with-current-buffer buf
-            (circe-command-SAY what))
+            (circe-command-SAY what)
+            (ring-insert lui-input-ring what) ; Horrible breakage of abstraction!
+            )
         (with-current-buffer (circe-server-last-active-buffer)
           (circe-server-send (format "PRIVMSG %s :%s" who what))
           (circe-display 'circe-format-self-message
