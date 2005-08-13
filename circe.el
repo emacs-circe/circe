@@ -150,6 +150,11 @@ are displayed as if `circe-auto-query-p' was nil."
                  (const :tag "Whole line" all))
   :group 'circe)
 
+(defcustom circe-completion-suffix ": "
+  "*A suffix for completed nicks at the beginning of a line."
+  :type '(const :tag "The standard suffix" ": ")
+  :group 'circe)
+
 (defcustom circe-ignore-list nil
   "*List of regular expressions to ignore.
 Messages from such people are still inserted, but not shown. They
@@ -1065,7 +1070,7 @@ This is used for `lui-completion-function' in channel buffers."
     (let ((nicks '()))
       (maphash (lambda (nick ignored)
                  (setq nicks (cons (concat nick (if bolp
-                                                    ": "
+                                                    circe-completion-suffix
                                                   " "))
                                    nicks)))
                circe-channel-users)
