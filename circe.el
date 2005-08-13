@@ -1558,14 +1558,10 @@ command, and args of the message."
     (run-hooks 'circe-server-connected-hook))
    ;; If we didn't get our nick yet...
    ((and (not circe-server-registered-p)
-         (string= command "433"))       ; ERR_NICKNAMEINUSE
+         (or (string= command "433")   ; ERR_NICKNAMEINUSE
+             (string= command "437"))) ; ERRL_UNAVAILRESOURCE
     (circe-server-send (format "NICK %s" (funcall circe-nick-next-function
-                                                  (cadr args)))))
-   ((and (not circe-server-registered-p)
-         (string= command "437"))       ; ERRL_UNAVAILRESOURCE
-    (circe-server-send (format "NICK %s" (funcall circe-nick-next-function
-                                                  (cadr args)))))
-   )
+                                                  (cadr args))))))
   (circe-channel-message-handler nick user host command args)
   )
 
