@@ -334,9 +334,12 @@ It can be customized for an application by specifying a
         flyspell-generic-check-word-p 'lui-flyspell-verify)
   (set-marker lui-input-marker (point-max))
   (set-marker lui-output-marker (point-max))
-  (make-local-variable 'window-scroll-functions)
   (add-hook 'window-scroll-functions
-            'lui-scroll-to-bottom)
+            'lui-scroll-to-bottom
+            nil t)
+  (add-hook 'change-major-mode-hook
+            'lui-change-major-mode
+            nil t)
   (lui-track-initialize)
   (when lui-flyspell-p
     (require 'flyspell)
@@ -360,6 +363,12 @@ It can be customized for an application by specifying a
               (goto-char (point-max))
               (recenter -1)
               (sit-for 0))))))))
+
+(defun lui-change-major-mode ()
+  "Assure that the user really wants to change the major mode.
+This is a good value for a buffer-local `change-major-mode-hook'."
+  (when (not (y-or-n-p "Really change major mode in a Lui buffer? "))
+    (error "User disallowed mode change.")))
 
 
 ;;;;;;;;;;;;;
