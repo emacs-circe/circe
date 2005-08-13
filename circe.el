@@ -440,6 +440,9 @@ Don't use this function directly, use `circe' instead."
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
   (setq circe-server-last-active-buffer (current-buffer))
+  ;; Tab completion should be case-insensitive
+  (set (make-local-variable 'completion-ignore-case)
+       t)
   (add-hook 'kill-buffer-hook
             'circe-buffer-killed)
   (run-hooks 'circe-server-mode-hook))
@@ -959,6 +962,9 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
         circe-server-buffer server-buffer)
   (set (make-local-variable 'lui-track-faces-priorities)
        circe-track-faces-priorities)
+  ;; Tab completion should be case-insensitive
+  (set (make-local-variable 'completion-ignore-case)
+       t)
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
   (let ((identifier (with-circe-server-buffer
