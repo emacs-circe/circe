@@ -913,26 +913,36 @@ initialize a new buffer if none exists."
                 circe-ignore-list)
           nil))))
 
-(defun circe-command-IGNORE (regex)
-  "Add an entry to the `circe-ignore-list'."
+(defun circe-command-IGNORE (line)
+  "Add the regex on LINE to the `circe-ignore-list'."
   (with-current-buffer (circe-server-last-active-buffer)
-    (if (string= regex "")
-        (if (not circe-ignore-list)
-            (circe-server-message "Your ignore list is empty")
-          (circe-server-message "Your ignore list:")
-          (mapc (lambda (regex)
-                  (circe-server-message (format "- %s" regex)))
-                circe-ignore-list))
-      (add-to-list 'circe-ignore-list regex)
-      (circe-server-message (format "Ignore list, meet %s"
-                                    regex)))))
+    (cond
+     ((string-match "\\S-+" line)
+      (let ((regex (match-string 0 line)))
+        (add-to-list 'circe-ignore-list regex)
+        (circe-server-message (format "Ignore list, meet %s"
+                                      regex))))
+     ((not circe-ignore-list)
+      (circe-server-message "Your ignore list is empty"))
+     (t
+      (circe-server-message "Your ignore list:")
+      (mapc (lambda (regex)
+              (circe-server-message (format "- %s" regex)))
+            circe-ignore-list)))))
 
-(defun circe-command-UNIGNORE (regex)
+(defun circe-command-UNIGNORE (line)
   "Remove an entry from `circe-ignore-list'."
-  (setq circe-ignore-list (delete regex circe-ignore-list))
   (with-current-buffer (circe-server-last-active-buffer)
-    (circe-server-message (format "Ignore list forgot about %s"
-                                  regex))))
+    (cond
+     ((string-match "\\S-+" line)
+      (let ((regex (match-string 0 line)))
+        (setq circe-ignore-list (delete regex circe-ignore-list))
+        (circe-server-message (format "Ignore list forgot about %s"
+                                      regex))))
+     (t
+      (circe-server-message
+       "Who do you want to unignore? UNIGNORE requires one argument")))))
+
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Chat Buffers ;;;
