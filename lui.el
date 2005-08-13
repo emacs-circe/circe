@@ -930,7 +930,7 @@ cycles through these."
       (let ((all-buffers (mapcar #'buffer-name (buffer-list))))
         (mapcar (lambda (buffer)
                   (lui-track-shorten-single buffer
-                                            (delete buffer all-buffers)))
+                                            (remove buffer all-buffers)))
                 buffers))
     buffers))
 
