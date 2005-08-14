@@ -1,8 +1,36 @@
 Frequently Asked Questions about Circe, a Client for IRC on Emacs -*-outline-*-
 
 * General
-No questions yet.
+Q: Why doesn't Circe re-use old channel buffers after the server
+   buffer got killed?
+A: It is not possible to find out whether we can use that channel
+   buffer or not. Doing heuristics will lead to severe confusion when
+   the user connects to the same server twice. So we don't do this.
+   Use the `circe-reconnect' command in any Circe buffer to reconnect
+   to this server.
 
+Q: Can Circe do logging?
+A: This is on the agenda, but not yet implemented. In the meantime,
+   you can use the following code snippet:
+
+   (defvar my-lui-log-directory "~/.logs"
+     "Directory to place log files.")
+   (defun my-lui-logging ()
+     "Log the current information to an appropriate file."
+     (let ((string (buffer-substring (point-min)
+                                     (point-max))))
+       (with-temp-buffer
+         (insert (format "%s %s\n"
+                         (format-time-string "%Y-%m-%d %H:%M")
+                         string))
+         (append-to-file (point-min)
+                         (point-max)
+                         (concat my-lui-log-directory
+                                 "/"
+                                 (replace-regexp-in-string
+                                  "\\(\\.\\.\\|/\\)"
+                                  "_"
+                                  circe-chat-target))))))
 
 * XEmacs
 Q: How do I use Circe in XEmacs?
