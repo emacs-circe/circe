@@ -1004,7 +1004,7 @@ This is usually called via `window-configuration-changed-hook'."
                                        (if lui-track-all-frames-p
                                            'visible
                                          nil)))
-            (lui-track-remove-buffer buffer)))
+            (lui-track-set-modified-status buffer nil)))
         lui-track-buffers)
   (setq lui-track-mode-line-buffers (lui-track-status)))
 
