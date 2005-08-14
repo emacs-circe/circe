@@ -222,6 +222,20 @@ The first face found in this list is used."
   :type '(repeat face)
   :group 'lui)
 
+(defcustom lui-track-ignored-buffers nil
+  "*A list of buffers that are never tracked.
+Each element of this list has one of the following forms:
+
+  regexp - Any buffer matching won't be tracked.
+  (regexp faces ...) - Any buffer matching won't be tracked,
+      unless it has a face in FACES ... associated with it.
+      If no faces are given, `lui-track-faces-priorities' is
+      used."
+  :type '(repeat (choice regexp
+                         (list regexp
+                               (repeat face))))
+  :group 'lui)
+
 (defcustom lui-mode-hook nil
   "*The hook run when Lui is started."
   :type 'hook
@@ -893,15 +907,41 @@ If FACES is given, it's the faces that might be appropriate for
 BUFFER in the mode line."
   (if (not status)
       (setq lui-track-buffers (delete buffer lui-track-buffers))
-    (let* ((entry (member buffer lui-track-buffers)))
-      (if entry
-          (setcar entry (lui-faces-merge (car entry)
-                                         faces))
-        (setq lui-track-buffers
-              (nconc lui-track-buffers
-                     (list (lui-faces-merge buffer
-                                            faces)))))))
+    (when (not (lui-track-ignored-p buffer faces))
+      (let* ((entry (member buffer lui-track-buffers)))
+        (if entry
+            (setcar entry (lui-faces-merge (car entry)
+                                           faces))
+          (setq lui-track-buffers
+                (nconc lui-track-buffers
+                       (list (lui-faces-merge buffer
+                                              faces))))))))
   (setq lui-track-mode-line-buffers (lui-track-status)))
+
+(defun lui-track-ignored-p (buffer faces)
+  "Return non-nil when BUFFER with FACES shouldn't be tracked.
+This uses `lui-track-ignored-buffers'."
+  (catch 'return
+    (mapc (lambda (entry)
+            (if (and (stringp entry)
+                     (string-match entry buffer))
+                (throw 'return t)
+              (when (and (string-match (car entry) buffer)
+                         (not (lui-any-in (or (cdr entry)
+                                              lui-track-faces-priorities)
+                                          faces)))
+                (throw 'return t))))
+          lui-track-ignored-buffers)
+    nil))
+
+(defun lui-any-in (lista listb)
+  "Return non-nil when any element in LISTA is in LISTB"
+  (catch 'return
+    (mapc (lambda (entry)
+            (when (memq entry listb)
+              (throw 'return t)))
+          lista)
+    nil))
 
 (defun lui-track-status ()
   "Return the current track status."
