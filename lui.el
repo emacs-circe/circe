@@ -615,8 +615,9 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
               (lui-read-only)
               (when (and (not not-tracked-p)
                          (not (get-buffer-window (current-buffer))))
-                (lui-track-add-buffer (buffer-name (current-buffer))
-                                      faces)))))
+                (lui-track-set-modified-status (buffer-name (current-buffer))
+                                               t
+                                               faces)))))
       (setq buffer-undo-list undo))))
 
 (defvar lui-prompt-map
@@ -667,19 +668,6 @@ This uses `end-of-line'."
         (goto-char (next-single-property-change (point) 'face
                                                 nil end))))
     faces))
-
-(defun lui-faces-merge (string faces)
-  "Merge faces into string, adhering to `lui-track-faces-priorities'.
-This returns STRING with the new face."
-  (let ((faces (cons (get-text-property 0 'face string)
-                     faces)))
-    (catch 'return
-      (mapc (lambda (candidate)
-              (when (memq candidate faces)
-                (throw 'return
-                       (propertize string 'face candidate))))
-            lui-track-faces-priorities)
-      string)))
 
 
 
@@ -893,29 +881,27 @@ function."
               'lui-track-active)
     (setq lui-track-initialized-p t)))
 
-(defun lui-track-add-buffer (buffer &optional faces)
-  "Add BUFFER to the list of tracked buffers.
-They are shown in the mode line, and \\[lui-track-next-buffer]
-cycles through these.
+(defun lui-track-set-modified-status (buffer status &optional faces)
+  "Set the modified status of BUFFER to STATUS.
+When STATUS is non-nil, the buffer is considered to be modified.
+If STATUS is nil, the buffer is considered unmodified.
+
+Modified buffers are shown in the mode line, and
+\\[lui-track-next-buffer] cycles through these.
 
 If FACES is given, it's the faces that might be appropriate for
-BUFFER."
-  (let* ((entry (member buffer lui-track-buffers)))
-    (if entry
-        (setcar entry (lui-faces-merge (car entry)
-                                       faces))
-      (setq lui-track-buffers
-            (nconc lui-track-buffers
-                   (list (lui-faces-merge buffer
-                                          faces))))))
+BUFFER in the mode line."
+  (if (not status)
+      (setq lui-track-buffers (delete buffer lui-track-buffers))
+    (let* ((entry (member buffer lui-track-buffers)))
+      (if entry
+          (setcar entry (lui-faces-merge (car entry)
+                                         faces))
+        (setq lui-track-buffers
+              (nconc lui-track-buffers
+                     (list (lui-faces-merge buffer
+                                            faces)))))))
   (setq lui-track-mode-line-buffers (lui-track-status)))
-
-(defun lui-track-remove-buffer (buffer)
-  "Remove BUFFER from the list of tracked buffers.
-They are shown in the mode line, and \\[lui-track-next-buffer]
-cycles through these."
-  (setq lui-track-buffers (delete buffer lui-track-buffers)
-        lui-track-mode-line-buffers (lui-track-status)))
 
 (defun lui-track-status ()
   "Return the current track status."
@@ -990,6 +976,19 @@ This is usually called via `window-configuration-changed-hook'."
       (setq lui-track-buffers (cdr lui-track-buffers)
             lui-track-mode-line-buffers (lui-track-status))
       (switch-to-buffer new)))))
+
+(defun lui-faces-merge (string faces)
+  "Merge faces into string, adhering to `lui-track-faces-priorities'.
+This returns STRING with the new face."
+  (let ((faces (cons (get-text-property 0 'face string)
+                     faces)))
+    (catch 'return
+      (mapc (lambda (candidate)
+              (when (memq candidate faces)
+                (throw 'return
+                       (propertize string 'face candidate))))
+            lui-track-faces-priorities)
+      string)))
 
 
 (provide 'lui)
