@@ -2198,8 +2198,6 @@ exist."
     (catch 'exit
       (when circe-server-chat-buffers
         (maphash (lambda (key value)
-                   (circe-server-message (format "Should join %s"
-                                                 (buffer-name value)))
                    (puthash (buffer-name value)
                             (buffer-name value)
                             rejoins))
@@ -2209,14 +2207,12 @@ exist."
                         (funcall (car entry))
                       (string-match (car entry) circe-server-network))
                 (mapc (lambda (channel)
-                        (message "Auto-joining %s" channel)
                         (circe-command-JOIN channel)
                         (remhash channel rejoins))
                       (cdr entry))
                 (throw 'exit t)))
             circe-server-auto-join-channels))
     (maphash (lambda (key value)
-               (message "Re-joining %s" value)
                (circe-command-JOIN value))
              rejoins)))
 
