@@ -202,6 +202,13 @@ This is the size of the input history used by
   :type 'integer
   :group 'lui)
 
+(defcustom lui-track-all-frames-p t
+  "*Non-nil when Lui should look at all frames for tracking.
+If this is non-nil, Lui will look whether the appropriate buffer
+is visible in any frame, not just the current one."
+  :type 'boolean
+  :group 'lui)
+
 (defcustom lui-track-position 'before-modes
   "*Where tracked buffers should appear in the mode line.
 
@@ -628,7 +635,10 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
               (lui-truncate)
               (lui-read-only)
               (when (and (not not-tracked-p)
-                         (not (get-buffer-window (current-buffer))))
+                         (not (get-buffer-window (current-buffer)
+                                                 (if lui-track-all-frames-p
+                                                     'visible
+                                                   nil))))
                 (lui-track-set-modified-status (buffer-name (current-buffer))
                                                t
                                                faces)))))
@@ -990,7 +1000,10 @@ This is usually called via `window-configuration-changed-hook'."
   (interactive)
   (mapc (lambda (buffer)
           (when (or (not (get-buffer buffer))
-                    (get-buffer-window buffer))
+                    (get-buffer-window buffer
+                                       (if lui-track-all-frames-p
+                                           'visible
+                                         nil)))
             (lui-track-remove-buffer buffer)))
         lui-track-buffers)
   (setq lui-track-mode-line-buffers (lui-track-status)))
