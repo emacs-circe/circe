@@ -238,6 +238,36 @@ the user is re-notified."
   :type 'number
   :group 'circe)
 
+(defcustom circe-server-killed-confirmation 'ask
+  "*How to ask for confirmation when a server buffer is killed.
+This can be one of the following values:
+  ask - Ask the user for confirmation
+  ask-and-kill-all - Ask the user, and kill all associated buffers
+  nil - Kill first, ask never"
+  :type '(choice (const :tag "Ask before killing" ask)
+                 (const :tag "Ask, then kill all associated buffers"
+                        ask-and-kill-all)
+                 (const :tag "Don't ask" nil))
+  :group 'circe)
+
+(defcustom circe-channel-killed-confirmation 'ask
+  "*How to ask for confirmation when a channel buffer is killed.
+This can be one of the following values:
+  ask - Ask the user for confirmation
+  nil - Don't ask, just kill"
+  :type '(choid (const :tag "Ask before killing" ask)
+                (const :tag "Don't ask" nil))
+  :group 'circe)
+
+(defcustom circe-track-faces-priorities '(circe-highlight-nick-face
+                                          circe-my-message-face
+                                          circe-server-face)
+  "A list of faces which should show up in the tracking.
+The first face is kept if the new message has only lower faces,
+or faces that don't show up at all."
+  :type '(repeat face)
+  :group 'circe)
+
 (defcustom circe-nick-next-function 'circe-nick-next
   "*A function that maps a nick to a new nick.
 This is used when the initial nicks are not used. The default
@@ -262,15 +292,6 @@ This is run from a 001 (RPL_WELCOME) message handler."
 (defcustom circe-server-mode-hook nil
   "*Hook run when circe connects to a server."
   :type 'hook
-  :group 'circe)
-
-(defcustom circe-track-faces-priorities '(circe-highlight-nick-face
-                                          circe-my-message-face
-                                          circe-server-face)
-  "A list of faces which should show up in the tracking.
-The first face is kept if the new message has only lower faces,
-or faces that don't show up at all."
-  :type '(repeat face)
   :group 'circe)
 
 ;;;;;;;;;;;;;;;
@@ -670,15 +691,24 @@ protection algorithm."
    ((eq major-mode 'circe-query-mode)
     (circe-query-killed))
    ((eq major-mode 'circe-server-mode)
-    (unwind-protect
-        (circe-server-send "QUIT :Server buffer killed")
-      t))
-    ;; This is done by the sentinel:
-    ;;(circe-mapc-chat-buffers
-    ;; (lambda (buf)
-    ;;   (with-current-buffer buf
-    ;;     (circe-chat-disconnected))))
-    ))
+    (circe-server-killed))))
+
+(defun circe-server-killed ()
+  "The server buffer got killed."
+  (when circe-server-killed-confirmation
+    (when (not (y-or-n-p
+                (if (eq circe-server-killed-confirmation 'ask-and-kill-all)
+                    "Really kill all buffers of this server (do you mean to `circe-reconnect')? "
+                  "Really kill the IRC connection (do you mean to `circe-reconnect')? ")))
+      (error "Buffer not killed as per user request")))
+  (unwind-protect
+      (circe-server-send "QUIT :Server buffer killed")
+    t)
+  (when (eq circe-server-killed-confirmation 'ask-and-kill-all)
+    (circe-mapc-chat-buffers
+     (lambda (buf)
+       (let ((circe-channel-killed-confirmation nil))
+         (kill-buffer buf))))))
 
 (defun circe-server-last-active-buffer ()
   "Return the last active buffer of this server."
@@ -1043,6 +1073,9 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
 
 (defun circe-channel-killed ()
   "Called when the channel buffer got killed."
+  (when (and circe-channel-killed-confirmation
+             (not (y-or-n-p "Reall leave this channel? ")))
+    (error "Buffer not killed as per user request"))
   (when (buffer-live-p circe-server-buffer)
     (unwind-protect
         (circe-server-send (format "PART %s :Channel buffer killed"
@@ -1767,12 +1800,14 @@ command, and args of the message."
 (circe-set-display-handler "PART" 'circe-display-PART)
 (defun circe-display-PART (nick user host command args)
   "Show a PART message."
-  (with-current-buffer (circe-server-get-chat-buffer (car args))
-    (circe-server-message
-     (if (null (cdr args))
-         (format "Part: %s (%s@%s)" nick user host)
-       (format "Part: %s (%s@%s): %s"
-               nick user host (cadr args))))))
+  (let ((buf (circe-server-get-chat-buffer (car args))))
+    (when buf
+      (with-current-buffer buf
+          (circe-server-message
+           (if (null (cdr args))
+               (format "Part: %s (%s@%s)" nick user host)
+             (format "Part: %s (%s@%s): %s"
+                     nick user host (cadr args))))))))
 
 ;;; These are here to display the time distance.
 (defun circe-duration-string (duration)
