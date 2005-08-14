@@ -2140,7 +2140,9 @@ arguments to the IRC message."
                    (format "*** [%s] %s" name format))))
             (condition-case err
                 (circe-display 'circe-format-server-numeric
-                               :nick nick :user user :host host
+                               :nick (or nick "(unknown)")
+                               :user (or user "(unknown)")
+                               :host (or host "(unknown)")
                                :origin origin
                                :command command
                                :target name
