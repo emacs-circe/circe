@@ -32,6 +32,13 @@ A: This is on the agenda, but not yet implemented. In the meantime,
                                   "_"
                                   circe-chat-target))))))
 
+Q: Why does switching to some Circe buffers hang Emacs for a moment?
+A: That's because you enabled flyspell for Circe, and ispell.el is so
+   intelligent as to start a new spelling process each time the
+   dictionary changes. Aspell takes much longer to start than ispell,
+   so you could just use ispell...
+
+
 * XEmacs
 Q: How do I use Circe in XEmacs?
 A: Use (require 'circe-xemacs) instead of (require 'circe).
