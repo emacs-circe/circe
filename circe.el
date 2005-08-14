@@ -1459,6 +1459,27 @@ command and argument."
     (setq circe-server-quitting-p t)
     (circe-server-send (format "QUIT :%s" reason))))
 
+(defun circe-command-GAWAY (reason)
+  "Set yourself away on all servers."
+  (interactive)
+  (mapc (lambda (buf)
+          (with-current-buffer buf
+            (when (and (eq major-mode 'circe-server-mode)
+                       (eq (process-status circe-server-process)
+                           'open))
+              (circe-command-AWAY reason))))
+        (buffer-list)))
+
+(defun circe-command-GQUIT (reason)
+  "Quit all servers."
+  (interactive)
+  (mapc (lambda (buf)
+          (with-current-buffer buf
+            (when (and (eq major-mode 'circe-server-mode)
+                       (eq (process-status circe-server-process)
+                           'open))
+              (circe-command-QUIT reason))))
+        (buffer-list)))
 
 (defun circe-command-SV (&optional ignored)
   "Tell the current channel about your client and Emacs version."
