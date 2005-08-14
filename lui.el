@@ -1030,6 +1030,12 @@ This is usually called via `window-configuration-changed-hook'."
             lui-track-mode-line-buffers (lui-track-status))
       (switch-to-buffer new)))))
 
+(defun lui-track-previous-buffer ()
+  "Switch to the last active buffer."
+  (interactive)
+  (when lui-track-buffers
+    (switch-to-buffer (car (last lui-track-buffers)))))
+
 (defun lui-faces-merge (string faces)
   "Merge faces into string, adhering to `lui-track-faces-priorities'.
 This returns STRING with the new face."
