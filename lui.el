@@ -799,7 +799,7 @@ function."
         (goto-char (point-at-eol))
         (insert " ") ; Overlay alone would prevent us from marking this line
         (let* ((ov (make-overlay (point) (point)))
-               (curcol (- (point) (point-min)))
+               (curcol (current-column))
                (col (if (numberp lui-time-stamp-position)
                         lui-time-stamp-position
                       (+ 2 (or lui-fill-column
