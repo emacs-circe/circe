@@ -1412,16 +1412,24 @@ command and argument."
               who (match-string 1 who))
       (circe-server-message "Usage: /CTCP <who> <what>")))
   (when command
-    (with-current-buffer (or (circe-server-get-chat-buffer who)
-                             (circe-server-last-active-buffer))
-      (circe-server-send (format "PRIVMSG %s :\C-a%s%s%s\C-a"
-                                 who
-                                 command
-                                 (if argument
-                                     " "
-                                   "")
-                                 (or argument
-                                     ""))))))
+    (circe-server-send (format "PRIVMSG %s :\C-a%s%s%s\C-a"
+                               who
+                               command
+                               (if argument
+                                   " "
+                                 "")
+                               (or argument
+                                   "")))))
+
+(defun circe-command-AWAY (reason)
+  "Set yourself away."
+  (interactive)
+  (circe-server-send (format "AWAY :%s" reason)))
+
+(defun circe-command-BACK (reason)
+  "Mark yourself not away anymore."
+  (interactive)
+  (circe-server-send "AWAY"))
 
 (defun circe-command-SV (&optional ignored)
   "Tell the current channel about your client and Emacs version."
