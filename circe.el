@@ -450,6 +450,11 @@ the second message to be processed first. Nice, isn't it.")
 (defvar circe-display-table nil
   "A hash table mapping commands to their display functions.")
 
+(defvar circe-server-quitting-p nil
+  "Non-nil when quitting from the server.
+This is only non-nil when the user is quitting the current
+server. See `circe-command-QUIT'.")
+
 ;;;;;;;;;;;;;;;;;;;
 ;;; Server Mode ;;;
 ;;;;;;;;;;;;;;;;;;;
@@ -619,12 +624,15 @@ See `circe-server-max-reconnect-attempts'.")
   "The process sentinel for the server."
   (with-current-buffer (process-buffer process)
     (setq circe-server-registered-p nil)
+    (circe-server-message "Disconnected")
     (circe-mapc-chat-buffers
      (lambda (buf)
        (with-current-buffer buf
          (circe-chat-disconnected))))
-    (when (not (string-match "^deleted" event)) ; Buffer kill
-      (circe-reconnect))))
+    (when (and (not (string-match "^deleted" event)) ; Buffer kill
+               (not circe-server-quitting-p))
+      (circe-reconnect))
+    (setq circe-server-quitting-p nil)))
 
 (defvar circe-server-flood-last-message 0
   "When we sent the last message.
@@ -706,9 +714,10 @@ protection algorithm."
                     "Really kill all buffers of this server (do you mean to `circe-reconnect')? "
                   "Really kill the IRC connection (do you mean to `circe-reconnect')? ")))
       (error "Buffer not killed as per user request")))
-  (unwind-protect
+  (condition-case nil
       (circe-server-send "QUIT :Server buffer killed")
-    t)
+    (error
+     t))
   (when (eq circe-server-killed-confirmation 'ask-and-kill-all)
     (circe-mapc-chat-buffers
      (lambda (buf)
@@ -1085,10 +1094,11 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
              (not (y-or-n-p "Reall leave this channel? ")))
     (error "Buffer not killed as per user request"))
   (when (buffer-live-p circe-server-buffer)
-    (unwind-protect
+    (condition-case nil
         (circe-server-send (format "PART %s :Channel buffer killed"
                                    circe-chat-target))
-      t)
+      (error
+       t))
     (circe-server-remove-chat-buffer circe-chat-target)))
 
 (defvar circe-channel-users nil
@@ -1441,6 +1451,14 @@ command and argument."
   "Mark yourself not away anymore."
   (interactive)
   (circe-server-send "AWAY"))
+
+(defun circe-command-QUIT (reason)
+  "Quit the current server."
+  (interactive)
+  (with-circe-server-buffer
+    (setq circe-server-quitting-p t)
+    (circe-server-send (format "QUIT :%s" reason))))
+
 
 (defun circe-command-SV (&optional ignored)
   "Tell the current channel about your client and Emacs version."
