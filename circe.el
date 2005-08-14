@@ -456,7 +456,12 @@ the second message to be processed first. Nice, isn't it.")
 
 (defun circe-server-mode ()
   "The mode for circe server buffers.
-Don't use this function directly, use `circe' instead."
+This buffer represents a server connection. When you kill it, the
+server connection is closed. This will make all associated
+buffers unusable. Be sure to use \\[circe-reconnect] if you want
+to reconnect to the server.
+
+\\{lui-mode-map}"
   (lui-mode)
   (make-local-variable 'lui-pre-output-hook)
   (add-hook 'lui-pre-output-hook 'circe-highlight-nick)
@@ -1058,9 +1063,12 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
 
 (defun circe-channel-mode (target server-buffer)
   "The circe channel chat major mode.
-It should not be used directly.
+This mode represents a channel you are talking in.
+
 TARGET is the default target to send data to.
-SERVER-BUFFER is the server-buffer of this chat buffer."
+SERVER-BUFFER is the server-buffer of this chat buffer.
+
+\\{circe-channel-mode-map}"
   (circe-chat-mode target server-buffer)
   (setq major-mode 'circe-channel-mode
         mode-name "Circe Channel")
@@ -1216,9 +1224,12 @@ This uses `circe-channel-nick-prefixes'."
 
 (defun circe-query-mode (target server-buffer)
   "The circe query chat major mode.
-It should not be used directly.
+This mode represents a query you are talking in.
+
 TARGET is the default target to send data to.
-SERVER-BUFFER is the server-buffer of this chat buffer."
+SERVER-BUFFER is the server-buffer of this chat buffer.
+
+\\{lui-mode-map}"
   (circe-chat-mode target server-buffer)
   (setq major-mode 'circe-query-mode
         mode-name "Circe Query")
