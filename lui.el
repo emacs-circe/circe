@@ -46,6 +46,9 @@
   "Lui version string.")
 
 (require 'incomplete)
+(require 'ring)
+(require 'flyspell nil t)
+(require 'ispell nil t)
 
 
 ;;;;;;;;;;;;;;;;;;;;;

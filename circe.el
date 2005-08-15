@@ -39,6 +39,7 @@
 
 (require 'lui)
 (require 'lui-format)
+(require 'ring)
 
 (defgroup circe nil
   "Yet Another Emacs IRC Client."
@@ -460,6 +461,11 @@ This helps Emacs find out whether a connection died.")
   "Non-nil when quitting from the server.
 This is only non-nil when the user is quitting the current
 server. See `circe-command-QUIT'.")
+
+(defvar circe-chat-target nil
+  "The current target for the buffer.
+This is either a channel or a nick name.")
+(make-variable-buffer-local 'circe-chat-target)
 
 ;;;;;;;;;;;;;;;;;;;
 ;;; Server Mode ;;;
@@ -1012,11 +1018,6 @@ initialize a new buffer if none exists."
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Chat Buffers ;;;
 ;;;;;;;;;;;;;;;;;;;;
-
-(defvar circe-chat-target nil
-  "The current target for the buffer.
-This is either a channel or a nick name.")
-(make-variable-buffer-local 'circe-chat-target)
 
 (defvar circe-chat-mode-hook nil
   "The hook run after `circe-chat-mode' is initialized.")

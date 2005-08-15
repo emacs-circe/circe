@@ -34,6 +34,8 @@
 
 ;;; Code:
 
+(require 'circe)
+
 (defface circe-highlight-all-nicks-face
   '((t (:foreground "green")))
   "The face used for nicks from the current channel.

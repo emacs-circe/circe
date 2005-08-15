@@ -30,6 +30,8 @@
 
 ;;; Code:
 
+(require 'lui)
+
 (defun lui-display (format not-tracked-p &rest keywords)
   "Insert FORMAT formatted with KEYWORDS in the current Lui buffer.
 See `lui-format' for a description of the arguments.
