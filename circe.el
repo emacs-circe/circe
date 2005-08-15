@@ -223,7 +223,7 @@ it will try to reconnect forever (not recommended)."
   :type 'integer
   :group 'circe)
 
-(defcustom circe-server-coding-system nil
+(defcustom circe-server-coding-system '(utf-8 . undecided)
   "*Coding systems to use for IRC.
 This is either a coding system, which is then used both for
 encoding and decoding, or a cons cell with the encoding in the
@@ -489,6 +489,7 @@ to reconnect to the server.
             'circe-buffer-killed)
   (run-hooks 'circe-server-mode-hook))
 
+;;;###autoload
 (defun circe (host service &optional network pass nick user realname)
   "Connect to the IRC server HOST at SERVICE.
 NETWORK is the shorthand used for indicating where we're connected
