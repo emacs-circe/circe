@@ -1,12 +1,10 @@
 TODO list for Circe and Lui development                           -*-outline-*-
 
 * Pre Version 1:
-- circe-highlight-nicks.el: Extension to highlight all nicks in the
-  channel in the current message. Establish coding conventions for
-  circe modules.
-
 - lui-irc-colors.el: lui-irc-colors-enable function. Establish coding
   conventions for lui modules.
+
+- lui.texi
 
 - autoloads, Makefile, NEWS, ChangeLog
 
@@ -25,7 +23,15 @@ TODO list for Circe and Lui development                           -*-outline-*-
   5.4.1)
   Consider mandatory ChangeLog
   NEWS file for all user-visible changes
+  <aj> having the user visible description be in the patch's long
+    description, marked by ***'s say, would let you generate NEWS by
+    "darcs changes | grep '\*\*\*'" and not have that problem, fwiw
 - irclib.el ?
+- circe-query-rename
+- Create -mode-maps for all modes.
+- circe.el: Highlight finds "forcer-" for nick "forcer". Is that
+  wanted?
+- circe.el: Use non-blocking connects
 - circe.el: Allow a server list which is tried in turn to see whether
   one of them works.
 - Circe Channel Keys: http://paste.lisp.org/display/10696
@@ -36,7 +42,8 @@ TODO list for Circe and Lui development                           -*-outline-*-
   If not, walk the area and hide/unhide overlays as well.
   Maybe even use a lui-ignored-face as a way to recognize them? (=> Darken
   as possibility)
-- circe.el: auto-away. On every message from the server, check.
+- circe.el: auto-away. On every message from the server, check. Also,
+  auto-back
 - lui.el: buttonize: For urls, `fnord' help functions, RFC [0-9]+,
   SRFI[- ][0-9]+ (Extend lui-highlight-keywords for this?)
 - lui-logging.el: logging
