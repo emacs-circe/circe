@@ -1,84 +1,64 @@
-.PHONY: all lisp doc clean realclean distclean fullclean install test dist release debclean debrelease circe-build.elc
-.PRECIOUS: %.elc
+.PHONY: compile doc install clean uninstall dist
 
 include Makefile.defs
 
-EL  = $(wildcard *.el)
+EL  = $(subst $(PACKAGE)-auto.el,,$(wildcard *.el)) $(PACKAGE)-auto.el
 ELC = $(patsubst %.el,%.elc,$(wildcard *.el))
 
-all: lisp $(MANUAL).info
+TEXI = $(PACKAGE).texi
+INFO = $(patsubst %.texi,%.info,$(TEXI))
+HTML = $(patsubst %.texi,%.html,$(TEXI))
+PDF  = $(patsubst %.texi,%.pdf,$(TEXI))
 
-lisp: $(ELC)
+all: compile doc
 
-circe-build.elc: ./scripts/circe-build.el
-	@echo circe-build.el is not byte-compiled
+### Compiling
+compile: $(ELC)
 
 %.elc: %.el
-	@$(EMACS) -q $(SITEFLAG) -batch -l ./scripts/circe-build.el \
+	$(EMACS) -q $(SITEFLAG) -batch -l ./scripts/build-helper.el \
 		-f batch-byte-compile $<
 
+$(PACKAGE)-auto.el:
+	cp $(PACKAGE)-auto.el.in $(PACKAGE)-auto.el
+	$(EMACS) -q $(SITEFLAG) -batch -l ./scripts/build-helper.el \
+		-f bh-generate-autoloads `pwd`/$(PACKAGE)-auto.el .
+
+### Documentation
+doc: $(INFO) $(HTML) $(PDF)
+
 %.info: %.texi
-	 makeinfo $<
+	$(MAKEINFO) --no-split $<
 
 %.html: %.texi
-	 makeinfo --html --no-split $<
+	$(MAKEINFO) --html --no-split $<
 
-doc: $(MANUAL).info $(MANUAL).html
+%.pdf: %.texi
+	$(TEXI2DVI) -p -c -b $<
 
+### Installation
+install: compile doc
+	$(INSTALL) -d $(ELCDIR) $(ELDIR) $(DOCDIR)
+	$(INSTALL) -m 644 *.elc $(ELCDIR)
+	$(INSTALL) -m 644 *.el $(ELDIR)
+	$(INSTALL) -m 644 $(AUXDOC) $(HTML) $(PDF) $(DOCDIR)
+	$(INSTALLINFO) $(INFO)
+
+uninstall:
+	rm -rf $(ELCDIR) $(ELDIR) $(DOCDIR)
+	$(INSTALLINFO) --remove $(INFO)
+
+### Cleaning the directory
 clean:
-	-rm -f *.elc *~
+	rm -f $(ELC) $(PACKAGE)-auto.el $(INFO) $(HTML) $(PDF)
 
-realclean fullclean: clean
-	-rm -f $(MANUAL).info $(MANUAL).html
-
-install: $(ELC) $(MANUAL).info
-	install -d $(ELISPDIR)
-	install -m 0644 $(EL) $(wildcard *.elc) $(ELISPDIR)
-	install -d $(INFODIR)
-	install -m 0644 $(MANUAL).info $(INFODIR)/$(PROJECT)
-	$(INSTALLINFO) $(INFODIR)/$(PROJECT)
-
-test: $(ELC)
-	$(EMACS) -q $(SITEFLAG) -batch -l ./scripts/circe-build.el \
-		-f circe-elint-files $(EL)
-
-distclean: realclean
-	-rm -fr ../$(PROJECT)-$(VERSION)
-
-dist: distclean
-	(DIR=`pwd` ; cd .. && cp -r $$DIR $(PROJECT)-$(VERSION))
-	-rm -fr ../$(PROJECT)-$(VERSION)/CVS
-	-rm -fr ../$(PROJECT)-$(VERSION)/debian ../$(PROJECT)-$(VERSION)/test
-
-release: dist
-	(cd .. \
-	 && tar -c $(PROJECT)-$(VERSION) \
-	    | gzip -9 > $(PROJECT)-$(VERSION).tar.gz )
-
-debclean:
-	-rm -f ../$(DEBNAME)_$(VERSION)*
-
-debrelease: dist debclean
-	-rm -fr ../$(DEBNAME)-$(VERSION)
-	mv ../$(PROJECT)-$(VERSION) ../$(DEBNAME)-$(VERSION)
-	(cd .. && tar -czf $(DEBNAME)_$(VERSION).orig.tar.gz \
-	          $(DEBNAME)-$(VERSION))
-	cp -r debian ../$(DEBNAME)-$(VERSION)
-	-rm -fr ../$(DEBNAME)-$(VERSION)/debian/.arch-ids
-	(cd ../$(DEBNAME)-$(VERSION) && \
-	  dpkg-buildpackage -v$(LASTUPLOAD) $(BUILDOPTS) \
-	    -us -uc -rfakeroot && \
-	  echo "Running lintian ..." && \
-	  lintian -i ../$(DEBNAME)_$(VERSION)*.deb || : && \
-	  echo "Done running lintian." && \
-	  debsign)
-	cp ../$(DEBNAME)_$(VERSION)* ../../dist
-
-upload:
-	(cd .. && gpg --detach $(PROJECT)-$(VERSION).tar.gz && \
-	  echo open ftp://savannah.nongnu.org > upload.lftp ; \
-	  echo cd /incoming/savannah/emacs-wiki >> upload.lftp ; \
-	  echo mput $(PROJECT)-$(VERSION).tar.gz* >> upload.lftp ; \
-	  echo close >> upload.lftp ; \
-	  lftp -f upload.lftp ; \
-	  rm -f upload.lftp)
+### Creating a release
+dist: $(PACKAGE)-auto.el
+	$(MKDIR) ../$(PACKAGE)-$(VERSION)
+	$(MKDIR) ../$(PACKAGE)-$(VERSION)/scripts
+	$(CP) $(EL) $(TEXI) $(AUXDOC) ../$(PACKAGE)-$(VERSION)
+	$(CP) scripts/build-helper.el ../$(PACKAGE)-$(VERSION)/scripts
+	$(TEST) -d debian/ && cp -r debian/ ../$(PACKAGE)-$(VERSION)/ || true
+	$(TAR) -C ../ -c $(PACKAGE)-$(VERSION) | gzip -9 > ../$(PACKAGE)-$(VERSION).tar.gz
+	test -d debian && (cd ../$(PACKAGE)-$(VERSION) ; dpkg-buildpackage -rfakeroot) || true
+	test -d debian && linitian ../$(PACKAGE)*_$(VERSION)*.deb || true
