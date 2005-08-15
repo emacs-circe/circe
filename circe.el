@@ -495,7 +495,7 @@ to reconnect to the server.
             'circe-buffer-killed)
   (run-hooks 'circe-server-mode-hook))
 
-;;;###autoload
+;;; No ;;;###autoload because this has a hand-written autoloads line.
 (defun circe (host service &optional network pass nick user realname)
   "Connect to the IRC server HOST at SERVICE.
 NETWORK is the shorthand used for indicating where we're connected
