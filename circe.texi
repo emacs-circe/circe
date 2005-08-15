@@ -33,7 +33,7 @@ copy of the license is included in the file @file{COPYING.GFDL}.
 @contents
 
 @ifnottex
-@node top
+@node top, Quick Introduction, (dir), (dir)
 @top Circe: A Client for IRC in Emacs
 
 Circe is a client for Internet Relay Chat, or IRC, which is a chat
@@ -41,10 +41,25 @@ protocol widely used in the computing world.
 
 @end ifnottex
 
-@node Quick Introduction
+@menu
+* Quick Introduction::          
+* Concepts::                    
+* Commands::                    
+* Configuration::               
+* Extension Modules::           
+* Design Decisions::            
+@end menu
+
+@node Quick Introduction, Concepts, top, top
 @chapter Quick Introduction
 
-@node Installation
+@menu
+* Installation::                
+* Connecting to IRC::           
+* Example Configuration::       
+@end menu
+
+@node Installation, Connecting to IRC, Quick Introduction, Quick Introduction
 @section Installation
 
 Circe is distributed as a tar ball containing a few files. To install
@@ -70,7 +85,7 @@ line instead of the one above:
 @end lisp
 
 
-@node Connecting to IRC
+@node Connecting to IRC, Example Configuration, Installation, Quick Introduction
 @section Connecting to IRC
 
 Once Circe is loaded (@pxref{Installation}), it is easy to connect to an
@@ -81,7 +96,7 @@ server and port to connect to. Good servers to try at the beginning are
 in the initial Circe buffer (the server buffer, @pxref{Concepts}).
 
 
-@node Example Configuration
+@node Example Configuration,  , Connecting to IRC, Quick Introduction
 @section Example Configuration
 
 The following documents a sample Circe configuration for your
@@ -121,10 +136,15 @@ just do @kbd{M-x irc} to connect to Freenode and join the channel
 @code{#emacs}.
 
 
-@node Concepts
+@node Concepts, Commands, Quick Introduction, top
 @chapter Concepts
 
-@node Quick Introduction to IRC
+@menu
+* Quick Introduction to IRC::   
+* Circe Concepts::              
+@end menu
+
+@node Quick Introduction to IRC, Circe Concepts, Concepts, Concepts
 @section Quick Introduction to IRC
 
 An IRC network consists of servers which are connected to each
@@ -155,10 +175,10 @@ is custom to prefix the message with the nick followed by a colon, like
 this:
 
 @verbatim
-Glaucus: Have you seen Scylla recently?
+Glaucos: Have you seen Scylla recently?
 @end verbatim
 
-@node Circe Concepts
+@node Circe Concepts,  , Quick Introduction to IRC, Concepts
 @section Circe Concepts
 
 When Circe connects to an IRC server, she creates a @dfn{server buffer}
@@ -188,7 +208,7 @@ output. This means that all the configuration options of Lui apply to
 Circe as well.
 
 
-@node Commands
+@node Commands, Configuration, Concepts, top
 @chapter Commands
 
 A line starting with a slash (@kbd{/}) is a command to Circe, and not
@@ -198,7 +218,7 @@ description of all the commands Circe knows so far.
 
 @deffn Command SAY text
 Say @var{text} to the current target. This is useful to prevent a
-mis-interpretation of a slash at the beginning of a line.
+misinterpretation of a slash at the beginning of a line.
 @end deffn
 
 @deffn Command ME action
@@ -223,7 +243,14 @@ when your network connection died.
 @end deffn
 
 
-@node Channel Commands
+@menu
+* Channel Commands::            
+* Query Commands::              
+* Server Commands::             
+* General Commands::            
+@end menu
+
+@node Channel Commands, Query Commands, Commands, Commands
 @section Channel Commands
 
 Channel commands are primarily useful in channels, or to get onto
@@ -277,7 +304,7 @@ missing.
 @end deffn
 
 
-@node Query Commands
+@node Query Commands, Server Commands, Channel Commands, Commands
 @section Query Commands
 
 Query commands are primarily useful to open a query, that is, a private
@@ -294,7 +321,7 @@ Open a query buffer for user @var{nick}.
 @end deffn
 
 
-@node Server Commands
+@node Server Commands, General Commands, Query Commands, Commands
 @section Server Commands
 
 Server commands change your status at the server, and have no immediate
@@ -324,7 +351,7 @@ give a @var{reason} why you did that.
 @code{GQUIT} does the same, but on all servers you are on.
 @end deffn
 
-@node General Commands
+@node General Commands,  , Server Commands, Commands
 @section General Commands
 
 General commands don't fit anywhere else.
@@ -386,7 +413,7 @@ debugging problems.
 @end deffn
 
 
-@node Configuration
+@node Configuration, Extension Modules, Commands, top
 @chapter Configuration
 
 Circe is quite configurable. Please see the customize group @code{circe}
@@ -395,7 +422,7 @@ Please refer to the chapter about @ref{Extension Modules}, and of course
 the source, for information more suited for developers.
 
 
-@node Extension Modules
+@node Extension Modules, Design Decisions, Configuration, top
 @chapter Extension Modules
 
 To extend Circe for other purposes than those features in the core you
@@ -412,7 +439,7 @@ It is also advisable that the enable function be annotated with an
 autoloads line.
 
 
-@node Design Decisions
+@node Design Decisions,  , Extension Modules, top
 @chapter Design Decisions
 
 The basic design decision behind Circe is the separation of the frontend
