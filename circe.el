@@ -156,12 +156,13 @@ are displayed as if `circe-auto-query-p' was nil."
   :group 'circe)
 
 (defcustom circe-ignore-list nil
-  "*List of regular expressions to ignore.
-Messages from such people are still inserted, but not shown. They
-can be displayed using \\[lui-toggle-ignored].
-
-If this ever poses a problem in combination with buffer
-truncation, please notify the author."
+  "*List of regular expressions to ignore."
+;; - This will be true again some time in the future.
+;; "Messages from such people are still inserted, but not shown. They
+;; can be displayed using \\[lui-toggle-ignored].
+;;
+;; If this ever poses a problem in combination with buffer
+;; truncation, please notify the author."
   :type '(repeat regexp)
   :group 'circe)
 
@@ -447,6 +448,11 @@ ispell is started for the first, but might take long enough for
 the second message to be processed first. Nice, isn't it.")
 (make-variable-buffer-local 'circe-server-processing-p)
 
+(defvar circe-server-ping-timer nil
+  "A timer for sending periodic PING requests to the server.
+This helps Emacs find out whether a connection died.")
+(make-variable-buffer-local 'circe-server-ping-timer)
+
 (defvar circe-display-table nil
   "A hash table mapping commands to their display functions.")
 
@@ -623,6 +629,8 @@ See `circe-server-max-reconnect-attempts'.")
 (defun circe-server-sentinel (process event)
   "The process sentinel for the server."
   (with-current-buffer (process-buffer process)
+    (when circe-server-ping-timer
+      (cancel-timer circe-server-ping-timer))
     (setq circe-server-registered-p nil)
     (circe-server-message "Disconnected")
     (circe-mapc-chat-buffers
@@ -1656,7 +1664,10 @@ command, and args of the message."
    ((string= command "001")             ; RPL_WELCOME
     (circe-server-set-my-nick (car args))
     (setq circe-server-registered-p t
-          circe-server-reconnect-attempts 0)
+          circe-server-reconnect-attempts 0
+          circe-server-ping-timer (run-at-time 60 nil
+                                               'circe-server-ping
+                                               (current-buffer)))
     (run-hooks 'circe-server-connected-hook))
    ;; If we didn't get our nick yet...
    ((and (not circe-server-registered-p)
@@ -1666,6 +1677,13 @@ command, and args of the message."
                                                   (cadr args))))))
   (circe-channel-message-handler nick user host command args)
   )
+
+(defun circe-server-ping (server-buffer)
+  "Send a PING request to the server.
+This helps Emacs to find out whether we are disconnected."
+  (with-current-buffer server-buffer
+    (circe-server-send (format "PING :Circe Heartbeat"))
+    (run-at-time 60 nil 'circe-server-ping server-buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTCP Functions ;;;
@@ -1789,6 +1807,17 @@ command, and args of the message."
 (defun circe-display-PING (nick user host command args)
   "(Don't) Show a PING message."
   t)
+
+(circe-set-display-handler "PONG" 'circe-display-PONG)
+(defun circe-display-PONG (nick user host command args)
+  "(Don't) show a PONG message."
+  (when (not (and (string= command "PONG")
+                  (stringp (cadr args))
+                  (string= (cadr args)
+                           "Circe Heartbeat")))
+    (with-circe-server-buffer
+      (circe-server-message (format "Spurious PONG from server: %s"
+                                    (mapconcat #'identity args " "))))))
 
 (circe-set-display-handler "PRIVMSG" 'circe-display-PRIVMSG)
 (defun circe-display-PRIVMSG (nick user host command args)
