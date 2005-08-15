@@ -1,0 +1,436 @@
+\input texinfo.tex     @c -*-texinfo-*-
+@comment %**start of header
+@setfilename circe.info
+@settitle Circe
+@afourpaper
+@comment %**end of header
+
+@copying
+Copyright @copyright{} Jorgen Sch@"afer
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.2 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts. A
+copy of the license is included in the file @file{COPYING.GFDL}.
+@end copying
+
+@dircategory Emacs
+@direntry
+* circe:: A Client for IRC in Emacs
+@end direntry
+
+@titlepage
+@title Circe
+@subtitle A Client for IRC in Emacs
+@author Jorgen Sch@"afer
+
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node top
+@top Circe: A Client for IRC in Emacs
+
+Circe is a client for Internet Relay Chat, or IRC, which is a chat
+protocol widely used in the computing world.
+
+@end ifnottex
+
+@node Quick Introduction
+@chapter Quick Introduction
+
+@node Installation
+@section Installation
+
+Circe is distributed as a tar ball containing a few files. To install
+her, you need to unpack it, tell Emacs where it can find the files, and
+load the package.
+
+Let's say you unpacked the Circe distribution files into the directory
+@file{~/.elisp/circe/}. The following lines belong into your
+@file{~/.emacs}. The first line tells Emacs where to find the Circe
+files, and the second tells it to load Circe. She does not connect yet,
+though.
+
+@lisp
+(add-to-list 'load-path "~/.elisp/circe")
+(require 'circe)
+@end lisp
+
+If you are using XEmacs, you should use the following @code{require}
+line instead of the one above:
+
+@lisp
+(require 'circe-xemacs)
+@end lisp
+
+
+@node Connecting to IRC
+@section Connecting to IRC
+
+Once Circe is loaded (@pxref{Installation}), it is easy to connect to an
+IRC server. The command is @kbd{M-x circe}. She will ask you for the
+server and port to connect to. Good servers to try at the beginning are
+@code{irc.freenode.net}, port @code{6667}---you can join the channel
+@code{#emacs} there. To join the channel, just type @kbd{/JOIN #emacs}
+in the initial Circe buffer (the server buffer, @pxref{Concepts}).
+
+
+@node Example Configuration
+@section Example Configuration
+
+The following documents a sample Circe configuration for your
+@file{~/.emacs}. The comments try to elaborate what is done here.
+
+@lisp
+;;; Tell Emacs how to load Circe when needed
+(require 'circe-auto)
+
+;;; The following file contains our nickserv password for Freenode, very
+;;; probably by doing something like:
+;;; (setq freenode-passwd "t!n3be") ; There Is No Editor But Emacs
+(load-file "~/.private.el")
+
+(setq ;;; On Freenode, automatically join the channel #emacs
+      circe-server-auto-join-channels '(("^freenode$" "#emacs"))
+      ;;; Also use our Nickserv password on Freenode
+      circe-nickserv-passwords `(("freenode" ,freenode-passwd))
+      ;;; Truncate long buffers to conserve memory.
+      lui-max-buffer-size 30000
+      ;;; Also, do spell checking. This only works when you have ispell
+      ;;; installed.
+      lui-flyspell-p t
+      ;;; When we kill the server buffer, ask, and if we insist, kill
+      ;;; all other buffers belonging to that server as well
+      circe-server-killed-confirmation 'ask-and-kill-all)
+
+;;; Now define a M-x irc command to connect to IRC.
+(defun irc ()
+  "Connect to IRC"
+  (interactive)
+  (circe "irc.freenode.net" 6667 "freenode"))
+@end lisp
+
+Now when you re-load your @file{~/.emacs}, or restart Emacs, you can
+just do @kbd{M-x irc} to connect to Freenode and join the channel
+@code{#emacs}.
+
+
+@node Concepts
+@chapter Concepts
+
+@node Quick Introduction to IRC
+@section Quick Introduction to IRC
+
+An IRC network consists of servers which are connected to each
+other@footnote{Some disagree and argue that an IRC network is not an IRC
+network unless the server are disconnected to each other.} in a tree
+structure. There are many IRC networks out there, for example Freenode,
+IRCnet and EFnet. Those networks are never connected to each other, and
+provide different features.
+
+Ever user on an IRC network has a unique @dfn{nickname}. This nickname,
+or @dfn{nick} for short, is used for most IRC commands to identify a
+person.
+
+Once connected to a server, and, transitively, to a network, you can
+join a channel. A @dfn{channel} is the main way to communicate with
+others on IRC. Different people can join a channel and talk on it.
+Everything said on the channel is visible to all participants. Channels
+exist on various topics, though it is not uncommon for the people on a
+channel to diverge widely from the actual topic implied by the name of
+the channel. An example channel is @code{#emacs} on Freenode, which
+exists to provide help with Emacs, but has seen discussions ranging from
+the issues of Free Software, to WikiWikiWeb design, to detailed analyses
+of Marx and Kropotkin.
+
+To talk on a channel, just write what you want to say. If you want to
+address someone specifically, for example as an answer to a question, it
+is custom to prefix the message with the nick followed by a colon, like
+this:
+
+@verbatim
+Glaucus: Have you seen Scylla recently?
+@end verbatim
+
+@node Circe Concepts
+@section Circe Concepts
+
+When Circe connects to an IRC server, she creates a @dfn{server buffer}
+which is dedicated only to this server. Rarely any output is sent via
+this buffer, but it is initially the only indication of an IRC
+connection. Most @ref{Commands}, especially @code{JOIN}, do work in the
+server buffer as well, though.
+
+As soon as you join a channel, Circe creates a @dfn{channel buffer} for
+you, which will contain all data received from or sent to this channel.
+
+For private messages, Circe creates a @dfn{query buffer}, which is
+dedicated to the conversation with a single other individual. Circe
+tries to keep track of the nick of that individual.
+
+The channel in channel buffers and the other nick in query buffers is
+usually called the @dfn{target} of this buffer.
+
+Any text typed at the input line of any Circe buffer is sent as a
+message to the target. In a channel, this means you send this as a
+message to the channel; in a query, this is sent as a private message to
+the corresponding nick. But when the line starts with a slash, it is
+considered to be a command. See the next section, @ref{Commands}.
+
+Circe uses the Linewise User Interface, @xref{Top, Lui, Lui}, for all
+output. This means that all the configuration options of Lui apply to
+Circe as well.
+
+
+@node Commands
+@chapter Commands
+
+A line starting with a slash (@kbd{/}) is a command to Circe, and not
+sent as a message to the server. The word immediately following the
+slash is called the command word, or command for short. Following is a
+description of all the commands Circe knows so far.
+
+@deffn Command SAY text
+Say @var{text} to the current target. This is useful to prevent a
+mis-interpretation of a slash at the beginning of a line.
+@end deffn
+
+@deffn Command ME action
+Tell the current channel that you are doing @var{action}. This is
+usually displayed to others as follows (where @code{padawan} is your
+nick):
+
+@example
+> /me smiles at the people in the channel.
+* padawan smiles at the people in the channel.
+@end example
+
+This command can be confusing, as correct sentences using it require
+thinking of yourself in the third person. It is not uncommon among
+IRCers to talk about themselves as ``me'', either.
+@end deffn
+
+@deffn Command circe-reconnect
+A different kind of command, this is called using @kbd{M-x
+circe-reconnect}. It reconnects the current IRC session, for example
+when your network connection died.
+@end deffn
+
+
+@node Channel Commands
+@section Channel Commands
+
+Channel commands are primarily useful in channels, or to get onto
+channels.
+
+@deffn Command JOIN channel [key]
+Join @var{channel}, optionally supplying a @var{key}. Some channels have
+a keyword set so that only those in the know can join it. This is rare,
+though.
+@end deffn
+
+@deffn Command PART [reason]
+Leave the current channel. You can give a @var{reason}, too.
+@end deffn
+
+@deffn Command NAMES [channel]
+Get a list of people on the current channel, or possibly on
+@var{channel}. This can also be invoked with @kbd{C-c C-n}.
+@end deffn
+
+@deffn Command TOPIC [newtext]
+This command retrieves or sets the topic of the current channel. The
+topic is a (more or less) long line of text, usually announcing
+important URLs or events. It's often a good idea to read it. Many
+channels disallow changing the topic unless you have special privileges.
+@end deffn
+
+@deffn Command CHTOPIC
+Replace the current input line with a command to set the topic as it is
+at the moment. This is useful if you want to change the topic slightly.
+It is bound to @kbd{C-c C-t} by default.
+@end deffn
+
+@deffn Command WL [number]
+As has been said before, the IRC server are connected as a tree. This
+means that when two IRC servers lose the connection, there remain two
+disconnected parts of the tree. This is called a @dfn{netsplit}. When
+the servers connect again, it's called a @dfn{netmerge}. So far, so bad,
+but the typical netsplit will cause about half the channel to apparently
+quit IRC (they will see you, and all that stay on your ``side'' of the
+split, quit as well). Shortly thereafter, the net merges, and all the
+people who just quitted will rejoin the channel automatically. This
+causes an annoying amount of text which disturbs channel talks.
+
+When Circe detects a netsplit, she does not report every person leaving,
+but instead records that they split away. When the net merges again, she
+notes that as well. All you will see about this is a notice that the net
+is splitting or merging. The command @code{WL}, for Who Left, will tell
+you which users left the channel due to the split, and are still
+missing.
+@end deffn
+
+
+@node Query Commands
+@section Query Commands
+
+Query commands are primarily useful to open a query, that is, a private
+discussion with someone else.
+
+@deffn Command MSG nick text
+Send @var{nick} a message containing @var{text}. This is equivalent to
+opening (or switching to) a query buffer for this person, and typing
+@var{text} at the prompt.
+@end deffn
+
+@deffn Command QUERY nick
+Open a query buffer for user @var{nick}.
+@end deffn
+
+
+@node Server Commands
+@section Server Commands
+
+Server commands change your status at the server, and have no immediate
+effects on other users.
+
+@deffn Command AWAY [reason]
+@deffnx Command GAWAY [reason]
+This command sets you @dfn{away}, which means you're not available for
+talking at the moment. The reason is told to everyone who sends messages
+to you, or checks your whois information.
+
+The @code{GAWAY} variant does the same, but on all servers you are
+connected to.
+@end deffn
+
+@deffn Command BACK
+This command removes any away status. It is equivalent to @code{AWAY}
+without any arguments.
+@end deffn
+
+@deffn Command QUIT [reason]
+@deffnx Command GQUIT [reason]
+A completely useless command which makes you leave IRC. Since this is
+such a completely incomprehensible thing to do, it is very useful to
+give a @var{reason} why you did that.
+
+@code{GQUIT} does the same, but on all servers you are on.
+@end deffn
+
+@node General Commands
+@section General Commands
+
+General commands don't fit anywhere else.
+
+@deffn Command IGNORE [pattern]
+Idiots exist everywhere. IRC is everywhere. Consequently, idiots exist
+on IRC. When someone annoys you too much, the best thing to do is to
+ignore them. This can be done mentally, but Circe can help you a bit.
+When a user matches the pattern you pass to this command, messages from
+that user are never displayed. Nor are messages displayed which start
+out with a word matching such a pattern followed by a colon, comma or
+space.
+
+Without the pattern, this command lists your current ignore list. You
+can store permanent regular expressions in it by modifying the
+@code{circe-ignore-list} variable in your @file{~/.emacs}.
+@end deffn
+
+@deffn Command UNIGNORE pattern
+When you're in the mood to be annoyed again, you can remove a pattern
+from your ignore list again.
+@end deffn
+
+@deffn Command PING nick
+The net being what it is, it is possible that sometimes a connection is
+very slow. How fast someone is receiving your messages can be tested
+with this message.
+@end deffn
+
+@deffn Command WHOIS nick [nick]
+@deffnx Command WHOWAS nick
+The @code{WHOIS} returns some information about another user. Just try
+it. @code{WHOWAS} is very similar, but works on nicks that are not on
+IRC anymore, though it returns less information.
+@end deffn
+
+@deffn Command WHOAMI
+When you don't see your own nick in messages you send, it is sometimes
+quite nice to be remembered who you are again. This command does a
+@code{WHOIS} on yourself.
+@end deffn
+
+@deffn Command CTCP nick command arguments
+@acronym{CTCP} is the Client-To-Client Protocol used on IRC. If you want
+to test it, try to send yourself a CTCP message. Possible commands are
+@code{VERSION} and @code{TIME}, both of which don't take any arguments.
+@end deffn
+
+@deffn Command QUOTE text
+Sometimes it is desirable for some people to send IRC commands
+themselves. The @code{QUOTE} command just takes its argument and passes
+it unmodified to the IRC server.
+@end deffn
+
+@deffn Command SV
+This command tells the current target the version of Circe and Emacs you
+are using. Besides being useful in bragging contests, this also helps in
+debugging problems.
+@end deffn
+
+
+@node Configuration
+@chapter Configuration
+
+Circe is quite configurable. Please see the customize group @code{circe}
+for a complete list of options: @kbd{M-x customize-group RET circe RET}.
+Please refer to the chapter about @ref{Extension Modules}, and of course
+the source, for information more suited for developers.
+
+
+@node Extension Modules
+@chapter Extension Modules
+
+To extend Circe for other purposes than those features in the core you
+have to write an extension module. An example extension module for Circe
+can be found in the sources as @file{circe-highlight-all-nicks.el}.
+
+There are only few requirements for extension modules. A hypothetical
+@code{grovel} module should be provided in a @file{circe-grovel.el}
+file. This file needs to provide the @code{circe-grovel} feature, and
+two commands, named @code{enable-circe-grovel} and
+@code{disable-circe-grovel}. What those commands do is up to you.
+
+It is also advisable that the enable function be annotated with an
+autoloads line.
+
+
+@node Design Decisions
+@chapter Design Decisions
+
+The basic design decision behind Circe is the separation of the frontend
+or user interface from the backend. The frontend is now called
+@xref{Top, Lui, Lui}, the Linewise User Interface, which provides all
+user interface related functions behind a clean abstraction layer. The
+next step is to separate an IRC library from the rest of Circe, so that
+Circe only needs to provide the communication layer between the two.
+
+Circe does not try to find old server or channel buffers when a new
+connection attempt is done. Instead, new buffers are created all the
+time. If you need to reconnect to a server, use the @kbd{M-x
+circe-reconnect} command. In the future, it might be possible to find a
+suitable old server buffer which is currently not connected, and use it
+to connect to IRC.
+
+The extension modules should not use minor modes. When a number of
+modules are loaded, any major mode help buffer is croweded with those
+useless minor modes which add no information. The enable/disable
+convention of Circe does not clutter the minor mode list.
+@bye

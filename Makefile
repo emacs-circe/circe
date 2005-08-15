@@ -17,9 +17,6 @@ circe-build.elc: ./scripts/circe-build.el
 	@$(EMACS) -q $(SITEFLAG) -batch -l ./scripts/circe-build.el \
 		-f batch-byte-compile $<
 
-circe.info:
-	@echo Manual not written yet
-
 %.info: %.texi
 	 makeinfo $<
 
