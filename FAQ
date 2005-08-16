@@ -46,3 +46,12 @@ A: Use (require 'circe-xemacs) instead of (require 'circe).
 Q: Why can't I use the (circe "irc.freenode.net" "6667") on XEmacs?
 A: XEmacs doesn't like a port as a string argument there. Please use
    an for this in that environment.
+
+* Arch
+Q: Is there an Arch (tla) branch for Circe?
+A: Michael Olson maintains an *unofficial* Arch branch for Circe that
+tracks CVS.
+
+Archive  : mwolson@gnu.org--2005
+Location : http://www.mwolson.org/archives/2005
+Branch 	 : circe--devo--1.0
