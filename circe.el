@@ -1335,7 +1335,7 @@ The length is specified in `circe-split-line-length'."
 
 (defun circe-command-ME (line)
   "Make LINE as an action"
-  (interactive "s* forcer ")
+  (interactive "sAction: ")
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
     (circe-display 'circe-format-self-action
