@@ -36,6 +36,9 @@
 
 ;;; Code:
 
+(require 'lui)
+(require 'font-lock) ; for font-lock-prepend-text-property
+
 (defgroup lui-irc-colors nil
   "LUI IRC colors faces."
   :group 'circe)
@@ -209,6 +212,17 @@
   "\\(\\|\\|\\|\\|\\)"
   "A regular expression matching IRC control codes.")
 
+;;;###autoload
+(defun enable-lui-irc-colors ()
+  "Enable IRC color interpretation for Lui."
+  (interactive)
+  (add-hook 'lui-pre-output-hook 'lui-irc-colors))
+
+(defun disable-lui-irc-colors ()
+  "Disable IRC color interpretation for Lui."
+  (interactive)
+  (remove-hook 'lui-pre-output-hook 'lui-irc-colors))
+
 (defun lui-irc-colors ()
   "Add color faces for IRC colors.
 This is an appropriate function for `lui-pre-output-hook'."
@@ -254,7 +268,7 @@ This is an appropriate function for `lui-pre-output-hook'."
     (lui-irc-propertize (point) (point-max)
                         boldp inversep underlinep fg bg)))
 
-(defun lui-irc-propertize (start end bolp inversep underlinep fg bg)
+(defun lui-irc-propertize (start end boldp inversep underlinep fg bg)
   "Propertize the region between START and END."
   (font-lock-prepend-text-property
    start end
