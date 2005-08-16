@@ -21,7 +21,7 @@ copy of the license is included in the file @file{COPYING.GFDL}.
 @end direntry
 
 @titlepage
-@title Circe
+@title Circe User Manual
 @subtitle A Client for IRC in Emacs
 @author Jorgen Sch@"afer
 
@@ -32,14 +32,14 @@ copy of the license is included in the file @file{COPYING.GFDL}.
 
 @contents
 
-@ifnottex
+@c @ifnottex
 @node top, Quick Introduction, (dir), (dir)
 @top Circe: A Client for IRC in Emacs
 
 Circe is a client for Internet Relay Chat, or IRC, which is a chat
 protocol widely used in the computing world.
 
-@end ifnottex
+@c @end ifnottex
 
 @menu
 * Quick Introduction::          
@@ -203,9 +203,9 @@ message to the channel; in a query, this is sent as a private message to
 the corresponding nick. But when the line starts with a slash, it is
 considered to be a command. See the next section, @ref{Commands}.
 
-Circe uses the Linewise User Interface, @xref{Top, Lui, Lui}, for all
-output. This means that all the configuration options of Lui apply to
-Circe as well.
+Circe uses the Linewise User Interface for all output (@pxref{Top, ,
+Overview, Lui, the Lui Manual}). This means that all the configuration
+options of Lui apply to Circe as well.
 
 
 @node Commands, Configuration, Concepts, top
@@ -443,11 +443,12 @@ autoloads line.
 @chapter Design Decisions
 
 The basic design decision behind Circe is the separation of the frontend
-or user interface from the backend. The frontend is now called
-@xref{Top, Lui, Lui}, the Linewise User Interface, which provides all
-user interface related functions behind a clean abstraction layer. The
-next step is to separate an IRC library from the rest of Circe, so that
-Circe only needs to provide the communication layer between the two.
+or user interface from the backend. The frontend is now called Lui, the
+Linewise User Interface, which provides all user interface related
+functions behind a clean abstraction layer (@pxref{Top, , Overview, Lui,
+the Lui Manual}). The next step is to separate an IRC library from the
+rest of Circe, so that Circe only needs to provide the communication
+layer between the two.
 
 Circe does not try to find old server or channel buffers when a new
 connection attempt is done. Instead, new buffers are created all the
