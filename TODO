@@ -1,12 +1,8 @@
 TODO list for Circe and Lui development                           -*-outline-*-
 
 * Pre Version 1:
-- lui-irc-colors.el: lui-irc-colors-enable function. Establish coding
-  conventions for lui modules.
-
 - lui.texi
-
-- autoloads, Makefile, NEWS, ChangeLog
+- NEWS, ChangeLog
 
 * Release Version 1:
 - savannah: Upload file (cf.
@@ -27,6 +23,7 @@ TODO list for Circe and Lui development                           -*-outline-*-
     description, marked by ***'s say, would let you generate NEWS by
     "darcs changes | grep '\*\*\*'" and not have that problem, fwiw
 - irclib.el ?
+- debian/
 - circe-query-rename
 - Create -mode-maps for all modes.
 - circe.el: Highlight finds "forcer-" for nick "forcer". Is that
