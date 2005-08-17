@@ -6,3 +6,5 @@
     (list (floor seconds 65536)
           (floor (mod seconds 65536))
           (floor (* (- seconds (ffloor seconds)) 1000000)))))
+
+(provide 'circe-e21)
