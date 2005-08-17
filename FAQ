@@ -31,6 +31,7 @@ A: This is on the agenda, but not yet implemented. In the meantime,
                                   "\\(\\.\\.\\|/\\)"
                                   "_"
                                   circe-chat-target))))))
+   (add-hook 'lui-pre-output-hook 'my-lui-logging)
 
 Q: Why does switching to some Circe buffers hang Emacs for a moment?
 A: That's because you enabled flyspell for Circe, and ispell.el is so
