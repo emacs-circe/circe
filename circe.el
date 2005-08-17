@@ -726,8 +726,8 @@ protection algorithm."
   (when circe-server-killed-confirmation
     (when (not (y-or-n-p
                 (if (eq circe-server-killed-confirmation 'ask-and-kill-all)
-                    "Really kill all buffers of this server (do you mean to `circe-reconnect')? "
-                  "Really kill the IRC connection (do you mean to `circe-reconnect')? ")))
+                    "Really kill all buffers of this server? (if not, try `circe-reconnect') "
+                  "Really kill the IRC connection? (if not, try `circe-reconnect') ")))
       (error "Buffer not killed as per user request")))
   (condition-case nil
       (circe-server-send "QUIT :Server buffer killed")
