@@ -31,8 +31,7 @@
 ;; ^O - Return to normal
 ;; ^C1,2 - Colors
 
-;; Colors don't work yet. If you care and find out why, send me a
-;; patch.
+;; The colors are documented at http://www.mirc.co.uk/help/color.txt
 
 ;;; Code:
 
@@ -50,162 +49,162 @@
 
 (defface lui-irc-colors-fg-0-face
   '((t (:foreground "White")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 0 (white)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-1-face
   '((t (:foreground "black")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 1 (black)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-2-face
   '((t (:foreground "blue")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 2 (blue)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-3-face
   '((t (:foreground "green")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 3 (green)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-4-face
   '((t (:foreground "red")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 4 (red)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-5-face
   '((t (:foreground "brown")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 5 (brown)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-6-face
   '((t (:foreground "purple")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 6 (purple)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-7-face
   '((t (:foreground "orange")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 7 (orange)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-8-face
   '((t (:foreground "yellow")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 8 (yellow)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-9-face
   '((t (:foreground "lightgreen")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 9 (light green)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-10-face
   '((t (:foreground "teal")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 10 (teal)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-11-face
   '((t (:foreground "lightcyan")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 11 (light cyan)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-12-face
   '((t (:foreground "lightblue")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 12 (light blue)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-13-face
   '((t (:foreground "pink")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 13 (pink)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-14-face
   '((t (:foreground "grey")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 14 (grey)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-15-face
   '((t (:foreground "lightsilver")))
-  "Face used for foreground IRC color 0"
+  "Face used for foreground IRC color 15 (light grey)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-0-face
   '((t (:background "White")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 0 (white)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-1-face
   '((t (:background "black")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 1 (black)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-2-face
   '((t (:background "blue")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 2 (blue)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-3-face
   '((t (:background "green")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 3 (green)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-4-face
   '((t (:background "red")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 4 (red)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-5-face
   '((t (:background "brown")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 5 (brown)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-6-face
   '((t (:background "purple")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 6 (purple)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-7-face
   '((t (:background "orange")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 7 (orange)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-8-face
   '((t (:background "yellow")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 8 (yellow)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-9-face
   '((t (:background "lightgreen")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 9 (light green)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-10-face
   '((t (:background "teal")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 10 (teal)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-11-face
   '((t (:background "lightcyan")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 11 (light cyan)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-12-face
   '((t (:background "lightblue")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 12 (light blue)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-13-face
   '((t (:background "pink")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 13 (pink)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-14-face
   '((t (:background "grey")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 14 (grey)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-15-face
   '((t (:background "lightgrey")))
-  "Face used for background IRC color 0"
+  "Face used for background IRC color 15 (light grey)."
   :group 'lui-irc-colors)
 
 (defvar lui-irc-colors-regex
