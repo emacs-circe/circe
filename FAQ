@@ -40,8 +40,8 @@ A: That's because you enabled flyspell for Circe, and ispell.el is so
 
 
 * XEmacs
-Q: How do I use Circe in XEmacs?
-A: Use (require 'circe-xemacs) instead of (require 'circe).
+Q: Does Circe run on XEmacs?
+A: Yes, she does. Grudgingly, but she does.
 
 Q: Why can't I use the (circe "irc.freenode.net" "6667") on XEmacs?
 A: XEmacs doesn't like a port as a string argument there. Please use
@@ -50,8 +50,8 @@ A: XEmacs doesn't like a port as a string argument there. Please use
 * Arch
 Q: Is there an Arch (tla) branch for Circe?
 A: Michael Olson maintains an *unofficial* Arch branch for Circe that
-tracks CVS.
+   tracks CVS.
 
-Archive  : mwolson@gnu.org--2005
-Location : http://www.mwolson.org/archives/2005
-Branch 	 : circe--devo--1.0
+   Archive  : mwolson@gnu.org--2005
+   Location : http://www.mwolson.org/archives/2005
+   Branch   : circe--devo--1.0
