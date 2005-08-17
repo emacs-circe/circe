@@ -44,6 +44,10 @@
 (when (featurep 'xemacs)
   (require 'circe-xemacs))
 
+(when (and (not (featurep 'xemacs))
+           (< emacs-major-version 22))
+  (require 'circe-e21))
+
 
 (defgroup circe nil
   "Yet Another Emacs IRC Client."
