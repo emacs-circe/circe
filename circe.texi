@@ -77,13 +77,6 @@ though.
 (require 'circe)
 @end lisp
 
-If you are using XEmacs, you should use the following @code{require}
-line instead of the one above:
-
-@lisp
-(require 'circe-xemacs)
-@end lisp
-
 
 @node Connecting to IRC, Example Configuration, Installation, Quick Introduction
 @section Connecting to IRC
