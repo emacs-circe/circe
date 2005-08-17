@@ -30,10 +30,6 @@ Then add the following code to your .emacs:
 
 Now you can run M-x circe and connect to an IRC server of your choice.
 
-If you use XEmacs, the second line there should read
-
-  (autoload 'circe "circe-xemacs" "Connect to an IRC server" t)
-
 
 * Sample Configuration
 Circe is extensively configurable, and quite well extensible. What
