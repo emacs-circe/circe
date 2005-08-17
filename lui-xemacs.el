@@ -20,7 +20,4 @@
     (time-to-seconds (or specified-time
                          (current-time)))))
 
-
-(require 'lui)
-
 (provide 'lui-xemacs)

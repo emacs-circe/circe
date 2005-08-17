@@ -70,7 +70,4 @@
     ad-do-it))
 
 
-(require 'lui-xemacs)
-(require 'circe)
-
 (provide 'circe-xemacs)

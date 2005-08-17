@@ -41,11 +41,14 @@
 (require 'lui-format)
 (require 'ring)
 
+(when (featurep 'xemacs)
+  (require 'circe-xemacs))
+
+
 (defgroup circe nil
   "Yet Another Emacs IRC Client."
   :prefix "circe-"
   :group 'applications)
-
 
 ;;;;;;;;;;;;;
 ;;; Faces ;;;

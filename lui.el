@@ -50,6 +50,9 @@
 (require 'flyspell)
 (require 'ispell)
 
+(when (featurep 'xemacs)
+  (require 'lui-xemacs))
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Customization ;;;
