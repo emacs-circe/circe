@@ -43,6 +43,29 @@ A: That's because you enabled flyspell for Circe, and ispell.el is so
    dictionary changes. Aspell takes much longer to start than ispell,
    so you could just use ispell...
 
+Q: How can I avoid to tell Lui twice about my friends, both when
+   setting the dictionary and when adding them to
+   `lui-highlight-keywords'?
+A: Use the following function (thanks to paolo on Freenode for the
+   idea):
+
+   (defun lui-add-pals (&rest pals)
+     "Add PALS to highlighting and correct dictionary.
+   Every PAL is a cons cell of the dictionary to use, and a list of
+   nick names."
+     (add-to-list 'lui-highlight-keywords
+                  (regexp-opt (apply #'append (mapcar #'cdr pals))
+                              'words))
+     (mapc (lambda (dictnicks)
+             (add-to-list 'lui-flyspell-alist
+                          (list (regexp-opt (cdr dictnicks)
+                                            'words)
+                                (car dictnicks))))
+           pals))
+
+   (lui-add-pals '("american" "leary" "wilson")
+                 '("italian" "tonio" "paolo" "pablo"))
+
 
 * XEmacs
 Q: Does Circe run on XEmacs?
