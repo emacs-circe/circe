@@ -932,7 +932,9 @@ BUFFER in the mode line."
                 (nconc lui-track-buffers
                        (list (lui-faces-merge buffer
                                               faces))))))))
-  (setq lui-track-mode-line-buffers (lui-track-status)))
+  (setq lui-track-mode-line-buffers (lui-track-status))
+  (sit-for 0) ;; Update mode line
+  )
 
 (defun lui-track-ignored-p (buffer faces)
   "Return non-nil when BUFFER with FACES shouldn't be tracked.
@@ -1012,7 +1014,9 @@ This is usually called via `window-configuration-changed-hook'."
                                          nil)))
             (lui-track-set-modified-status buffer nil)))
         lui-track-buffers)
-  (setq lui-track-mode-line-buffers (lui-track-status)))
+  (setq lui-track-mode-line-buffers (lui-track-status))
+  (sit-for 0) ;; Update mode line
+  )
 
 (defvar lui-track-start-buffer nil
   "The buffer we started from when cycling through the active buffers.")
@@ -1034,7 +1038,9 @@ This is usually called via `window-configuration-changed-hook'."
     (let ((new (car lui-track-buffers)))
       (setq lui-track-buffers (cdr lui-track-buffers)
             lui-track-mode-line-buffers (lui-track-status))
-      (switch-to-buffer new)))))
+      (switch-to-buffer new)
+      (sit-for 0) ;; Update mode line
+      ))))
 
 (defun lui-track-previous-buffer ()
   "Switch to the last active buffer."
