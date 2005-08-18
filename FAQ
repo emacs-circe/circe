@@ -22,7 +22,7 @@ A: This is on the agenda, but not yet implemented. In the meantime,
                                        (point-max)))
              (target circe-chat-target))
          (with-temp-buffer
-           (insert (format "%s %s\n"
+           (insert (format "%s %s"
                            (format-time-string "%Y-%m-%d %H:%M")
                            string))
            (append-to-file (point-min)
