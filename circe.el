@@ -492,6 +492,8 @@ to reconnect to the server.
   (setq major-mode 'circe-server-mode
         mode-name "Circe Server"
         lui-input-function 'circe-chat-input)
+  (set (make-local-variable 'lui-completion-function)
+       'circe-server-completions)
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
   (setq circe-server-last-active-buffer (current-buffer))
@@ -789,6 +791,20 @@ protection algorithm."
   (circe-display 'circe-format-server-message
                  :body (propertize message
                                    'face 'circe-server-face)))
+
+(defun circe-server-completions (bolp)
+  "Return a list of possible completions for the current buffer.
+This is used for `lui-completion-function' in server buffers."
+  (when circe-server-chat-buffers
+    (let ((targets '()))
+      (maphash (lambda (target ignored)
+                 (setq targets (cons (concat target " ")
+                                     targets)))
+               circe-server-chat-buffers)
+      (if bolp
+          (append (circe-commands-list)
+                  targets)
+        targets))))
 
 (defun circe-display (format &rest keywords)
   "Display FORMAT formatted with KEYWORDS in the current Circe buffer.
