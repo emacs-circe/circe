@@ -1166,7 +1166,11 @@ This is used for `lui-completion-function' in channel buffers."
          (when (and (eq major-mode 'circe-query-mode)
                     (circe-case-fold-string= nick
                                              circe-chat-target))
-           (setq circe-chat-target (car args)))))))
+           (setq circe-chat-target (car args))
+           (with-circe-server-buffer
+             (circe-server-remove-chat-buffer nick)
+             (circe-server-add-chat-buffer (car args)
+                                           buf)))))))
    ((string= command "QUIT")
     (circe-mapc-chat-buffers
      (lambda (buf)
