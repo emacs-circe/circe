@@ -1344,7 +1344,9 @@ This adheres to `circe-auto-query-p' and `circe-auto-query-max'."
                            :body line)
             (circe-server-send (format "PRIVMSG %s :%s"
                                        circe-chat-target
-                                       line)))
+                                       (if (string= line "")
+                                           " "
+                                         line))))
           (circe-split-line line))))
 
 (defun circe-split-line (longline)
