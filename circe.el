@@ -40,6 +40,7 @@
 (require 'lui)
 (require 'lui-format)
 (require 'ring)
+(require 'timer)
 
 (when (featurep 'xemacs)
   (require 'circe-xemacs))
@@ -231,7 +232,11 @@ it will try to reconnect forever (not recommended)."
   :type 'integer
   :group 'circe)
 
-(defcustom circe-server-coding-system '(utf-8 . undecided)
+(defcustom circe-server-coding-system (if (and (fboundp 'coding-system-p)
+					      (coding-system-p 'undecided)
+					      (coding-system-p 'utf-8))
+					 '(utf-8 . undecided)
+				       nil)
   "*Coding systems to use for IRC.
 This is either a coding system, which is then used both for
 encoding and decoding, or a cons cell with the encoding in the
