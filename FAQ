@@ -73,9 +73,9 @@ Q: Does Circe run on XEmacs?
 A: Yes, she does. Grudgingly, but she does.
 
 Q: Why can't I use the (circe "irc.freenode.net" "6667") on XEmacs?
-A: XEmacs doesn't like a port as a string argument there. Please use
-   an for this in that environment.
-
+A: XEmacs doesn't like a port number as a string argument there. Please use
+   an integer for this in that environment: 
+	(circe "irc.freenode.net" 6667)
 * Arch
 Q: Is there an Arch (tla) branch for Circe?
 A: Michael Olson maintains an *unofficial* Arch branch for Circe that
@@ -84,3 +84,4 @@ A: Michael Olson maintains an *unofficial* Arch branch for Circe that
    Archive  : mwolson@gnu.org--2005
    Location : http://www.mwolson.org/archives/2005
    Branch   : circe--devo--1.0
+
