@@ -49,7 +49,6 @@
 (require 'ring)
 (require 'flyspell)
 (require 'ispell)
-(require 'overlay)
 
 (when (featurep 'xemacs)
   (require 'lui-xemacs))
@@ -373,7 +372,11 @@ It can be customized for an application by specifying a
   (add-hook 'window-scroll-functions
             'lui-scroll-to-bottom
             nil t)
-  (make-local-hook 'change-major-mode-hook)  ; needed for xemacs, should be safe in emacs
+  (when (fboundp 'make-local-hook)
+    ;; needed for xemacs, as it does not treat the LOCAL argument to
+    ;; `add-hook' the same as GNU Emacs. It's obsolete in GNU Emacs
+    ;; sind 21.1.
+    (make-local-hook 'change-major-mode-hook))
   (add-hook 'change-major-mode-hook
             'lui-change-major-mode
             nil t)
@@ -391,7 +394,11 @@ It can be customized for an application by specifying a
              (window-live-p window)
              lui-scroll-to-bottom-p)
     (let ((resize-mini-windows nil))
-      (declare (special resize-mini-windows))
+      ;; This is to prevent an XEmacs byte compilation warning
+      ;; "variable bound but not referred to". XEmacs is trying to be
+      ;; too intelligent.
+      (when (featurep 'xemacs)
+        (declare (special resize-mini-windows)))
       (save-selected-window
         (select-window window)
         (save-restriction
@@ -558,9 +565,9 @@ Ignored text is text with a non-nil `lui-ignored' property."
       (setq end (or (next-single-property-change beg 'lui-ignored)
                     to))
       (when (and (progn (goto-char beg)
-			(and (bolp) (not (bobp))))
+			(bolp))
                  (progn (goto-char end)
-                        (looking-at "\n")))
+                        (eolp)))
         (setq end (+ 1 end)))
       (add-text-properties beg end properties)
       (setq beg (text-property-any end to 'lui-ignored t)))))
