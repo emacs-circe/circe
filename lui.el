@@ -49,6 +49,7 @@
 (require 'ring)
 (require 'flyspell)
 (require 'ispell)
+(require 'overlay)
 
 (when (featurep 'xemacs)
   (require 'lui-xemacs))
@@ -372,6 +373,7 @@ It can be customized for an application by specifying a
   (add-hook 'window-scroll-functions
             'lui-scroll-to-bottom
             nil t)
+  (make-local-hook 'change-major-mode-hook)  ; needed for xemacs, should be safe in emacs
   (add-hook 'change-major-mode-hook
             'lui-change-major-mode
             nil t)
@@ -389,6 +391,7 @@ It can be customized for an application by specifying a
              (window-live-p window)
              lui-scroll-to-bottom-p)
     (let ((resize-mini-windows nil))
+      (declare (special resize-mini-windows))
       (save-selected-window
         (select-window window)
         (save-restriction
@@ -555,7 +558,7 @@ Ignored text is text with a non-nil `lui-ignored' property."
       (setq end (or (next-single-property-change beg 'lui-ignored)
                     to))
       (when (and (progn (goto-char beg)
-                        (looking-back "\n"))
+			(and (bolp) (not (bobp))))
                  (progn (goto-char end)
                         (looking-at "\n")))
         (setq end (+ 1 end)))
