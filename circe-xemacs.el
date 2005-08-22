@@ -12,9 +12,6 @@
 (defun define-hash-table-test (name test hash)
   (add-to-list 'my-defined-tests (list name test hash)))
 (defstruct my-user-defined-hashtable test equal-func hash-func values)
-(defun foo= (arg1 arg2) t)
-(define-hash-table-test 'foo 'foo= 'foo\#)
-
 
 (defadvice make-hash-table (around my-ugly-hack activate)
   (let ((args (ad-get-args 0))
