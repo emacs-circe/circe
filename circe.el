@@ -1480,7 +1480,7 @@ If COMMAND is not given, WHO is parsed to contain all of who,
 command and argument."
   (when (not command)
     (if (string-match "^\\([^ ]*\\) \\([^ ]*\\) ?\\(.*\\)" who)
-        (setq command (match-string 2 who)
+        (setq command (upcase (match-string 2 who))
               argument (match-string 3 who)
               who (match-string 1 who))
       (circe-server-message "Usage: /CTCP <who> <what>")))
