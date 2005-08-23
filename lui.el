@@ -195,8 +195,8 @@ Switching this off makes copying (by killing) easier for some."
 
 (defcustom lui-max-buffer-size nil
   "*Non-nil if Lui should truncate the buffer if it grows too much.
-If the buffer size exceeds this number, it is truncated at the
-top."
+If the buffer size (in characters) exceeds this number, it is
+truncated at the top."
   :type '(choice (const :tag "Never Truncate" nil)
                  (integer :tag "Maximum Buffer Size"))
   :group 'lui)
