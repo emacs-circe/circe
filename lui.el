@@ -1025,7 +1025,6 @@ This is usually called via `window-configuration-changed-hook'."
             (lui-track-set-modified-status buffer nil)))
         lui-track-buffers)
   (setq lui-track-mode-line-buffers (lui-track-status))
-  (sit-for 0) ;; Update mode line
   )
 
 (defvar lui-track-start-buffer nil
