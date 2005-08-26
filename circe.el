@@ -161,7 +161,7 @@ are displayed as if `circe-auto-query-p' was nil."
 
 (defcustom circe-completion-suffix ": "
   "*A suffix for completed nicks at the beginning of a line."
-  :type '(const :tag "The standard suffix" ": ")
+  :type '(choice (const :tag "The standard suffix" ": "))
   :group 'circe)
 
 (defcustom circe-ignore-list nil
