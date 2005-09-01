@@ -826,10 +826,10 @@ function."
                          1)))
           (overlay-put ov 'field 'lui-time-stamp)
           (overlay-put ov 'after-string
-                       (propertize
-                        (concat (make-string indent ? )
-                                ts)
-                        'face 'lui-time-stamp-face)))))
+                       (concat (make-string indent ? )
+                                (propertize
+                                 ts
+                                 'face 'lui-time-stamp-face))))))
      ;; Timestamps left
      ((eq lui-time-stamp-position 'left)
       (let ((indent-string (make-string (length ts) ? )))
