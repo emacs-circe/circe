@@ -2366,9 +2366,11 @@ exist."
     (catch 'exit
       (when circe-server-chat-buffers
         (maphash (lambda (key value)
-                   (puthash (buffer-name value)
-                            (buffer-name value)
-                            rejoins))
+                   (when (with-current-buffer value
+                           (eq major-mode 'circe-channel-mode))
+                     (puthash (buffer-name value)
+                              (buffer-name value)
+                              rejoins)))
                  circe-server-chat-buffers))
       (mapc (lambda (entry)
               (when (if (symbolp (car entry))
