@@ -881,28 +881,31 @@ This is used by Circe to know where to put spurious messages."
                                  'lui-format-argument 'body)))
     (when body
       (goto-char body)))
-  (cond
-   ((eq circe-highlight-nick-type 'sender)
-    (if (text-property-any (point-min)
-                           (point-max)
-                           'face 'circe-originator-face)
-        (when (search-forward (circe-server-nick) nil t)
-          (circe-highlight-extend-properties
-           (point-min) (point-max)
-           'face 'circe-originator-face
-           '(face circe-highlight-nick-face)))
-      (let ((circe-highlight-nick-type 'occurance))
-        (circe-highlight-nick))))
-   ((eq circe-highlight-nick-type 'occurance)
-    (while (search-forward (circe-server-nick) nil t)
-      (add-text-properties (match-beginning 0)
-                           (match-end 0)
-                           '(face circe-highlight-nick-face))))
-   ((eq circe-highlight-nick-type 'all)
-    (when (search-forward (circe-server-nick) nil t)
-      (add-text-properties (point-min)
-                           (point-max)
-                           '(face circe-highlight-nick-face))))))
+  (let ((nick-regex (concat "\\<"
+                            (regexp-quote (circe-server-nick))
+                            "\\>")))
+    (cond
+     ((eq circe-highlight-nick-type 'sender)
+      (if (text-property-any (point-min)
+                             (point-max)
+                             'face 'circe-originator-face)
+          (when (re-search-forward nick-regex nil t)
+            (circe-highlight-extend-properties
+             (point-min) (point-max)
+             'face 'circe-originator-face
+             '(face circe-highlight-nick-face)))
+        (let ((circe-highlight-nick-type 'occurance))
+          (circe-highlight-nick))))
+     ((eq circe-highlight-nick-type 'occurance)
+      (while (re-search-forward nick-regex nil t)
+        (add-text-properties (match-beginning 0)
+                             (match-end 0)
+                             '(face circe-highlight-nick-face))))
+     ((eq circe-highlight-nick-type 'all)
+      (when (re-search-forward nick-regex nil t)
+        (add-text-properties (point-min)
+                             (point-max)
+                             '(face circe-highlight-nick-face)))))))
 
 (defun circe-highlight-extend-properties (from to prop val properties)
   "Extend property PROP with value VAL with PROPERTIES between FROM and TO.
