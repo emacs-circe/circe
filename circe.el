@@ -274,6 +274,7 @@ This can be one of the following values:
   :group 'circe)
 
 (defcustom circe-track-faces-priorities '(circe-highlight-nick-face
+                                          lui-highlight-face
                                           circe-my-message-face
                                           circe-server-face)
   "A list of faces which should show up in the tracking.
