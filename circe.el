@@ -881,9 +881,12 @@ This is used by Circe to know where to put spurious messages."
                                  'lui-format-argument 'body)))
     (when body
       (goto-char body)))
-  (let ((nick-regex (concat "\\<"
-                            (regexp-quote (circe-server-nick))
-                            "\\>")))
+  ;; Can't use \<...\> because that won't match for \<forcer-\>
+  ;; We might eventually use \_< ... \_> if we define symbols
+  ;; to be nicks
+  (let ((nick-regex (concat "\\(?:^\\|\\W\\)"
+                            "\\(" (regexp-quote (circe-server-nick)) "\\)"
+                            "\\(?:\\W\\|$\\)")))
     (cond
      ((eq circe-highlight-nick-type 'sender)
       (if (text-property-any (point-min)
@@ -898,8 +901,8 @@ This is used by Circe to know where to put spurious messages."
           (circe-highlight-nick))))
      ((eq circe-highlight-nick-type 'occurance)
       (while (re-search-forward nick-regex nil t)
-        (add-text-properties (match-beginning 0)
-                             (match-end 0)
+        (add-text-properties (match-beginning 1)
+                             (match-end 1)
                              '(face circe-highlight-nick-face))))
      ((eq circe-highlight-nick-type 'all)
       (when (re-search-forward nick-regex nil t)
