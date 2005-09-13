@@ -622,43 +622,41 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
   "Insert STR into the current Lui buffer."
   ;; Don't modify the undo list. The undo list is for the user's
   ;; input only.
-  (let ((undo buffer-undo-list))
-    (unwind-protect
-        (save-excursion
-          (save-restriction
-            (let ((inhibit-read-only t)
-                  (faces nil))
-              (widen)
-              (goto-char lui-output-marker)
-              (let ((beg (point))
-                    (end nil))
-                (insert str "\n")
-                (setq end (point))
-                (set-marker lui-output-marker (point))
-                (narrow-to-region beg end))
-              (goto-char (point-min))
-              (run-hooks 'lui-pre-output-hook)
-              (lui-highlight-keywords)
-              (lui-fill)
-              (lui-time-stamp)
-              (goto-char (point-min))
-              (run-hooks 'lui-post-output-hook)
-              (lui-ignore)
-              (goto-char (point-min))
-              (setq faces (lui-faces-in-region (point-min)
-                                               (point-max)))
-              (widen)
-              (lui-truncate)
-              (lui-read-only)
-              (when (and (not not-tracked-p)
-                         (not (get-buffer-window (current-buffer)
-                                                 (if lui-track-all-frames-p
-                                                     'visible
-                                                   nil))))
-                (lui-track-set-modified-status (buffer-name (current-buffer))
-                                               t
-                                               faces)))))
-      (setq buffer-undo-list undo))))
+  (let ((buffer-undo-list t))
+    (save-excursion
+      (save-restriction
+        (let ((inhibit-read-only t)
+              (faces nil))
+          (widen)
+          (goto-char lui-output-marker)
+          (let ((beg (point))
+                (end nil))
+            (insert str "\n")
+            (setq end (point))
+            (set-marker lui-output-marker (point))
+            (narrow-to-region beg end))
+          (goto-char (point-min))
+          (run-hooks 'lui-pre-output-hook)
+          (lui-highlight-keywords)
+          (lui-fill)
+          (lui-time-stamp)
+          (goto-char (point-min))
+          (run-hooks 'lui-post-output-hook)
+          (lui-ignore)
+          (goto-char (point-min))
+          (setq faces (lui-faces-in-region (point-min)
+                                           (point-max)))
+          (widen)
+          (lui-truncate)
+          (lui-read-only)
+          (when (and (not not-tracked-p)
+                     (not (get-buffer-window (current-buffer)
+                                             (if lui-track-all-frames-p
+                                                 'visible
+                                               nil))))
+            (lui-track-set-modified-status (buffer-name (current-buffer))
+                                           t
+                                           faces)))))))
 
 (defvar lui-prompt-map
   (let ((map (make-sparse-keymap)))
