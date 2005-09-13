@@ -877,16 +877,18 @@ This is used by Circe to know where to put spurious messages."
 
 (defun circe-highlight-nick ()
   "Highlight the nick of the user in the buffer."
-  (let ((body (text-property-any (point-min) (point-max)
-                                 'lui-format-argument 'body)))
-    (when body
-      (goto-char body)))
+  (goto-char (or (text-property-any (point-min) (point-max)
+                                    'lui-format-argument 'body)
+                 (point-min)))
   ;; Can't use \<...\> because that won't match for \<forcer-\>
   ;; We might eventually use \_< ... \_> if we define symbols
   ;; to be nicks
-  (let ((nick-regex (concat "\\(?:^\\|\\W\\)"
+  ;; \\= is necessary, because it might be found right where we are,
+  ;; and that might not be the beginning of a line... (We start
+  ;; searching from the beginning of the body)
+  (let ((nick-regex (concat "\\(?:^\\|\\W\\|\\=\\)"
                             "\\(" (regexp-quote (circe-server-nick)) "\\)"
-                            "\\(?:\\W\\|$\\)")))
+                            "\\(?:$\\|\\W\\)")))
     (cond
      ((eq circe-highlight-nick-type 'sender)
       (if (text-property-any (point-min)
