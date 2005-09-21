@@ -34,7 +34,10 @@
 
 ;;; Code:
 
-(defvar circe-version "0"
+(defvar circe-time-stamp "2005-09-21 18:47:32"
+  "The modification date of Circe source file.")
+
+(defvar circe-version (format "from CVS (%s)" circe-modification-date)
   "Circe version string.")
 
 (require 'lui)
@@ -2512,6 +2515,13 @@ password for this network."
                       (setq circe-nickserv-registered-p t)
                       (throw 'return t)))))
               circe-nickserv-alist)))))
+
+;;; Local Variables:
+;;; time-stamp-start: "^(defvar circe-time-stamp \""
+;;; time-stamp-end "\""
+;;; time-stamp-line-limit: 60
+;;; time-stamp-format: "%:y-%02m-%02d %02H:%02M:%02S"
+;;; End:
 
 (provide 'circe)
 ;;; circe.el ends here
