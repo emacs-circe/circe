@@ -525,7 +525,12 @@ REALNAME is the real name to use (defaults to `circe-default-realname')"
     (with-current-buffer server-buffer
       (circe-server-mode)
       (setq circe-server-name host
-            circe-server-service service
+            circe-server-service (if (and (stringp service)
+                                          (not
+                                           (zerop
+                                            (string-to-number service))))
+                                     (string-to-number service)
+                                   service)
             circe-server-network (or network
                                      host)
             circe-server-nick (or nick
@@ -1143,7 +1148,7 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
 (defun circe-channel-killed ()
   "Called when the channel buffer got killed."
   (when (and circe-channel-killed-confirmation
-             (not (y-or-n-p "Reall leave this channel? ")))
+             (not (y-or-n-p "Really leave this channel? ")))
     (error "Buffer not killed as per user request"))
   (when (buffer-live-p circe-server-buffer)
     (condition-case nil
