@@ -34,10 +34,10 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2005-09-21 18:47:32"
+(defvar circe-time-stamp "2005-09-21 18:48:07"
   "The modification date of Circe source file.")
 
-(defvar circe-version (format "from CVS (%s)" circe-modification-date)
+(defvar circe-version (format "from CVS (%s)" circe-time-stamp)
   "Circe version string.")
 
 (require 'lui)
