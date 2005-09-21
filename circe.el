@@ -2172,7 +2172,10 @@ number, it shows the missing people due to that split."
     ("005" active "{1-}")
     ("302" active "User hosts: {1}")
     ("303" active "Users online: {1}")
-    ("301" 0 "User away: {1}")
+    ;; This is returned on both WHOIS and PRIVMSG
+    ;; It should go to the active window for the former, and the query
+    ;; window for the latter. Oh well.
+    ("301" active "User away: {1}")
     ("305" active "{1}")
     ("306" active "{1}")
     ("307" active "{1-}")
