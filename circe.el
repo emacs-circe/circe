@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2005-09-21 18:48:07"
+(defvar circe-time-stamp "2005-09-21 18:49:17"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -338,6 +338,7 @@ strings."
 
 (defcustom circe-format-self-say "> {body}"
   "*The format for messages to queries or channels.
+{nick} - Your nick.
 {body} - The body of the message."
   :type 'string
   :group 'circe-format)
@@ -1363,7 +1364,8 @@ This adheres to `circe-auto-query-p' and `circe-auto-query-max'."
       (circe-server-message "No target for current buffer")
     (mapc (lambda (line)
             (circe-display 'circe-format-self-say
-                           :body line)
+                           :body line
+                           :nick (circe-server-nick))
             (circe-server-send (format "PRIVMSG %s :%s"
                                        circe-chat-target
                                        ;; Some IRC servers give an
