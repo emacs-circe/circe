@@ -622,41 +622,107 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
   "Insert STR into the current Lui buffer."
   ;; Don't modify the undo list. The undo list is for the user's
   ;; input only.
-  (let ((buffer-undo-list t))
-    (save-excursion
-      (save-restriction
-        (let ((inhibit-read-only t)
-              (faces nil))
-          (widen)
-          (goto-char lui-output-marker)
-          (let ((beg (point))
-                (end nil))
-            (insert str "\n")
-            (setq end (point))
-            (set-marker lui-output-marker (point))
-            (narrow-to-region beg end))
-          (goto-char (point-min))
-          (run-hooks 'lui-pre-output-hook)
-          (lui-highlight-keywords)
-          (lui-fill)
-          (lui-time-stamp)
-          (goto-char (point-min))
-          (run-hooks 'lui-post-output-hook)
-          (lui-ignore)
-          (goto-char (point-min))
-          (setq faces (lui-faces-in-region (point-min)
-                                           (point-max)))
-          (widen)
-          (lui-truncate)
-          (lui-read-only)
-          (when (and (not not-tracked-p)
-                     (not (get-buffer-window (current-buffer)
-                                             (if lui-track-all-frames-p
-                                                 'visible
-                                               nil))))
-            (lui-track-set-modified-status (buffer-name (current-buffer))
-                                           t
-                                           faces)))))))
+  (let ((old-output-marker (marker-position lui-output-marker)))
+    (let ((buffer-undo-list t))
+      (save-excursion
+        (save-restriction
+          (let ((inhibit-read-only t)
+                (faces nil))
+            (widen)
+            (goto-char lui-output-marker)
+            (let ((beg (point))
+                  (end nil))
+              (insert str "\n")
+              (setq end (point))
+              (set-marker lui-output-marker (point))
+              (narrow-to-region beg end))
+            (goto-char (point-min))
+            (run-hooks 'lui-pre-output-hook)
+            (lui-highlight-keywords)
+            (lui-fill)
+            (lui-time-stamp)
+            (goto-char (point-min))
+            (run-hooks 'lui-post-output-hook)
+            (lui-ignore)
+            (goto-char (point-min))
+            (setq faces (lui-faces-in-region (point-min)
+                                             (point-max)))
+            (widen)
+            (lui-truncate)
+            (lui-read-only)
+            (when (and (not not-tracked-p)
+                       (not (get-buffer-window (current-buffer)
+                                               (if lui-track-all-frames-p
+                                                   'visible
+                                                 nil))))
+              (lui-track-set-modified-status (buffer-name (current-buffer))
+                                             t
+                                             faces))))))
+    (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
+                                                 old-output-marker
+                                                 (- lui-output-marker
+                                                    old-output-marker)))
+    nil))
+
+(defun lui-adjust-undo-list (list old-begin shift)
+  "Adjust undo positions in LIST by SHIFT.
+LIST is in the format of `buffer-undo-list'.
+Only positions after OLD-BEGIN are affected."
+  ;; This is necessary because the undo-list keeps exact buffer
+  ;; positions.
+  ;; Thanks to ERC for the idea of the code.
+  ;; ERC's code doesn't take care of an OLD-BEGIN value, which is
+  ;; necessary if you allow modification of the buffer.
+  (let* ((adjust-position (lambda (pos)
+                            (cond
+                             ;; Negative: From end
+                             ((< pos 0)
+                              (- pos shift))
+                             ;; Before the boundary
+                             ((< pos old-begin)
+                              pos)
+                             ;; After the boundary
+                             (t
+                              (+ pos shift)))))
+         (adjust (lambda (entry)
+                   (cond
+                    ;; POSITION
+                    ((numberp entry)
+                     (funcall adjust-position entry))
+                    ((not (consp entry))
+                     entry)
+                    ;; (BEG . END)
+                    ((numberp (car entry))
+                     (cons (funcall adjust-position (car entry))
+                           (funcall adjust-position (cdr entry))))
+                    ;; (TEXT . POSITION)
+                    ((stringp (car entry))
+                     (cons (car entry)
+                           (funcall adjust-position (cdr entry))))
+                    ;; (nil PROPERTY VALUE BEG . END)
+                    ((not (car entry))
+                     `(nil ,(nth 1 entry)
+                           ,(nth 2 entry)
+                           ,(funcall adjust-position (nth 3 entry))
+                           .
+                           ,(funcall adjust-position (nthcdr 4 entry))))
+                    ;; (apply DELTA BEG END FUN-NAME . ARGS)
+                    ((eq 'apply (car entry))
+                     `(apply ,(nth 1 entry)
+                             ,(funcall adjust-position (nth 2 entry))
+                             ,(funcall adjust-position (nth 3 entry))
+                             ,(nth 4 entry)
+                             .
+                             ,(nthcdr 5 entry)))
+                    ;; XEmacs: (<extent> start end)
+                    ((and (fboundp 'extentp)
+                          (extentp (car entry)))
+                     (list (nth 0 entry)
+                           (funcall adjust-position (nth 1 entry))
+                           (funcall adjust-position (nth 2 entry))))
+                    (t
+                     entry)))))
+    (mapcar adjust list)))
 
 (defvar lui-prompt-map
   (let ((map (make-sparse-keymap)))
