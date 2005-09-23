@@ -1108,6 +1108,11 @@ This is usually called via `window-configuration-changed-hook'."
 (defvar lui-track-start-buffer nil
   "The buffer we started from when cycling through the active buffers.")
 
+(defvar lui-track-last-buffer nil
+  "The buffer we last switched to with `lui-track-next-buffer'.
+When this is not the current buffer when we continue switching, a
+new `lui-track-start-buffer' is created.")
+
 (defun lui-track-next-buffer ()
   "Switch to the next active buffer."
   (interactive)
@@ -1120,11 +1125,13 @@ This is usually called via `window-configuration-changed-hook'."
    ((not lui-track-buffers)
     nil)
    (t
-    (when (not lui-track-start-buffer)
+    (when (not (eq lui-track-last-buffer
+                   (current-buffer)))
       (setq lui-track-start-buffer (current-buffer)))
     (let ((new (car lui-track-buffers)))
       (setq lui-track-buffers (cdr lui-track-buffers)
-            lui-track-mode-line-buffers (lui-track-status))
+            lui-track-mode-line-buffers (lui-track-status)
+            lui-track-last-buffer new)
       (switch-to-buffer new)
       (sit-for 0) ;; Update mode line
       ))))
