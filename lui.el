@@ -154,6 +154,13 @@ See `fill-column'."
   :type 'integer
   :group 'lui)
 
+(defcustom lui-fill-remove-face-from-newline t
+  "*Non-nil when filling should remove faces from newlines.
+Faces on a newline extend to the end of the displayed line, which
+is often not was is wanted."
+  :type 'boolean
+  :group 'lui)
+
 (defcustom lui-time-stamp-format "[%H:%M]"
   "*The format of time stamps.
 See `format-time-string' for a full description of available
@@ -854,7 +861,14 @@ function."
             (fill-column (or lui-fill-column
                              fill-column)))
         (fill-region (point-min) (point-max)
-                     nil t))))))
+                     nil t)))))
+  (when lui-fill-remove-face-from-newline
+    (goto-char (point-min))
+    (while (re-search-forward "\n" nil t)
+      (put-text-property (match-beginning 0)
+                         (match-end 0)
+                         'face
+                         nil))))
 
 
 ;;;;;;;;;;;;;;;;;;;
