@@ -665,10 +665,12 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
               (lui-track-set-modified-status (buffer-name (current-buffer))
                                              t
                                              faces))))))
-    (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
-                                                 old-output-marker
-                                                 (- lui-output-marker
-                                                    old-output-marker)))
+    (when (consp buffer-undo-list)
+      ;; Not t :-)
+      (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
+                                                   old-output-marker
+                                                   (- lui-output-marker
+                                                      old-output-marker))))
     nil))
 
 (defun lui-adjust-undo-list (list old-begin shift)
@@ -681,16 +683,14 @@ Only positions after OLD-BEGIN are affected."
   ;; ERC's code doesn't take care of an OLD-BEGIN value, which is
   ;; necessary if you allow modification of the buffer.
   (let* ((adjust-position (lambda (pos)
-                            (cond
-                             ;; Negative: From end
-                             ((< pos 0)
-                              (- pos shift))
-                             ;; Before the boundary
-                             ((< pos old-begin)
-                              pos)
-                             ;; After the boundary
-                             (t
-                              (+ pos shift)))))
+                            ;; Before the boundary
+                            (if (< (abs pos)
+                                   old-begin)
+                                (* (if (< pos 0)
+                                       -1
+                                     1)
+                                   (+ (abs pos)
+                                      shift)))))
          (adjust (lambda (entry)
                    (cond
                     ;; POSITION
@@ -714,7 +714,8 @@ Only positions after OLD-BEGIN are affected."
                            .
                            ,(funcall adjust-position (nthcdr 4 entry))))
                     ;; (apply DELTA BEG END FUN-NAME . ARGS)
-                    ((eq 'apply (car entry))
+                    ((and (eq 'apply (car entry))
+                          (numberp (cadr entry)))
                      `(apply ,(nth 1 entry)
                              ,(funcall adjust-position (nth 2 entry))
                              ,(funcall adjust-position (nth 3 entry))
