@@ -683,14 +683,16 @@ Only positions after OLD-BEGIN are affected."
   ;; ERC's code doesn't take care of an OLD-BEGIN value, which is
   ;; necessary if you allow modification of the buffer.
   (let* ((adjust-position (lambda (pos)
-                            ;; Before the boundary
-                            (if (< (abs pos)
-                                   old-begin)
+                            (if (and (numberp pos)
+                                     ;; Before the boundary
+                                     (< (abs pos)
+                                        old-begin))
                                 (* (if (< pos 0)
                                        -1
                                      1)
                                    (+ (abs pos)
-                                      shift)))))
+                                      shift))
+                              pos)))
          (adjust (lambda (entry)
                    (cond
                     ;; POSITION
