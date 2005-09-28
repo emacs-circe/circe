@@ -2414,25 +2414,29 @@ exist."
   "The current topic of the channel.")
 (make-variable-buffer-local 'circe-channel-topic)
 
-(defun circe-command-TOPIC (newtopic)
-  "Change the topic of the current channel to NEWTOPIC."
-  (interactive "sNew topic: ")
+(defun circe-command-TOPIC (channel &optional newtopic)
+  "Change the topic of CHANNEL to NEWTOPIC."
+  (interactive "sChannel: \nsNew topic: ")
+  (when (and (not newtopic)
+             (string-match "^\\s-*\\(\\S-\\) ?\\(.*\\)" channel))
+    (setq newtopic (match-string 2 channel)
+          channel (match-string 1 channel)))
   (cond
-   ((not circe-chat-target)
-    (circe-server-message "No target for current buffer"))
-   ((string-match newtopic "^\\s-$")
+   ((and channel newtopic)
+    (circe-server-send (format "TOPIC %s :%s" channel)))
+   (channel
+    (circe-server-send (format "TOPIC %s" channel)))
+   (circe-chat-target
     (circe-server-send (format "TOPIC %s" circe-chat-target)))
    (t
-    (circe-server-send (format "TOPIC %s :%s"
-                               circe-chat-target
-                               newtopic)))))
+    (circe-server-message "No channel given, and no default target."))))
 
 (defun circe-command-CHTOPIC (&optional ignored)
   "Insert the topic of the current channel."
   (interactive)
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
-    (lui-replace-input (format "/TOPIC %s" circe-channel-topic))
+    (lui-replace-input (format "/TOPIC %s %s" circe-chat-target circe-channel-topic))
     (goto-char (point-max))))
 
 (add-hook 'circe-receive-message-functions 'circe-topic-handler)
