@@ -2524,7 +2524,7 @@ password for this network."
 
 ;;; Local Variables:
 ;;; time-stamp-start: "^(defvar circe-time-stamp \""
-;;; time-stamp-end "\""
+;;; time-stamp-end: "\""
 ;;; time-stamp-line-limit: 60
 ;;; time-stamp-format: "%:y-%02m-%02d %02H:%02M:%02S"
 ;;; End:
