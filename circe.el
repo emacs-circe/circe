@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2005-09-21 18:49:17"
+(defvar circe-time-stamp "2005-09-29 02:28:05"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -152,13 +152,13 @@ are displayed as if `circe-auto-query-p' was nil."
   :group 'circe)
 
 (defcustom circe-highlight-nick-type 'sender
-  "*How to highlight occurances of our own nick.
+  "*How to highlight occurrences of our own nick.
 
   'sender    - Highlight the nick of the sender
-  'occurance - Highlight the occurances of the nick
+  'occurrence - Highlight the occurrences of the nick
   'all       - Highlight the whole line"
   :type '(choice (const :tag "Sender" sender)
-                 (const :tag "Occurances" occurance)
+                 (const :tag "Occurrences" occurrence)
                  (const :tag "Whole line" all))
   :group 'circe)
 
@@ -909,9 +909,9 @@ This is used by Circe to know where to put spurious messages."
              (point-min) (point-max)
              'face 'circe-originator-face
              '(face circe-highlight-nick-face)))
-        (let ((circe-highlight-nick-type 'occurance))
+        (let ((circe-highlight-nick-type 'occurrence))
           (circe-highlight-nick))))
-     ((eq circe-highlight-nick-type 'occurance)
+     ((eq circe-highlight-nick-type 'occurrence)
       (while (re-search-forward nick-regex nil t)
         (add-text-properties (match-beginning 1)
                              (match-end 1)
