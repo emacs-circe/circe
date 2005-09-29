@@ -215,11 +215,14 @@ This is the size of the input history used by
   :type 'integer
   :group 'lui)
 
-(defcustom lui-track-all-frames-p t
-  "*Non-nil when Lui should look at all frames for tracking.
-If this is non-nil, Lui will look whether the appropriate buffer
-is visible in any frame, not just the current one."
-  :type 'boolean
+(defcustom lui-track-frame-behavior 'visible
+  "*How to deal with frams to determine visibility of buffers.
+This is passed as the second argument to `get-buffer-window',
+see there for further explanation"
+  :type '(choice (const :tag "All visible frames" visible)
+                 (const :tag "Visible and iconified frames" 0)
+                 (const :tag "All frames" t)
+                 (const :tag "Selected frame only" nil))
   :group 'lui)
 
 (defcustom lui-track-position 'before-modes
@@ -659,9 +662,7 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
             (lui-read-only)
             (when (and (not not-tracked-p)
                        (not (get-buffer-window (current-buffer)
-                                               (if lui-track-all-frames-p
-                                                   'visible
-                                                 nil))))
+                                               lui-track-frame-behavior)))
               (lui-track-set-modified-status (buffer-name (current-buffer))
                                              t
                                              faces))))))
@@ -1100,9 +1101,7 @@ This is usually called via `window-configuration-changed-hook'."
   (mapc (lambda (buffer)
           (when (or (not (get-buffer buffer))
                     (get-buffer-window buffer
-                                       (if lui-track-all-frames-p
-                                           'visible
-                                         nil)))
+                                       lui-track-frame-behavior))
             (lui-track-set-modified-status buffer nil)))
         lui-track-buffers)
   (setq lui-track-mode-line-buffers (lui-track-status))
