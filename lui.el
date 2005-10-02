@@ -672,7 +672,7 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
         (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
                                                      old-output-marker
                                                      distance)))
-      nil))
+      nil)))
 
 (defun lui-adjust-undo-list (list old-begin shift)
   "Adjust undo positions in LIST by SHIFT.
