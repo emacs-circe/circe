@@ -666,13 +666,13 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
               (lui-track-set-modified-status (buffer-name (current-buffer))
                                              t
                                              faces))))))
-    (when (consp buffer-undo-list)
-      ;; Not t :-)
-      (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
-                                                   old-output-marker
-                                                   (- lui-output-marker
-                                                      old-output-marker))))
-    nil))
+    (let ((distance (- lui-output-marker old-output-marker)))
+      (when (consp buffer-undo-list)
+        ;; Not t :-)
+        (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
+                                                     old-output-marker
+                                                     distance)))
+      nil))
 
 (defun lui-adjust-undo-list (list old-begin shift)
   "Adjust undo positions in LIST by SHIFT.
@@ -685,8 +685,8 @@ Only positions after OLD-BEGIN are affected."
   ;; necessary if you allow modification of the buffer.
   (let* ((adjust-position (lambda (pos)
                             (if (and (numberp pos)
-                                     ;; Before the boundary
-                                     (< (abs pos)
+                                     ;; After the boundary: Adjust
+                                     (> (abs pos)
                                         old-begin))
                                 (* (if (< pos 0)
                                        -1
