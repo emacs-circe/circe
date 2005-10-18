@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2005-10-02 15:40:56"
+(defvar circe-time-stamp "2005-10-18 21:40:40"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -1105,7 +1105,9 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
   (cond
    ((string= str "")
     nil)
-   ((string-match "\\`/\\([^ ]*\\) ?\\([^\n]*\\)\\'" str)
+   ;; Ignore commands in multiline input
+   ((and (not (string-match "\n" str))
+         (string-match "\\`/\\([^ ]*\\) ?\\([^\n]*\\)\\'" str))
     (let* ((command (match-string 1 str))
            (args (match-string 2 str))
            (handler (intern-soft (format "circe-command-%s"
