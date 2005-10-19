@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2005-10-18 21:40:40"
+(defvar circe-time-stamp "2005-10-19 17:14:33"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -2420,8 +2420,8 @@ exist."
   "Change the topic of CHANNEL to NEWTOPIC."
   (interactive "sChannel: \nsNew topic: ")
   (when (and (not newtopic)
-             (string-match "^\\s-*\\(\\S-+\\) ?\\(.*\\)" channel))
-    (setq newtopic (match-string 2 channel)
+             (string-match "^\\s-*\\(\\S-+\\)\\( \\(.*\\)\\)?" channel))
+    (setq newtopic (match-string 3 channel)
           channel (match-string 1 channel)))
   (cond
    ((and channel newtopic)
