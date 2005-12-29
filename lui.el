@@ -755,6 +755,8 @@ unexpecting user.")
         (set-marker lui-input-marker (point)))
       (add-text-properties lui-output-marker lui-input-marker
                            `(read-only t
+                             end-open  t
+			     start-open t
                              rear-nonsticky t
                              field lui-prompt
                              keymap ,lui-prompt-map)))))
@@ -965,6 +967,7 @@ function."
   (when lui-read-only-output-p
     (add-text-properties (point-min) lui-output-marker
                          '(read-only t
+	                   start-open nil
                            front-sticky t))))
 
 
