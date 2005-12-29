@@ -102,7 +102,11 @@ COMPLETIONS is a list of strings which can be completed."
 (defun incomplete-show-completion-window (prefix completions)
   "Show a completion buffer.
 The buffer shows all completions for PREFIX in COMPLETIONS."
-  (let ((all-completions (all-completions prefix completions)))
+  (let ((all-completions (all-completions prefix
+                                          ;; Make it an alist, for backwards
+                                          ;; compatibility with GNU Emacs 21
+                                          ;; and XEmacs.
+                                          (mapcar #'list completions))))
     (if (null (cdr all-completions))
         (progn
           (message "Unique completion")
