@@ -62,13 +62,17 @@ completions."
       (incomplete-scroll-completion-window)
     (let ((completions (funcall incomplete-function)))
       (incomplete-here (car completions)
-                      (cdr completions)))))
+                       (cdr completions)))))
 
 (defun incomplete-here (prefix completions)
   "Complete PREFIX at point.
 PREFIX should be any kind of string before point.
 COMPLETIONS is a list of strings which can be completed."
-  (let ((completion (try-completion prefix completions)))
+  (let ((completion (try-completion prefix
+                                    ;; Make it an alist, for backwards
+                                    ;; compatibility with GNU Emacs 21
+                                    ;; and XEmacs.
+                                    (mapcar #'list completions))))
     (cond
      ((eq completion t)
       (incomplete-hide-completion-window))
