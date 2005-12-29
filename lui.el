@@ -755,11 +755,13 @@ unexpecting user.")
         (set-marker lui-input-marker (point)))
       (add-text-properties lui-output-marker lui-input-marker
                            `(read-only t
-                             end-open  t
-			     start-open t
                              rear-nonsticky t
                              field lui-prompt
-                             keymap ,lui-prompt-map)))))
+                             keymap ,lui-prompt-map
+                             ;; XEmacs stuff.
+                             start-open t
+                             end-open t
+                             )))))
 
 (defun lui-prompt-end-of-line (&optional N)
   "Move past the prompt, and then to the end of the line.
@@ -911,9 +913,9 @@ function."
           (overlay-put ov 'field 'lui-time-stamp)
           (overlay-put ov 'after-string
                        (concat (make-string indent ? )
-                                (propertize
-                                 ts
-                                 'face 'lui-time-stamp-face))))))
+                               (propertize
+                                ts
+                                'face 'lui-time-stamp-face))))))
      ;; Timestamps left
      ((eq lui-time-stamp-position 'left)
       (let ((indent-string (make-string (length ts) ? )))
@@ -967,8 +969,9 @@ function."
   (when lui-read-only-output-p
     (add-text-properties (point-min) lui-output-marker
                          '(read-only t
-	                   start-open nil
-                           front-sticky t))))
+                           front-sticky t
+                           ;; XEmacs stuff.
+                           start-open nil))))
 
 
 ;;;;;;;;;;;;;;;;
