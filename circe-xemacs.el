@@ -1,5 +1,5 @@
 ;; XEmacs compatibility for CIRCE
-;; Thanks a lot to Brian Palmer!
+;; Writte by Brian Palmer
 
 (unless (fboundp 'compare-strings)
   (defun compare-strings (str1 start1 end1 str2 start2 end2 &optional ignore-case)
@@ -66,5 +66,10 @@
             do (funcall function key value))
     ad-do-it))
 
+(defadvice hash-table-count (around my-ugly-hash-table-count-hack activate)
+  (if (my-user-defined-hashtable-p hash-table)
+      (setq ad-return-value (length
+                             (my-user-defined-hashtable-values hash-table)))
+    ad-do-it))
 
 (provide 'circe-xemacs)
