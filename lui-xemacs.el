@@ -63,4 +63,21 @@ Overlays might be moved and or split. "
 				  (string-to-number (concat data ".0"))
 				number))))))
 
+;; We have to deal with the situation that, in emacs,
+;; beginning-of-line takes you to the beginning of a region with the
+;; `field' text property set. We install lui-beginning-of-line to
+;; provide similar functionality in lui modes
+(eval-after-load "lui"
+  '(define-key lui-mode-map (kbd "C-a") 'lui-beginning-of-line))
+
+(defun lui-beginning-of-line (&optional N)
+  "Beginning of line, special cased to deal with lui input lines."
+  (interactive "p")
+  (let ((current (point))
+	(input (marker-position lui-input-marker)))
+    (if (< current input)
+	(call-interactively 'beginning-of-line)
+      (goto-char lui-input-marker))))
+
+
 (provide 'lui-xemacs)
