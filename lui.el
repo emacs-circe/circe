@@ -1136,10 +1136,11 @@ new `lui-track-start-buffer' is created.")
     (when (not (eq lui-track-last-buffer
                    (current-buffer)))
       (setq lui-track-start-buffer (current-buffer)))
-    (switch-to-buffer (car lui-track-buffers))
-    (setq lui-track-buffers (cdr lui-track-buffers)
-          lui-track-mode-line-buffers (lui-track-status)
-          lui-track-last-buffer (current-buffer))
+    (let ((new (car lui-track-buffers)))
+      (setq lui-track-buffers (cdr lui-track-buffers)
+            lui-track-mode-line-buffers (lui-track-status))
+      (switch-to-buffer new))
+    (setq lui-track-last-buffer (current-buffer))
     (sit-for 0) ;; Update mode line
     )))
 
