@@ -218,7 +218,7 @@ This is the size of the input history used by
 (defcustom lui-track-frame-behavior 'visible
   "*How to deal with frams to determine visibility of buffers.
 This is passed as the second argument to `get-buffer-window',
-see there for further explanation"
+see there for further explanation."
   :type '(choice (const :tag "All visible frames" visible)
                  (const :tag "Visible and iconified frames" 0)
                  (const :tag "All frames" t)
