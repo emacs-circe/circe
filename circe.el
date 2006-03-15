@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2005-10-19 17:14:33"
+(defvar circe-time-stamp "2006-03-15 01:18:51"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -2009,7 +2009,7 @@ This helps Emacs to find out whether we are disconnected."
           (time (string-to-number (nth 3 args))))
       (circe-server-message
        (format "%s is %s idle (Signon on %s, %s ago)"
-               (nth 0 args)
+               (nth 1 args)
                (circe-duration-string idle)
                (current-time-string (seconds-to-time time))
                (circe-duration-string (- (float-time)
