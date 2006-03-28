@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-03-15 01:18:51"
+(defvar circe-time-stamp "2006-03-28 03:34:14"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -1742,7 +1742,7 @@ command, and args of the message."
   "Send a PING request to the server.
 This helps Emacs to find out whether we are disconnected."
   (with-current-buffer server-buffer
-    (circe-server-send (format "PING :Circe Heartbeat"))
+    (circe-server-send (format "PING %s" circe-server-nick))
     (run-at-time 60 nil 'circe-server-ping server-buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -1871,13 +1871,7 @@ This helps Emacs to find out whether we are disconnected."
 (circe-set-display-handler "PONG" 'circe-display-PONG)
 (defun circe-display-PONG (nick user host command args)
   "(Don't) show a PONG message."
-  (when (not (and (string= command "PONG")
-                  (stringp (cadr args))
-                  (string= (cadr args)
-                           "Circe Heartbeat")))
-    (with-circe-server-buffer
-      (circe-server-message (format "Spurious PONG from server: %s"
-                                    (mapconcat #'identity args " "))))))
+  t)
 
 (circe-set-display-handler "PRIVMSG" 'circe-display-PRIVMSG)
 (defun circe-display-PRIVMSG (nick user host command args)
