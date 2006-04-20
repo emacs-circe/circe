@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-03-28 03:34:14"
+(defvar circe-time-stamp "2006-04-05 10:43:14"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -1650,14 +1650,19 @@ This uses `circe-display-table'."
       (if display
           (funcall display nick user host command args)
         (with-current-buffer (circe-server-last-active-buffer)
-          (if requestp
-              (circe-server-message
-               (format "Unknown CTCP request %s from %s (%s@%s): %s"
-                       ctcp
-                       nick user host
-                       text))
+          (cond
+           (requestp
+            (circe-server-message
+             (format "Unknown CTCP request %s from %s (%s@%s): %s"
+                     ctcp
+                     nick user host
+                     text)))
+           ((circe-server-my-nick-p target)
             (circe-server-message (format "CTCP %s reply from %s (%s@%s): %s"
-                                          ctcp nick user host text))))))))
+                                          ctcp nick user host text)))
+           (t
+            (circe-server-message (format "CTCP %s reply from %s (%s@%s) to %s: %s"
+                                          ctcp nick user host target text)))))))))
 
 (defun circe-server-parse-line (line)
   "Parse an IRC line.
