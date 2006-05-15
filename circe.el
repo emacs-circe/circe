@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-04-05 10:43:14"
+(defvar circe-time-stamp "2006-05-15 21:35:09"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -98,6 +98,16 @@
   "The face used to highlight the originator of a message.")
 (defface circe-originator-face '((t))
   "The face used to highlight the originator of a message."
+  :group 'circe)
+
+(defface circe-topic-diff-new-face '((t (:background "DarkGreen")))
+  "The face used for text added to a topic.
+See the {topic-diff} parameter to `circe-format-server-topic'."
+  :group 'circe)
+
+(defface circe-topic-diff-removed-face '((t (:background "DarkRed")))
+  "The face used for text removed from a topic.
+See the {topic-diff} parameter to `circe-format-server-topic'."
   :group 'circe)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -394,6 +404,15 @@ strings."
 (defcustom circe-format-server-notice "-Server Notice- {body}"
   "*The format for a server notice.
 {body} - The notice."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-topic "*** Topic change by {origin}: {new-topic}"
+  "*The format for topic changes.
+{channel} - Where the topic change happened.
+{new-topic} - The new topic.
+{old-topic} - The previous topic.
+{topic-diff} - A colorized diff of the topics."
   :type 'string
   :group 'circe-format)
 
@@ -793,13 +812,32 @@ protection algorithm."
     circe-server-nick))
 
 (defun circe-nick-next (oldnick)
-  "Generate a new nick from OLDNICK."
-  (if (< (length oldnick) 9)
-      (concat oldnick "-")
-    (mapconcat (lambda (_)
-                 (make-string 1 (+ ?a (random 26))))
-               '(1 2 3 4 5 6 7 8 9)
-               "")))
+  "Return a new nick to try for OLDNICK."
+  (cond
+   ;; If the nick ends with -+, replace those with _
+   ((string-match "^\\(.*[^-]\\)\\(-+\\)$" oldnick)
+    (concat (match-string 1 oldnick)
+            (make-string (- (match-end 2)
+                            (match-beginning 2))
+                         ?_)))
+   ;; If the nick is 9 chars long, take prefix and rotate.
+   ((>= (length oldnick)
+        9)
+    (when (string-match "^\\(.*[^-_]\\)[-_]*$" oldnick)
+      (let ((nick (match-string 1 oldnick)))
+        (concat (substring nick 1)
+                (string (aref nick 0))))))
+   ;; If the nick ends with _+ replace those with - and add one
+   ((string-match "^\\(.*[^_]\\)\\(_+\\)$" oldnick)
+    (concat (match-string 1 oldnick)
+            (make-string (- (match-end 2)
+                            (match-beginning 2))
+                         ?-)
+            "-"))
+   ;; Else, just append -
+   (t
+    (concat oldnick "-"))))
+
 
 (defun circe-server-message (message)
   "Display MESSAGE as a server message."
@@ -848,9 +886,11 @@ It is always possible to use the mynick or target formats."
                                 (car keywords)
                               keywords))))
          (text (lui-format format keywords)))
-    (lui-insert (if face
-                    (propertize text 'face face)
-                  text)
+    (when face
+      (font-lock-prepend-text-property 0 (length text)
+                                       'face face
+                                       text))
+    (lui-insert text
                 (memq format circe-format-not-tracked))))
 
 (defun circe-display-add-nick-property (keywords)
@@ -2167,8 +2207,7 @@ number, it shows the missing people due to that split."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom circe-format-strings
-  '(("TOPIC" 0 "Topic change: {origin}: {1}")
-    ("INVITE" active "Invite: {origin} invites you to {1}")
+  '(("INVITE" active "Invite: {origin} invites you to {1}")
     ("KICK" 0 "Kick: {1} kicked by {origin}: {2}")
     ("ERROR" active "Error: {0-}")
     ("001" active "{1}")
@@ -2446,13 +2485,78 @@ exist."
   (cond
    ((string= command "TOPIC")
     (with-circe-chat-buffer (car args)
-      (setq circe-channel-topic (cadr args))))
+      (setq circe-channel-topic-old circe-channel-topic
+            circe-channel-topic (cadr args))))
    ((string= command "331")             ; RPL_NOTOPIC
     (with-circe-chat-buffer (cadr args)
       (setq circe-channel-topic "")))
    ((string= command "332")             ; RPL_TOPIC
     (with-circe-chat-buffer (cadr args)
       (setq circe-channel-topic (nth 2 args))))))
+
+(circe-set-display-handler "TOPIC" 'circe-display-topic)
+(defun circe-display-topic (nick user host command args)
+  (let ((old circe-channel-topic-old)
+        (new (cadr args)))
+    (with-circe-chat-buffer (car args)
+      (circe-display 'circe-format-server-topic
+                     :nick (or nick "(unknown)")
+                     :user (or user "(unknown)")
+                     :host (or host "(unknown)")
+                     :origin (if (or user host)
+                                 (format "%s (%s@%s)"
+                                         (or nick "(unknown)")
+                                         (or user "(unknown)")
+                                         (or host "(unknown)"))
+                               (or nick "(unknown)"))
+                     :target (car args)
+                     :channel (car args)
+                     :new-topic new
+                     :old-topic old
+                     :topic-diff (circe-topic-diff old new)))))
+
+(defun circe-topic-diff (old new)
+  "Return a colored topic diff between OLD and NEW."
+  (mapconcat (lambda (elt)
+               (cond
+                ((eq '+ (car elt))
+                 (let ((s (cadr elt)))
+                   (font-lock-prepend-text-property 0 (length s)
+                                                    'face 'circe-topic-diff-new-face
+                                                    s)
+                   s))
+                ((eq '- (car elt))
+                 (let ((s (cadr elt)))
+                   (font-lock-prepend-text-property 0 (length s)
+                                                    'face 'circe-topic-diff-removed-face
+                                                    s)
+                   s))
+                (t
+                 (cadr elt))))
+             (lcs-unified-diff (circe-topic-diff-split old)
+                               (circe-topic-diff-split new)
+                               'string=)
+             ""))
+
+(defun circe-topic-diff-split (str)
+  "Split STR into a list of components.
+The list consists of words and spaces."
+  (let ((lis nil))
+    (with-temp-buffer
+      (insert str)
+      (goto-char (point-min))
+      (while (< (point)
+                (point-max))
+        (if (looking-at "\\w")
+            (let ((beg (point)))
+              (forward-word)
+              (setq lis (cons (buffer-substring beg (point))
+                              lis)))
+          (setq lis (cons (buffer-substring (point)
+                                            (+ 1 (point)))
+                          lis))
+          (forward-char))))
+    (reverse lis)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Nickserv Authentication
