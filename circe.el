@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-05-15 21:35:09"
+(defvar circe-time-stamp "2006-05-15 22:25:55"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -2453,6 +2453,10 @@ exist."
 (defvar circe-channel-topic ""
   "The current topic of the channel.")
 (make-variable-buffer-local 'circe-channel-topic)
+
+(defvar circe-channel-topic-old ""
+  "The previous topic of the channel.")
+(make-variable-buffer-local 'circe-channel-topic-old)
 
 (defun circe-command-TOPIC (channel &optional newtopic)
   "Change the topic of CHANNEL to NEWTOPIC."
