@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-05-15 22:25:55"
+(defvar circe-time-stamp "2006-05-16 16:22:34"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -44,6 +44,7 @@
 (require 'lui-format)
 (require 'ring)
 (require 'timer)
+(require 'lcs)
 
 (when (featurep 'xemacs)
   (require 'circe-xemacs))
@@ -2496,7 +2497,8 @@ exist."
       (setq circe-channel-topic "")))
    ((string= command "332")             ; RPL_TOPIC
     (with-circe-chat-buffer (cadr args)
-      (setq circe-channel-topic (nth 2 args))))))
+      (setq circe-channel-topic (nth 2 args)
+            circe-channel-topic-old circe-channel-topic)))))
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
 (defun circe-display-topic (nick user host command args)
