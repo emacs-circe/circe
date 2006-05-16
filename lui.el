@@ -111,7 +111,10 @@ entry is of one of the following forms (similar to
   (REGEXP FACE)
     Highlight everything matching REGEXP in FACE (a symbol)
   (REGEXP SUBMATCH FACE)
-    Highlight the SUBMATCH in REGEXP in FACE"
+    Highlight the SUBMATCH in REGEXP in FACE
+
+In all of these cases, the FACE can also be a property list which
+is then associated with the match."
   :type '(repeat (choice
                   (string :tag "Regular Expression")
                   (list :tag "Submatch"
@@ -445,7 +448,11 @@ If point is not in the input area, self-insert."
       (setq lui-input-ring-index nil)
       (if lui-input-function
           (funcall lui-input-function input)
-        (error "No input function specified")))))
+        (error "No input function specified")))
+    ;; Clean the undo list. The input is gone, nothing to be undone
+    ;; here.
+    ;     (setq buffer-undo-list nil)
+    ))
 
 
 ;;;;;;;;;;;;;;;;;;
@@ -797,24 +804,32 @@ This uses `end-of-line'."
 (defun lui-highlight-keywords ()
   "Highlight the entries in `lui-highlight-keywords' in buffer.
 This is called automatically when new text is inserted."
-  (let ((highlights lui-highlight-keywords)
-        (regex (lambda (entry)
+  (let ((regex (lambda (entry)
                  (if (stringp entry)
                      entry
                    (car entry))))
         (submatch (lambda (entry)
-                    (if (or (stringp entry)
-                            (symbolp (cadr entry)))
-                        0
-                      (cadr entry))))
-        (face (lambda (entry)
-                (if (or (stringp entry)
-                        (and (numberp (cadr entry))
-                             (null (cddr entry))))
-                    'lui-highlight-face
-                  (if (numberp (cadr entry))
-                      (nth 2 entry)
-                    (cadr entry))))))
+                    (if (numberp (cadr entry))
+                        (cadr entry)
+                      0)))
+        (properties (lambda (entry)
+                      (let ((face (cond
+                                   ;; REGEXP
+                                   ((stringp entry)
+                                    'lui-highlight-face)
+                                   ;; (REGEXP SUBMATCH)
+                                   ((and (numberp (cadr entry))
+                                         (null (cddr entry)))
+                                    'lui-highlight-face)
+                                   ;; (REGEXP FACE)
+                                   ((null (cddr entry))
+                                    (cadr entry))
+                                   ;; (REGEXP SUBMATCH FACE)
+                                   (t
+                                    (nth 2 entry)))))
+                        (if (facep face)
+                            `(face ,face)
+                          face)))))
     (mapc (lambda (entry)
             (goto-char (point-min))
             (while (re-search-forward (funcall regex entry) nil t)
@@ -822,9 +837,10 @@ This is called automatically when new text is inserted."
                      (beg (match-beginning exp))
                      (end (match-end exp)))
                 (when (not (text-property-any beg end 'lui-highlight-fontified-p t))
-                  (add-text-properties beg end `(face ,(funcall face entry)
-                                                      lui-highlight-fontified-p t))))))
-          highlights)))
+                  (add-text-properties beg end
+                                       (append (funcall properties entry)
+                                               '(lui-highlight-fontified-p t)))))))
+          lui-highlight-keywords)))
 
 
 ;;;;;;;;;;;;;;;
