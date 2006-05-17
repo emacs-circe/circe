@@ -132,7 +132,7 @@ is then associated with the match."
   :group 'lui)
 
 (defcustom lui-buttons-list
-  '(("\\(http\\|ftp\\|irc\\)://[^ \n]*[a-zA-Z0-9/]" 0 browse-url 0)
+  '(("\\(http\\|ftp\\|irc\\)://[^()<> \n]*[a-zA-Z0-9/]" 0 browse-url 0)
     ("`\\([A-Za-z0-9+=*/-]+\\)'" 1 lui-button-elisp-symbol 1)
     ("RFC ?\\([0-9]+\\)" 0 lui-button-rfc 1)
     ("SRFI[- ]?\\([0-9]+\\)" 0 lui-button-srfi 1))
@@ -669,11 +669,11 @@ make the whole thing invisible."
   (when (text-property-any (point-min)
                            (point-max)
                            'lui-fool t)
-    (let ((o (make-overlay (point-min)
-                           (point-max)))
-          (os (cons o
-                    (overlays-in (point-min)
-                                 (point-max)))))
+    (let* ((o (make-overlay (point-min)
+                            (point-max)))
+           (os (cons o
+                     (overlays-in (point-min)
+                                  (point-max)))))
       (overlay-put o 'lui-fool t)
       (overlay-put o 'lui-fool-overlays os)
       (mapc (lambda (o)
