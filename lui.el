@@ -38,6 +38,7 @@
 ;; lui-insert
 ;; lui-input-function
 ;; lui-completion-function
+;; lui-possible-completions-function
 ;; And the 'lui-ignored text property.
 
 ;;; Code:
@@ -315,12 +316,21 @@ This function is called with a single argument, the input
 string.")
 (make-variable-buffer-local 'lui-input-function)
 
-(defvar lui-completion-function nil
+(defvar lui-possible-completions-function nil
   "A function called to retrieve current completions.
 This receives one argument, which is non-nil when the completion
 happens at the beginning of a line.
 
 It is often a good idea to make this variable buffer-local.")
+
+(defvar lui-completion-function 'incomplete
+  "A function called to actually do completion.")
+
+(defvar lui-tab-function nil
+  "A function called when TAB is hit, but point is not in the input area.")
+
+(defvar lui-shift-tab-function nil
+  "A function called when S-TAB is hit.")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -330,7 +340,8 @@ It is often a good idea to make this variable buffer-local.")
 (defvar lui-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'lui-send-input)
-    (define-key map (kbd "TAB") 'incomplete)
+    (define-key map (kbd "TAB") 'lui-tab)
+    (define-key map (kbd "S-TAB") 'lui-shift-tab)
     (define-key map (kbd "M-p") 'lui-previous-input)
     (define-key map (kbd "M-n") 'lui-next-input)
     (define-key map (kbd "C-c C-u") 'lui-kill-to-beginning-of-line)
@@ -369,7 +380,7 @@ Those should define derived modes of this, so this function
 should never be called directly.
 
 It can be customized for an application by specifying a
-`lui-input-function', and possibly `lui-completion-function'."
+`lui-input-function', and possibly `lui-possible-completions-function'."
   (kill-all-local-variables)
   (setq major-mode 'lui-mode
         mode-name "LUI")
@@ -469,8 +480,31 @@ If point is not in the input area, self-insert."
                                  (forward-char)
                                  (point)))))
     (cons (buffer-substring-no-properties begin end)
-          (funcall lui-completion-function (= begin
-                                              lui-input-marker)))))
+          (funcall lui-possible-completions-function (= begin
+                                                        lui-input-marker)))))
+
+(defun lui-tab ()
+  "What happens when TAB is hit in a LUI buffer.
+When point is in the input line, `lui-completion-function'.
+Otherwise, `lui-tab-function' is called."
+  (interactive)
+  (cond
+   ((>= (point)
+        lui-input-marker)
+    (funcall lui-completion-function))
+   (lui-tab-function
+    (funcall lui-tab-function))
+   (t
+    (ding))))
+
+(defun lui-shift-tab ()
+  "What happens when S-TAB is hit in a LUI buffer.
+This just calls `lui-shift-tab-function'."
+  (interactive)
+  (if lui-shift-tab-function
+      (funcall lui-shift-tab-function)
+    (ding)))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
