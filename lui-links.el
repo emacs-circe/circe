@@ -119,10 +119,8 @@ value is the function to call."
 (defun lui-links-previous ()
   "Move point to the previous link."
   (interactive)
-  (let ((pos (or (when (get-text-property (point)
-                                          'lui-links-function)
-                   (previous-single-property-change (point)
-                                                    'lui-links-function))
+  (let ((pos (or (previous-single-property-change (point)
+                                                    'lui-links-function)
                  (point))))
     (let ((prev (previous-single-property-change pos
                                                  'lui-links-function)))
