@@ -39,7 +39,7 @@
 ;; lui-input-function
 ;; lui-completion-function
 ;; lui-possible-completions-function
-;; And the 'lui-ignored text property.
+;; and the 'lui-fool text property
 
 ;;; Code:
 
@@ -66,7 +66,7 @@
   :group 'applications)
 
 (defcustom lui-track-shorten-buffer-names-p t
-  "*Whether to shorten buffer names in the mode line.
+  "Whether to shorten buffer names in the mode line.
 A non-nil value will cause Lui to shorten the buffer names as
 much as possible to stay unambiguous when displaying them in the
 mode line."
@@ -74,18 +74,18 @@ mode line."
   :group 'lui)
 
 (defcustom lui-scroll-to-bottom-p t
-  "*Non-nil if Lui should keep the input line at the end of the window."
+  "Non-nil if Lui should keep the input line at the end of the window."
   :type 'boolean
   :group 'lui)
 
 (defcustom lui-flyspell-p nil
-  "*Non-nil if Lui should spell-check your input.
+  "Non-nil if Lui should spell-check your input.
 See `flyspell-mode' for more information."
   :type 'boolean
   :group 'lui)
 
 (defcustom lui-flyspell-alist nil
-  "*Alist of buffer dictionaries.
+  "Alist of buffer dictionaries.
 This is a list of mappings from buffers to dictionaries to use
 for `flyspell-mode'. The appropriate dictionary is automatically
 used when Lui is activated in a buffer with a matching buffer
@@ -100,7 +100,7 @@ a valid list of dictionaries."
   :group 'lui)
 
 (defcustom lui-highlight-keywords nil
-  "*A list of keywords to highlight.
+  "A list of keywords to highlight.
 This specifies a list of keywords that Lui should highlight. Each
 entry is of one of the following forms (similar to
 `font-lock-keywords'):
@@ -151,7 +151,7 @@ ARG-MATCH as its sole argument."
   :group 'lui)
 
 (defcustom lui-fill-type "    "
-  "*How Lui should fill its output.
+  "How Lui should fill its output.
 This can be one of the following values:
 
   A string
@@ -173,27 +173,27 @@ This can be one of the following values:
   :group 'lui)
 
 (defcustom lui-fill-column 70
-  "*The column at which Lui should break output.
+  "The column at which Lui should break output.
 See `fill-column'."
   :type 'integer
   :group 'lui)
 
 (defcustom lui-fill-remove-face-from-newline t
-  "*Non-nil when filling should remove faces from newlines.
+  "Non-nil when filling should remove faces from newlines.
 Faces on a newline extend to the end of the displayed line, which
 is often not was is wanted."
   :type 'boolean
   :group 'lui)
 
 (defcustom lui-time-stamp-format "[%H:%M]"
-  "*The format of time stamps.
+  "The format of time stamps.
 See `format-time-string' for a full description of available
 formatting directives."
   :type 'string
   :group 'lui)
 
 (defcustom lui-time-stamp-position 'right
-  "*Where Lui should put time-stamps.
+  "Where Lui should put time-stamps.
 This can be one of the following values:
 
   A number
@@ -212,20 +212,20 @@ This can be one of the following values:
   :group 'lui)
 
 (defcustom lui-time-stamp-only-when-changed-p t
-  "*Non-nil if Lui should only add a time-stamp when the time changes.
+  "Non-nil if Lui should only add a time-stamp when the time changes.
 If `lui-time-stamp-position' is 'left, this will still add the
 necessary whitespace."
   :type 'boolean
   :group 'lui)
 
 (defcustom lui-read-only-output-p t
-  "*Non-nil if Lui should make the output read-only.
+  "Non-nil if Lui should make the output read-only.
 Switching this off makes copying (by killing) easier for some."
   :type 'boolean
   :group 'lui)
 
 (defcustom lui-max-buffer-size nil
-  "*Non-nil if Lui should truncate the buffer if it grows too much.
+  "Non-nil if Lui should truncate the buffer if it grows too much.
 If the buffer size (in characters) exceeds this number, it is
 truncated at the top."
   :type '(choice (const :tag "Never Truncate" nil)
@@ -233,14 +233,14 @@ truncated at the top."
   :group 'lui)
 
 (defcustom lui-input-ring-size 32
-  "*The size of the input history of Lui.
+  "The size of the input history of Lui.
 This is the size of the input history used by
 \\[lui-previous-input] and \\[lui-next-input]."
   :type 'integer
   :group 'lui)
 
 (defcustom lui-track-frame-behavior 'visible
-  "*How to deal with frams to determine visibility of buffers.
+  "How to deal with frams to determine visibility of buffers.
 This is passed as the second argument to `get-buffer-window',
 see there for further explanation."
   :type '(choice (const :tag "All visible frames" visible)
@@ -250,7 +250,7 @@ see there for further explanation."
   :group 'lui)
 
 (defcustom lui-track-position 'before-modes
-  "*Where tracked buffers should appear in the mode line.
+  "Where tracked buffers should appear in the mode line.
 
   'before-modes
       Before the mode indicators
@@ -264,13 +264,13 @@ see there for further explanation."
   :group 'lui)
 
 (defcustom lui-track-faces-priorities nil
-  "*A list of faces which should be shown by LUI tracking in the mode line.
+  "A list of faces which should be shown by LUI tracking in the mode line.
 The first face found in this list is used."
   :type '(repeat face)
   :group 'lui)
 
 (defcustom lui-track-ignored-buffers nil
-  "*A list of buffers that are never tracked.
+  "A list of buffers that are never tracked.
 Each element of this list has one of the following forms:
 
   regexp - Any buffer matching won't be tracked.
@@ -284,12 +284,12 @@ Each element of this list has one of the following forms:
   :group 'lui)
 
 (defcustom lui-mode-hook nil
-  "*The hook run when Lui is started."
+  "The hook run when Lui is started."
   :type 'hook
   :group 'lui)
 
 (defcustom lui-pre-input-hook nil
-  "*A hook run before Lui interprets the user input.
+  "A hook run before Lui interprets the user input.
 It is called with the buffer narrowed to the input line.
 Functions can modify the input if they really want to, but the
 user won't see the modifications, so that's a bad idea."
@@ -297,24 +297,20 @@ user won't see the modifications, so that's a bad idea."
   :group 'lui)
 
 (defcustom lui-pre-output-hook nil
-  "*The hook run before output is formatted."
+  "The hook run before output is formatted."
   :type 'hook
   :group 'lui)
 
 (defcustom lui-post-output-hook nil
-  "*The hook run after output has been formatted."
+  "The hook run after output has been formatted."
   :type 'hook
   :group 'lui)
 
-(defvar lui-time-stamp-face 'lui-time-stamp-face
-  "Face name for time stamps.")
 (defface lui-time-stamp-face
   '((t (:foreground "SlateBlue" :weight bold)))
-  "*Lui mode face used for time stamps."
+  "Lui mode face used for time stamps."
   :group 'lui)
 
-(defvar lui-highlight-face 'lui-highlight-face
-  "Face name for highlighting.")
 (defface lui-highlight-face
   ;; Taken from `font-lock-keyword-face'
   '((((class grayscale) (background light)) (:foreground "LightGray" :weight bold))
@@ -322,7 +318,14 @@ user won't see the modifications, so that's a bad idea."
     (((class color) (background light)) (:foreground "Purple"))
     (((class color) (background dark)) (:foreground "Cyan1"))
     (t (:weight bold)))
-  "*Lui mode face used for highlighting."
+  "Lui mode face used for highlighting."
+  :group 'lui)
+
+(defface lui-button-face
+  '((((class color) (background light)) (:foreground "Purple" :underline t))
+    (((class color) (background dark)) (:foreground "Cyan" :underline t))
+    (t (:underline t)))
+  "Default face used for LUI buttons."
   :group 'lui)
 
 
@@ -359,6 +362,7 @@ It is often a good idea to make this variable buffer-local.")
     (define-key map (kbd "M-p") 'lui-previous-input)
     (define-key map (kbd "M-n") 'lui-next-input)
     (define-key map (kbd "C-c C-u") 'lui-kill-to-beginning-of-line)
+    (define-key map (kbd "C-c C-i") 'lui-fool-toggle-display)
     map)
   "The key map used in Lui modes.")
 
@@ -502,6 +506,10 @@ If point is not in the input area, self-insert."
 ;;; Buttons ;;;
 ;;;;;;;;;;;;;;;
 
+(define-button-type 'lui-button
+  'supertype 'button
+  'face 'lui-button-face)
+
 (defun lui-buttonize ()
   "Buttonize the current message.
 This uses `lui-buttons-list'."
@@ -514,6 +522,7 @@ This uses `lui-buttons-list'."
             (while (re-search-forward regex nil t)
               (make-button (match-beginning submatch)
                            (match-end submatch)
+                           'type 'lui-button
                            'action 'lui-button-activate
                            'lui-button-function function
                            'lui-button-argument
@@ -645,44 +654,53 @@ Otherwise, we move to the next button."
     (delete-region lui-input-marker (point-max))
     (insert str)))
 
-(defvar lui-ignored-showing-p nil
-  "Whether we currently show text which is ignored.")
+
+;;;;;;;;;;;;;
+;;; Fools ;;;
+;;;;;;;;;;;;;
 
-(defun lui-ignore ()
-  "Hide ignored text in the current buffer.
-If an application sets the text property `lui-ignored', this text
-is considered as ignored, and will normally not be shown."
-  (when (not lui-ignored-showing-p)
-    (lui-ignore-propertize (point-min) (point-max)
-                           '(invisible t))))
+(defvar lui-fools-hidden-p t
+  "Whether fools are currently hidden.")
 
-(defun lui-toggle-ignored ()
-  "This toggles displaying text marked as ignored."
+(defun lui-fools ()
+  "Propertize the current narrowing according to foolhardiness.
+That is, if any part of it has the text property 'lui-fool set,
+make the whole thing invisible."
+  (when (text-property-any (point-min)
+                           (point-max)
+                           'lui-fool t)
+    (let ((o (make-overlay (point-min)
+                           (point-max)))
+          (os (cons o
+                    (overlays-in (point-min)
+                                 (point-max)))))
+      (overlay-put o 'lui-fool t)
+      (overlay-put o 'lui-fool-overlays os)
+      (mapc (lambda (o)
+              (overlay-put o 'invisible lui-fools-hidden-p))
+            os))))
+
+(defun lui-fool-toggle-display ()
+  "Display what fools have said."
   (interactive)
-  (save-excursion
-    (let ((inhibit-read-only t))
-      (lui-ignore-propertize (point-min) (point-max)
-                             (if lui-ignored-showing-p
-                                 '(invisible nil)
-                               '(invisible t)))
-      (setq lui-ignored-showing-p (not lui-ignored-showing-p)))))
+  (setq lui-fools-hidden-p (not lui-fools-hidden-p))
+  (if lui-fools-hidden-p
+      (message "Now hiding fools again *phew*")
+    (message "Now showing the gibberish of fools"))
+  (let ((pos (next-overlay-change (point-min))))
+    (while (< pos (point-max))
+      (mapc (lambda (o)
+              (when (overlay-get o 'lui-fool)
+                (mapc (lambda (o)
+                        (overlay-put o 'invisible lui-fools-hidden-p))
+                      (overlay-get o 'lui-fool-overlays))))
+            (overlays-at pos))
+      (setq pos (next-overlay-change pos)))))
 
-(defun lui-ignore-propertize (from to properties)
-  "Add PROPERTIES to any ignored text between BEG and END.
-Ignored text is text with a non-nil `lui-ignored' property."
-  (let ((beg (text-property-any from to
-                                'lui-ignored t))
-        (end nil))
-    (while beg
-      (setq end (or (next-single-property-change beg 'lui-ignored)
-                    to))
-      (when (and (progn (goto-char beg)
-			(bolp))
-                 (progn (goto-char end)
-                        (eolp)))
-        (setq end (+ 1 end)))
-      (add-text-properties beg end properties)
-      (setq beg (text-property-any end to 'lui-ignored t)))))
+
+;;;;;;;;;;;;;;;;
+;;; Flyspell ;;;
+;;;;;;;;;;;;;;;;
 
 (defun lui-flyspell-change-dictionary (&optional dictionary)
   "*Change flyspell to DICTIONARY.
@@ -732,14 +750,13 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
 
 (defun lui-insert (str &optional not-tracked-p)
   "Insert STR into the current Lui buffer."
-  ;; Don't modify the undo list. The undo list is for the user's
-  ;; input only.
   (let ((old-output-marker (marker-position lui-output-marker)))
+    ;; Don't modify the undo list. The undo list is for the user's
+    ;; input only.
     (let ((buffer-undo-list t))
       (save-excursion
         (save-restriction
-          (let ((inhibit-read-only t)
-                (faces nil))
+          (let ((inhibit-read-only t))
             (widen)
             (goto-char lui-output-marker)
             (let ((beg (point))
@@ -749,6 +766,9 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
               (set-marker lui-output-marker (point))
               (narrow-to-region beg end))
             (goto-char (point-min))
+            (add-text-properties (point-min)
+                                 (point-max)
+                                 `(lui-raw-text ,str))
             (run-hooks 'lui-pre-output-hook)
             (lui-highlight-keywords)
             (lui-buttonize)
@@ -756,19 +776,19 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
             (lui-time-stamp)
             (goto-char (point-min))
             (run-hooks 'lui-post-output-hook)
-            (lui-ignore)
+            (lui-fools)
             (goto-char (point-min))
-            (setq faces (lui-faces-in-region (point-min)
-                                             (point-max)))
-            (widen)
-            (lui-truncate)
-            (lui-read-only)
-            (when (and (not not-tracked-p)
-                       (not (get-buffer-window (current-buffer)
-                                               lui-track-frame-behavior)))
-              (lui-track-set-modified-status (buffer-name (current-buffer))
-                                             t
-                                             faces))))))
+            (let ((faces (lui-faces-in-region (point-min)
+                                              (point-max))))
+              (widen)
+              (lui-truncate)
+              (lui-read-only)
+              (when (and (not not-tracked-p)
+                         (not (get-buffer-window (current-buffer)
+                                                 lui-track-frame-behavior)))
+                (lui-track-set-modified-status (buffer-name (current-buffer))
+                                               t
+                                               faces)))))))
     (let ((distance (- lui-output-marker old-output-marker)))
       (when (consp buffer-undo-list)
         ;; Not t :-)
