@@ -65,7 +65,9 @@ argument."
                              (list 'face 'lui-links-face
                                    'keymap lui-links-keymap
                                    'lui-links-function (nth 2 entry)))))
-        lui-links-list))
+        lui-links-list)
+  (setq lui-tab-function 'lui-links-next
+        lui-shift-tab-function 'lui-links-previous))
 
 (defun disable-lui-links ()
   "Disable automatic links in LUI buffers."
@@ -99,6 +101,36 @@ value is the function to call."
           (funcall fun (buffer-substring-no-properties beg end))
         (error "Invalid link at point")))))
 
+(defun lui-links-next ()
+  "Move point to the next link."
+  (interactive)
+  (let ((pos (or (when (get-text-property (point)
+                                          'lui-links-function)
+                   (next-single-property-change (point)
+                                                'lui-links-function))
+                 (point))))
+    (let ((next (next-single-property-change pos
+                                             'lui-links-function)))
+      (if next
+          (goto-char next)
+        (message "No further links")
+        (ding)))))
+
+(defun lui-links-previous ()
+  "Move point to the previous link."
+  (interactive)
+  (let ((pos (or (when (get-text-property (point)
+                                          'lui-links-function)
+                   (previous-single-property-change (point)
+                                                    'lui-links-function))
+                 (point))))
+    (let ((prev (previous-single-property-change pos
+                                                 'lui-links-function)))
+      (if prev
+          (goto-char prev)
+        (message "No previous links")
+        (ding)))))
+
 (defun lui-links-elisp-symbol (str)
   "Show the documentation of the symbol named STR."
   (let ((sym (intern-soft str)))
@@ -107,7 +139,7 @@ value is the function to call."
       (error "No such symbol %s" str))
      ((functionp sym)
       (describe-function sym))
-     (t
+     ((symbolp sym)
       (describe-variable sym)))))
 
 (defun lui-links-rfc (str)
@@ -124,6 +156,7 @@ value is the function to call."
         (browse-url (format "http://srfi.schemers.org/srfi-%s/srfi-%s.html"
                             num num)))
     (error "Bad SRFI syntax")))
+
 
 (provide 'lui-links)
 ;;; lui-links.el ends here
