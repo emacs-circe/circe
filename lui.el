@@ -50,6 +50,7 @@
 (require 'ring)
 (require 'flyspell)
 (require 'ispell)
+(require 'button)
 
 (when (featurep 'xemacs)
   (require 'lui-xemacs))
@@ -128,6 +129,25 @@ is then associated with the match."
                         (string :tag "Regular Expression")
                         (integer :tag "Submatch")
                         (face :tag "Face"))))
+  :group 'lui)
+
+(defcustom lui-buttons-list
+  '(("\\(http\\|ftp\\|irc\\)://[^ \n]*[a-zA-Z0-9/]" 0 browse-url 0)
+    ("`\\([A-Za-z0-9+=*/-]+\\)'" 1 lui-button-elisp-symbol 1)
+    ("RFC ?\\([0-9]+\\)" 0 lui-button-rfc 1)
+    ("SRFI[- ]?\\([0-9]+\\)" 0 lui-button-srfi 1))
+  "The list of buttons to buttonize.
+This consists of lists of four elements each:
+
+  (REGEXP SUBMATCH FUNCTION ARG-MATCH)
+
+Whenever REGEXP is found, SUBMATCH is marked as a button. When
+that button is activated, FUNCTION is called with the match
+ARG-MATCH as its sole argument."
+  :type '(repeat (list (regexp :tag "Regular expression")
+                       (integer :tag "Submatch to buttonize")
+                       (function :tag "Function to call for this button")
+                       (integer :tag "Submatch to pass as an argument")))
   :group 'lui)
 
 (defcustom lui-fill-type "    "
@@ -326,12 +346,6 @@ It is often a good idea to make this variable buffer-local.")
 (defvar lui-completion-function 'incomplete
   "A function called to actually do completion.")
 
-(defvar lui-tab-function nil
-  "A function called when TAB is hit, but point is not in the input area.")
-
-(defvar lui-shift-tab-function nil
-  "A function called when S-TAB is hit.")
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private variables ;;;
@@ -340,8 +354,8 @@ It is often a good idea to make this variable buffer-local.")
 (defvar lui-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'lui-send-input)
-    (define-key map (kbd "TAB") 'lui-tab)
-    (define-key map (kbd "S-TAB") 'lui-shift-tab)
+    (define-key map (kbd "TAB") 'lui-next-button-or-complete)
+    (define-key map (kbd "<S-tab>") 'lui-previous-button)
     (define-key map (kbd "M-p") 'lui-previous-input)
     (define-key map (kbd "M-n") 'lui-next-input)
     (define-key map (kbd "C-c C-u") 'lui-kill-to-beginning-of-line)
@@ -483,28 +497,75 @@ If point is not in the input area, self-insert."
           (funcall lui-possible-completions-function (= begin
                                                         lui-input-marker)))))
 
-(defun lui-tab ()
-  "What happens when TAB is hit in a LUI buffer.
+
+;;;;;;;;;;;;;;;
+;;; Buttons ;;;
+;;;;;;;;;;;;;;;
+
+(defun lui-buttonize ()
+  "Buttonize the current message.
+This uses `lui-buttons-list'."
+  (mapc (lambda (entry)
+          (let ((regex (nth 0 entry))
+                (submatch (nth 1 entry))
+                (function (nth 2 entry))
+                (arg-match (nth 3 entry)))
+            (goto-char (point-min))
+            (while (re-search-forward regex nil t)
+              (make-button (match-beginning submatch)
+                           (match-end submatch)
+                           'action 'lui-button-activate
+                           'lui-button-function function
+                           'lui-button-argument
+                           (match-string-no-properties arg-match)))))
+        lui-buttons-list))
+
+(defun lui-button-activate (button)
+  "Activate BUTTON.
+This calls the function stored in the `lui-button-function'
+property with the argument stored in `lui-button-argument'."
+  (let ((function (button-get button 'lui-button-function))
+        (argument (button-get button 'lui-button-argument)))
+    (if (and (functionp function)
+             argument)
+        (funcall function argument)
+      (error "Not a LUI button"))))
+
+(defun lui-next-button-or-complete ()
+  "Go to the next button, or complete at point.
 When point is in the input line, `lui-completion-function'.
-Otherwise, `lui-tab-function' is called."
+Otherwise, we move to the next button."
   (interactive)
-  (cond
-   ((>= (point)
-        lui-input-marker)
-    (funcall lui-completion-function))
-   (lui-tab-function
-    (funcall lui-tab-function))
-   (t
-    (ding))))
+  (if (>= (point)
+          lui-input-marker)
+      (funcall lui-completion-function)
+    (forward-button 1)))
 
-(defun lui-shift-tab ()
-  "What happens when S-TAB is hit in a LUI buffer.
-This just calls `lui-shift-tab-function'."
+(defun lui-previous-button ()
+  "Go to the previous button."
   (interactive)
-  (if lui-shift-tab-function
-      (funcall lui-shift-tab-function)
-    (ding)))
+  (backward-button 1))
 
+(defun lui-button-elisp-symbol (name)
+  "Show the documentation for the symbol named NAME."
+  (let ((sym (intern-soft str)))
+    (cond
+     ((not sym)
+      (error "No such symbol %s" str))
+     ((functionp sym)
+      (describe-function sym))
+     ((symbolp sym)
+      (describe-variable sym)))))
+
+(defun lui-button-rfc (number)
+  "Browse the RFC NUMBER."
+  (browse-url (format "http://www.ietf.org/rfc/rfc%s.txt"
+                      number)))
+
+(defun lui-button-srfi (number)
+  "Browse the SRFI NUMBER."
+  (browse-url (format "http://srfi.schemers.org/srfi-%s/srfi-%s.html"
+                      number number)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -690,6 +751,7 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
             (goto-char (point-min))
             (run-hooks 'lui-pre-output-hook)
             (lui-highlight-keywords)
+            (lui-buttonize)
             (lui-fill)
             (lui-time-stamp)
             (goto-char (point-min))
