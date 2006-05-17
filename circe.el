@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-05-16 16:22:34"
+(defvar circe-time-stamp "2006-05-17 02:39:18"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -522,7 +522,7 @@ to reconnect to the server.
   (setq major-mode 'circe-server-mode
         mode-name "Circe Server"
         lui-input-function 'circe-chat-input)
-  (set (make-local-variable 'lui-completion-function)
+  (set (make-local-variable 'lui-possible-completions-function)
        'circe-server-completions)
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
@@ -848,7 +848,8 @@ protection algorithm."
 
 (defun circe-server-completions (bolp)
   "Return a list of possible completions for the current buffer.
-This is used for `lui-completion-function' in server buffers."
+This is used for `lui-possible-completions-function' in server
+buffers."
   (when circe-server-chat-buffers
     (let ((targets '()))
       (maphash (lambda (target ignored)
@@ -1188,7 +1189,7 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
   (use-local-map circe-channel-mode-map)
   (set-keymap-parent circe-channel-mode-map
                      lui-mode-map)
-  (set (make-local-variable 'lui-completion-function)
+  (set (make-local-variable 'lui-possible-completions-function)
        'circe-channel-completions)
   (run-hooks 'circe-channel-mode-hook))
 
@@ -1220,7 +1221,8 @@ From 005 RPL_ISUPPORT.")
 
 (defun circe-channel-completions (bolp)
   "Return a list of possible completions for the current buffer.
-This is used for `lui-completion-function' in channel buffers."
+This is used for `lui-possible-completions-function' in channel
+buffers."
   (when circe-channel-users
     (let ((nicks '()))
       (maphash (lambda (nick ignored)
@@ -1351,7 +1353,7 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
   (circe-chat-mode target server-buffer)
   (setq major-mode 'circe-query-mode
         mode-name "Circe Query")
-  (set (make-local-variable 'lui-completion-function)
+  (set (make-local-variable 'lui-possible-completions-function)
        'circe-query-completions)
   (run-hooks 'circe-query-mode-hook))
 
@@ -1362,8 +1364,8 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
 
 (defun circe-query-completions (bolp)
   "Return a list of possible completions in a query.
-That is, commands, our nick, and the other nick.
-This is used for `lui-completion-function' in query buffers."
+That is, commands, our nick, and the other nick. This is used for
+`lui-possible-completions-function' in query buffers."
   (append (list (circe-server-nick)
                 circe-chat-target)
           (circe-commands-list)))
