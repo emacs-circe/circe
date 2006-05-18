@@ -661,6 +661,7 @@ Otherwise, we move to the next button."
 
 (defvar lui-fools-hidden-p t
   "Whether fools are currently hidden.")
+(make-variable-buffer-local 'lui-fools-hidden-p)
 
 (defun lui-fools ()
   "Propertize the current narrowing according to foolhardiness.
