@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-05-17 02:39:18"
+(defvar circe-time-stamp "2006-05-19 00:40:48"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -1297,7 +1297,7 @@ buffers."
   (puthash user user circe-channel-users))
 
 (defun circe-channel-remove-user (user)
-  "Remove USER as a chanel user."
+  "Remove USER as a channel user."
   (when circe-channel-users
     (remhash user circe-channel-users)))
 
