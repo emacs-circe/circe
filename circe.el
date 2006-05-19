@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-05-19 00:40:48"
+(defvar circe-time-stamp "2006-05-19 12:00:50"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -1144,6 +1144,7 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
 
 (defun circe-chat-input (str)
   "Process STR as input."
+  (setq str (substring-no-properties str))
   (cond
    ((string= str "")
     nil)
