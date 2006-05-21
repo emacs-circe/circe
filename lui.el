@@ -568,10 +568,11 @@ Otherwise, we move to the next button."
 
 (defun lui-button-elisp-symbol (name)
   "Show the documentation for the symbol named NAME."
-  (let ((sym (intern-soft str)))
+  (let ((sym (intern-soft name)))
     (cond
      ((not sym)
-      (error "No such symbol %s" str))
+      (message "No such symbol %s" name)
+      (ding))
      ((functionp sym)
       (describe-function sym))
      ((symbolp sym)
