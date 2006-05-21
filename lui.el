@@ -937,7 +937,8 @@ This is called automatically when new text is inserted."
                      entry
                    (car entry))))
         (submatch (lambda (entry)
-                    (if (numberp (cadr entry))
+                    (if (and (consp entry)
+                             (numberp (cadr entry)))
                         (cadr entry)
                       0)))
         (properties (lambda (entry)
