@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-05-21 09:03:17"
+(defvar circe-time-stamp "2006-05-23 19:09:26"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -2505,9 +2505,9 @@ exist."
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
 (defun circe-display-topic (nick user host command args)
-  (let ((old circe-channel-topic-old)
-        (new (cadr args)))
-    (with-circe-chat-buffer (car args)
+  (with-circe-chat-buffer (car args)
+    (let ((old circe-channel-topic-old)
+          (new (cadr args)))
       (circe-display 'circe-format-server-topic
                      :nick (or nick "(unknown)")
                      :user (or user "(unknown)")
