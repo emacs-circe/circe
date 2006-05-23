@@ -1145,6 +1145,10 @@ function."
                    '(t lui-track-mode-line-buffers)
                    t))
      (t
+      ;; Bug in Emacs 21.3, must not have a single symbol alone in
+      ;; `global-mode-string'.
+      (when (not global-mode-string)
+        (setq global-mode-string '("")))
       (add-to-list 'global-mode-string
                    'lui-track-mode-line-buffers
                    t)))
