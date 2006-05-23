@@ -133,6 +133,7 @@ is then associated with the match."
 
 (defcustom lui-buttons-list
   `((,(rx (or (and (or "http"
+                       "https"
                        "ftp"
                        "irc")
                    "://"
