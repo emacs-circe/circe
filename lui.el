@@ -797,9 +797,7 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
               (when (and (not not-tracked-p)
                          (not (get-buffer-window (current-buffer)
                                                  lui-track-frame-behavior))
-                         (not (text-property-any (point)
-                                                 (+ 1 (point))
-                                                 'lui-fool t)))
+                         (not (get-text-property (point) 'lui-fool)))
                 (lui-track-set-modified-status (buffer-name (current-buffer))
                                                t
                                                faces)))))))
