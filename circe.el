@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-05-29 05:21:13"
+(defvar circe-time-stamp "2006-06-01 16:30:20"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -623,13 +623,7 @@ See `circe-server-max-reconnect-attempts'.")
                           #'circe-server-filter-function)
       (set-process-sentinel circe-server-process
                             #'circe-server-sentinel)
-      (set-process-coding-system circe-server-process
-                                 (if (consp circe-server-coding-system)
-                                     (cdr circe-server-coding-system)
-                                   circe-server-coding-system)
-                                 (if (consp circe-server-coding-system)
-                                     (car circe-server-coding-system)
-                                   circe-server-coding-system))
+      (set-process-coding-system circe-server-process 'raw-text-dos 'raw-text-dos)
       (when circe-server-pass
         (circe-server-send (format "PASS %s" circe-server-pass)))
       (circe-server-send (format "NICK %s" circe-server-nick))
@@ -640,18 +634,6 @@ See `circe-server-max-reconnect-attempts'.")
 (defun circe-server-filter-function (process string)
   "The process filter for the circe server."
   (with-current-buffer (process-buffer process)
-    ;; First of all, if we use 'undecided as a coding system for
-    ;; processes, this seems to change the coding system after Emacs
-    ;; decided the first time what to use. So, we, uh, just set it
-    ;; again.
-    (set-process-coding-system process
-                               (if (consp circe-server-coding-system)
-                                   (cdr circe-server-coding-system)
-                                 circe-server-coding-system)
-                               (if (consp circe-server-coding-system)
-                                   (car circe-server-coding-system)
-                                 circe-server-coding-system))
-
     ;; If you think this is written in a weird way - please refer to the
     ;; docstring of `circe-server-processing-p'
     (if circe-server-processing-p
@@ -718,7 +700,11 @@ order.
 See `circe-server-flood-margin' for an explanation of the flood
 protection algorithm."
   (with-circe-server-buffer
-    (let ((str (concat string "\r\n")))
+    (let ((str (concat (encode-coding-string string
+                                             (if (consp circe-server-coding-system)
+                                                 (car circe-server-coding-system)
+                                               circe-server-coding-system))
+                       "\n")))
       (if forcep
           (progn
             (setq circe-server-flood-last-message
@@ -1634,7 +1620,11 @@ This uses `circe-display-table'."
 
 (defun circe-server-handler (line)
   "Handle LINE from the server."
-  (let* ((parsed (circe-server-parse-line line))
+  (let* ((parsed (circe-server-parse-line
+                  (decode-coding-string line
+                                        (if (consp circe-server-coding-system)
+                                            (cdr circe-server-coding-system)
+                                          circe-server-coding-system))))
          (nick (aref parsed 0))
          (user (aref parsed 1))
          (host (aref parsed 2))
