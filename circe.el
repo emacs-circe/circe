@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-06-01 16:30:20"
+(defvar circe-time-stamp "2006-06-07 23:35:17"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -1970,7 +1970,9 @@ This helps Emacs to find out whether we are disconnected."
   "Show a MODE message."
   (when (or circe-show-server-modes-p
             user) ; If this is set, it is not a server mode
-    (with-current-buffer (circe-server-get-chat-buffer (car args))
+    (with-current-buffer (or (circe-server-get-chat-buffer (car args))
+                             circe-server-last-active-buffer
+                             circe-server-buffer)
       (circe-server-message
        (format "Mode change: %s by %s%s"
                (mapconcat #'identity (cdr args) " ")
