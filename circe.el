@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-06-07 23:35:17"
+(defvar circe-time-stamp "2006-06-07 23:52:17"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -295,6 +295,13 @@ This can be one of the following values:
 The first face is kept if the new message has only lower faces,
 or faces that don't show up at all."
   :type '(repeat face)
+  :group 'circe)
+
+(defcustom circe-server-send-unknown-command-p nil
+  "Non-nil when Circe should just pass on commands it doesn't know.
+E.g. /fnord foo bar would then just send \"fnord foo bar\" to the
+server."
+  :type 'boolean
   :group 'circe)
 
 (defcustom circe-nick-next-function 'circe-nick-next
@@ -1141,10 +1148,14 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
            (args (match-string 2 str))
            (handler (intern-soft (format "circe-command-%s"
                                          (upcase command)))))
-      (if handler
-          (funcall handler args)
+      (cond
+       (handler
+        (funcall handler args))
+       (circe-server-send-unknown-command-p
+        (circe-server-send (substring str 1)))
+       (t
         (circe-server-message (format "Unknown command: %s"
-                                      command)))))
+                                      command))))))
    (t
     (mapc #'circe-command-SAY (split-string str "\n")))))
 
