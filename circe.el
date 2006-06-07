@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-06-07 23:52:17"
+(defvar circe-time-stamp "2006-06-07 23:54:22"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -1152,7 +1152,9 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
        (handler
         (funcall handler args))
        (circe-server-send-unknown-command-p
-        (circe-server-send (substring str 1)))
+        (circe-server-send (format "%s %s"
+                                   (upcase command)
+                                   args)))
        (t
         (circe-server-message (format "Unknown command: %s"
                                       command))))))
