@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-06-07 23:54:22"
+(defvar circe-time-stamp "2006-06-11 20:35:12"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -1124,11 +1124,15 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
        t)
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
-  (let ((identifier (with-circe-server-buffer
-                      circe-server-network)))
+  (let ((network (with-circe-server-buffer
+                   circe-server-network)))
+
     (make-local-variable 'mode-line-buffer-identification)
     (setq mode-line-buffer-identification
-          (list (format "%%b@%-8s" identifier))))
+          (list (format "%%b@%-8s" network)))
+
+    (setq lui-logging-format-arguments
+          `(:target ,target :network ,network)))
   (run-hooks 'circe-chat-mode-hook))
 
 (defun circe-chat-disconnected ()

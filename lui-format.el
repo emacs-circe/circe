@@ -70,7 +70,9 @@ by a single space character.
 All named arguments receive a property of `lui-format-argument'
 with the respective name as value. The whole string receives a
 `lui-format-type' property with the FORMAT symbol as a value."
-  (let ((str (symbol-value format))
+  (let ((str (if (stringp format)
+                 format
+                 (symbol-value format)))
         (plist (mapcar (lambda (entry)
                          (if (keywordp entry)
                              ;; Keyword -> symbol
@@ -81,10 +83,12 @@ with the respective name as value. The whole string receives a
                                 (null (cdr keywords)))
                            (car keywords)
                          keywords))))
-    (propertize (if (functionp str)
-                    (funcall str plist)
-                  (lui-format-internal str plist))
-                'lui-format-type format)))
+    (let ((val (if (functionp str)
+                   (funcall str plist)
+                 (lui-format-internal str plist))))
+      (if (symbolp format)
+          (propertize val 'lui-format-type format)
+        val))))
 
 (defun lui-format-internal (fmt keywords)
   "Format a prepared and normalized entry.
