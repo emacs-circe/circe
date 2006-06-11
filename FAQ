@@ -10,33 +10,11 @@ A: It is not possible to find out whether we can use that channel
    to this server.
 
 Q: Can Circe do logging?
-A: This is on the agenda, but not yet implemented. In the meantime,
-   you can use the following code snippet:
-
-   (defvar my-lui-log-directory "~/.logs"
-     "Directory to place log files.")
-   (defun my-lui-logging ()
-     "Log the current information to an appropriate file."
-     (when circe-chat-target
-       (let ((string (buffer-substring (point-min)
-                                       (point-max)))
-             (target circe-chat-target))
-         (with-temp-buffer
-           (insert (format "%s %s"
-                           (format-time-string "%Y-%m-%d %H:%M")
-                           string))
-           (write-region (point-min)
-                         (point-max)
-                         (concat my-lui-log-directory
-                                 "/"
-                                 (replace-regexp-in-string
-                                  "\\(\\.\\.\\|/\\)"
-                                  "_"
-                                  target))
-                         t 'nomessage)))))
-   (add-hook 'lui-pre-output-hook 'my-lui-logging)
-
-   This will annoy you a lot in the message area. Good luck.
+A: Yes. Set `lui-logging-file-format' and `lui-logging-format' to
+   values of your preference; Circe adds the two format strings
+   {target} and {network} to the possibilities for
+   `lui-logging-file-format'. To actually enable logging, to
+   `enable-lui-logging' on `circe-chat-mode-hook'.
 
 Q: Why does switching to some Circe buffers hang Emacs for a moment?
 A: That's because you enabled flyspell for Circe, and ispell.el is so
