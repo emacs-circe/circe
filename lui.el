@@ -227,6 +227,14 @@ necessary whitespace."
   :type 'boolean
   :group 'lui)
 
+(defcustom lui-time-stamp-use-overlays-p t
+  "Non-nil if Lui should use overlays for the time stamp.
+If it doesn't use overlays, time stamps are copied with the usual
+kill commands. Overlays make time stamps not show up in copied
+text."
+  :type 'boolean
+  :group 'lui)
+
 (defcustom lui-read-only-output-p t
   "Non-nil if Lui should make the output read-only.
 Switching this off makes copying (by killing) easier for some."
@@ -1044,9 +1052,7 @@ function."
                 (not (string= ts lui-time-stamp-last)))
         (goto-char (point-min))
         (goto-char (point-at-eol))
-        (insert " ") ; Overlay alone would prevent us from marking this line
-        (let* ((ov (make-overlay (point) (point)))
-               (curcol (current-column))
+        (let* ((curcol (current-column))
                (col (if (numberp lui-time-stamp-position)
                         lui-time-stamp-position
                       (+ 2 (or lui-fill-column
@@ -1054,13 +1060,17 @@ function."
                                (point)))))
                (indent (if (> col curcol)
                            (- col curcol)
-                         1)))
-          (overlay-put ov 'field 'lui-time-stamp)
-          (overlay-put ov 'after-string
-                       (concat (make-string indent ? )
-                               (propertize
-                                ts
-                                'face 'lui-time-stamp-face))))))
+                         1))
+               (ts-string (concat (make-string indent ? )
+                                  (propertize
+                                   ts
+                                   'face 'lui-time-stamp-face))))
+          (if lui-time-stamp-use-overlays-p
+              (let ((ov (make-overlay (point) (point))))
+                (overlay-put ov 'field 'lui-time-stamp)
+                (overlay-put ov 'after-string ts-string))
+            ;; No overlays
+            (insert ts-string)))))
      ;; Timestamps left
      ((eq lui-time-stamp-position 'left)
       (let ((indent-string (make-string (length ts) ? )))
@@ -1070,20 +1080,26 @@ function."
          ((or (not lui-time-stamp-only-when-changed-p)
               (not lui-time-stamp-last)
               (not (string= ts lui-time-stamp-last)))
-          (let ((ov (make-overlay (point) (point))))
-            (overlay-put ov 'field 'lui-time-stamp)
-            (overlay-put ov 'before-string
-                         (propertize ts 'face 'lui-time-stamp-face))))
+          (if lui-time-stamp-use-overlays-p
+              (let ((ov (make-overlay (point) (point))))
+                (overlay-put ov 'field 'lui-time-stamp)
+                (overlay-put ov 'before-string
+                             (propertize ts 'face 'lui-time-stamp-face)))
+            (insert (propertize ts 'face 'lui-time-stamp-face))))
          ;; Just indentation
          (t
-          (let ((ov (make-overlay (point) (point))))
-            (overlay-put ov 'field 'lui-time-stamp-indentation)
-            (overlay-put ov 'before-string indent-string))))
+          (if lui-time-stamp-use-overlays-p
+              (let ((ov (make-overlay (point) (point))))
+                (overlay-put ov 'field 'lui-time-stamp-indentation)
+                (overlay-put ov 'before-string indent-string))
+            (insert indent-string))))
         (forward-line 1)
         (while (< (point) (point-max))
-          (let ((ov (make-overlay (point) (point))))
-            (overlay-put ov 'field 'lui-time-stamp-indentation)
-            (overlay-put ov 'before-string indent-string))
+          (if lui-time-stamp-use-overlays-p
+              (let ((ov (make-overlay (point) (point))))
+                (overlay-put ov 'field 'lui-time-stamp-indentation)
+                (overlay-put ov 'before-string indent-string))
+            (insert indent-string))
           (forward-line 1)))))
     (setq lui-time-stamp-last ts)))
 
