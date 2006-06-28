@@ -48,8 +48,7 @@
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-0-face
-  '((((class color) (min-colors 88)) (:foreground "white"))
-    (((class color) (min-colors 8)) (:foreground "white" :weight bold))
+  '((((class color)) (:foreground "white"))
     (t (:foreground "white")))
   "Face used for foreground IRC color 0 (white)."
   :group 'lui-irc-colors)
@@ -60,8 +59,7 @@
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-2-face
-  '((((class color) (min-colors 88)) (:foreground "blue4"))
-    (((class color) (min-colors 8)) (:foreground "blue"))
+  '((((class color)) (:foreground "blue4"))
     (t (:foreground "blue")))  "Face used for foreground IRC color 2 (blue)."
   :group 'lui-irc-colors)
 
@@ -71,92 +69,79 @@
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-4-face
-  '((((class color) (min-colors 88)) (:foreground "red"))
-    (((class color) (min-colors 8)) (:foreground "red" :weight bold))
+  '((((class color)) (:foreground "red"))
     (t (:foreground "red")))
   "Face used for foreground IRC color 4 (red)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-5-face
-  '((((class color) (min-colors 88)) (:foreground "red4"))
-    (((class color) (min-colors 8)) (:foreground "red"))
+  '((((class color)) (:foreground "red4"))
     (t (:foreground "red")))
   "Face used for foreground IRC color 5 (brown)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-6-face
-  '((((class color) (min-colors 88)) (:foreground "magenta4"))
-    (((class color) (min-colors 8)) (:foreground "magenta"))
+  '((((class color)) (:foreground "magenta4"))
     (t (:foreground "magenta")))
   "Face used for foreground IRC color 6 (purple)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-7-face
-  '((((class color) (min-colors 88)) (:foreground "yellow4"))
-    (((class color) (min-colors 8)) (:foreground "yellow"))
+  '((((class color)) (:foreground "yellow4"))
     (t (:foreground "yellow")))
   "Face used for foreground IRC color 7 (orange)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-8-face
-  '((((class color) (min-colors 88)) (:foreground "yellow"))
-    (((class color) (min-colors 8)) (:foreground "yellow" :weight bold))
+  '((((class color)) (:foreground "yellow"))
     (t (:foreground "yellow")))
   "Face used for foreground IRC color 8 (yellow)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-9-face
-  '((((class color) (min-colors 88)) (:foreground "green"))
-    (((class color) (min-colors 8)) (:foreground "green" :weight bold))
+  '((((class color)) (:foreground "green"))
     (t (:foreground "green")))
   "Face used for foreground IRC color 9 (light green)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-10-face
-  '((((class color) (min-colors 88)) (:foreground "cyan4"))
-    (((class color) (min-colors 8)) (:foreground "cyan"))
+  '((((class color)) (:foreground "cyan4"))
     (t (:foreground "cyan")))
   "Face used for foreground IRC color 10 (teal)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-11-face
-  '((((class color) (min-colors 88)) (:foreground "cyan"))
-    (((class color) (min-colors 8)) (:foreground "cyan" :weight bold))
+  '((((class color)) (:foreground "cyan"))
     (t (:foreground "cyan")))
   "Face used for foreground IRC color 11 (light cyan)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-12-face
-  '((((class color) (min-colors 88)) (:foreground "blue"))
-    (((class color) (min-colors 8)) (:foreground "blue" :weight bold))
+  '((((class color)) (:foreground "blue"))
     (t (:foreground "blue")))
   "Face used for foreground IRC color 12 (light blue)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-13-face
-  '((((class color) (min-colors 88)) (:foreground "magenta"))
-    (((class color) (min-colors 8)) (:foreground "magenta" :weight bold))
+  '((((class color)) (:foreground "magenta"))
     (t (:foreground "magenta")))
   "Face used for foreground IRC color 13 (pink)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-14-face
-  '((((class color) (min-colors 88)) (:foreground "dimgray"))
-    (((class color) (min-colors 8)) (:foreground "white"))
+  '((((class color)) (:foreground "dimgray"))
     (t (:foreground "gray")))
   "Face used for foreground IRC color 14 (grey)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-15-face
-  '((((class color) (min-colors 88)) (:foreground "gray"))
-    (((class color) (min-colors 8)) (:foreground "white"))
+  '((((class color)) (:foreground "gray"))
     (t (:foreground "gray")))
   "Face used for foreground IRC color 15 (light grey)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-0-face
-  '((((class color) (min-colors 88)) (:background "white"))
-    (((class color) (min-colors 8)) (:background "white" :weight bold))
+  '((((class color)) (:background "white"))
     (t (:background "white")))
   "Face used for background IRC color 0 (white)."
   :group 'lui-irc-colors)
@@ -167,8 +152,7 @@
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-2-face
-  '((((class color) (min-colors 88)) (:background "blue4"))
-    (((class color) (min-colors 8)) (:background "blue"))
+  '((((class color)) (:background "blue4"))
     (t (:background "blue")))  "Face used for background IRC color 2 (blue)."
   :group 'lui-irc-colors)
 
@@ -183,22 +167,19 @@
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-5-face
-  '((((class color) (min-colors 88)) (:background "red4"))
-    (((class color) (min-colors 8)) (:background "red"))
+  '((((class color)) (:background "red4"))
     (t (:background "red")))
   "Face used for background IRC color 5 (brown)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-6-face
-  '((((class color) (min-colors 88)) (:background "magenta4"))
-    (((class color) (min-colors 8)) (:background "magenta"))
+  '((((class color)) (:background "magenta4"))
     (t (:background "magenta")))
   "Face used for background IRC color 6 (purple)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-7-face
-  '((((class color) (min-colors 88)) (:background "yellow4"))
-    (((class color) (min-colors 8)) (:background "yellow"))
+  '((((class color)) (:background "yellow4"))
     (t (:background "yellow")))
   "Face used for background IRC color 7 (orange)."
   :group 'lui-irc-colors)
@@ -214,8 +195,7 @@
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-10-face
-  '((((class color) (min-colors 88)) (:background "cyan4"))
-    (((class color) (min-colors 8)) (:background "cyan"))
+  '((((class color)) (:background "cyan4"))
     (t (:background "cyan")))
   "Face used for background IRC color 10 (teal)."
   :group 'lui-irc-colors)
@@ -236,15 +216,13 @@
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-14-face
-  '((((class color) (min-colors 88)) (:background "dimgray"))
-    (((class color) (min-colors 8)) (:background "white"))
+  '((((class color)) (:background "dimgray"))
     (t (:background "gray")))
   "Face used for background IRC color 14 (grey)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-15-face
-  '((((class color) (min-colors 88)) (:background "gray"))
-    (((class color) (min-colors 8)) (:background "white"))
+  '((((class color)) (:background "gray"))
     (t (:background "gray")))
   "Face used for background IRC color 15 (light grey)."
   :group 'lui-irc-colors)
