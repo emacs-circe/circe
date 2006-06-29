@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-06-11 20:35:12"
+(defvar circe-time-stamp "2006-06-30 00:56:52"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -1117,7 +1117,7 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
         lui-input-function 'circe-chat-input
         circe-chat-target target
         circe-server-buffer server-buffer)
-  (set (make-local-variable 'lui-track-faces-priorities)
+  (set (make-local-variable 'tracking-faces-priorities)
        circe-track-faces-priorities)
   ;; Tab completion should be case-insensitive
   (set (make-local-variable 'completion-ignore-case)

@@ -51,6 +51,7 @@
 (require 'flyspell)
 (require 'ispell)
 (require 'button)
+(require 'tracking)
 
 (when (featurep 'xemacs)
   (require 'lui-xemacs))
@@ -64,14 +65,6 @@
   "The Linewise User Interface."
   :prefix "lui-"
   :group 'applications)
-
-(defcustom lui-track-shorten-buffer-names-p t
-  "Whether to shorten buffer names in the mode line.
-A non-nil value will cause Lui to shorten the buffer names as
-much as possible to stay unambiguous when displaying them in the
-mode line."
-  :type 'boolean
-  :group 'lui)
 
 (defcustom lui-scroll-to-bottom-p t
   "Non-nil if Lui should keep the input line at the end of the window."
@@ -256,50 +249,6 @@ This is the size of the input history used by
   :type 'integer
   :group 'lui)
 
-(defcustom lui-track-frame-behavior 'visible
-  "How to deal with frams to determine visibility of buffers.
-This is passed as the second argument to `get-buffer-window',
-see there for further explanation."
-  :type '(choice (const :tag "All visible frames" visible)
-                 (const :tag "Visible and iconified frames" 0)
-                 (const :tag "All frames" t)
-                 (const :tag "Selected frame only" nil))
-  :group 'lui)
-
-(defcustom lui-track-position 'before-modes
-  "Where tracked buffers should appear in the mode line.
-
-  'before-modes
-      Before the mode indicators
-  'after-modes
-      After the mode indicators
-  'end
-      At the end of the mode line"
-  :type '(choice (const :tag "Before the Mode Indicators" before-modes)
-                 (const :tag "Afterthe Mode Indicators" after-modes)
-                 (const :tag "At the End of the Mode Line" end))
-  :group 'lui)
-
-(defcustom lui-track-faces-priorities nil
-  "A list of faces which should be shown by LUI tracking in the mode line.
-The first face found in this list is used."
-  :type '(repeat face)
-  :group 'lui)
-
-(defcustom lui-track-ignored-buffers nil
-  "A list of buffers that are never tracked.
-Each element of this list has one of the following forms:
-
-  regexp - Any buffer matching won't be tracked.
-  (regexp faces ...) - Any buffer matching won't be tracked,
-      unless it has a face in FACES ... associated with it.
-      If no faces are given, `lui-track-faces-priorities' is
-      used."
-  :type '(repeat (choice regexp
-                         (list regexp
-                               (repeat face))))
-  :group 'lui)
-
 (defcustom lui-mode-hook nil
   "The hook run when Lui is started."
   :type 'hook
@@ -383,9 +332,6 @@ It is often a good idea to make this variable buffer-local.")
     map)
   "The key map used in Lui modes.")
 
-(global-set-key (kbd "C-c C-SPC") 'lui-track-next-buffer)
-(global-set-key (kbd "C-c C-@") 'lui-track-next-buffer)
-
 (defvar lui-input-marker nil
   "The marker where input should be inserted.")
 (make-variable-buffer-local 'lui-input-marker)
@@ -439,7 +385,7 @@ It can be customized for an application by specifying a
   (add-hook 'change-major-mode-hook
             'lui-change-major-mode
             nil t)
-  (lui-track-initialize)
+  (tracking-initialize)
   (when lui-flyspell-p
     (require 'flyspell)
     (lui-flyspell-change-dictionary))
@@ -803,12 +749,9 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
               (lui-truncate)
               (lui-read-only)
               (when (and (not not-tracked-p)
-                         (not (get-buffer-window (current-buffer)
-                                                 lui-track-frame-behavior))
                          (not (get-text-property (point) 'lui-fool)))
-                (lui-track-set-modified-status (buffer-name (current-buffer))
-                                               t
-                                               faces)))))))
+                (tracking-add-buffer (current-buffer)
+                                     faces)))))))
     (let ((distance (- lui-output-marker old-output-marker)))
       (when (consp buffer-undo-list)
         ;; Not t :-)
@@ -1133,200 +1076,6 @@ function."
                            front-sticky t
                            ;; XEmacs stuff.
                            start-open nil))))
-
-
-;;;;;;;;;;;;;;;;
-;;; Tracking ;;;
-;;;;;;;;;;;;;;;;
-
-(defvar lui-track-initialized-p nil
-  "Non-nil when Lui tracking has been initialized.")
-
-(defvar lui-track-buffers nil
-  "The list of currently tracked buffers.")
-
-(defvar lui-track-mode-line-buffers ""
-  "The entry to the mode line.")
-(put 'lui-track-mode-line-buffers 'risky-local-variable t)
-
-(defun lui-track-initialize ()
-  "Initialize Lui tracking."
-  (when (not lui-track-initialized-p)
-    (cond
-     ((and (boundp 'mode-line-modes)
-           (eq lui-track-position 'before-modes))
-      (add-to-list 'mode-line-modes
-                   '(t lui-track-mode-line-buffers)))
-     ((and (boundp 'mode-line-modes)
-           (eq lui-track-position 'after-modes))
-      (add-to-list 'mode-line-modes
-                   '(t lui-track-mode-line-buffers)
-                   t))
-     (t
-      ;; Bug in Emacs 21.3, must not have a single symbol alone in
-      ;; `global-mode-string'.
-      (when (not global-mode-string)
-        (setq global-mode-string '("")))
-      (add-to-list 'global-mode-string
-                   'lui-track-mode-line-buffers
-                   t)))
-    (add-hook 'window-configuration-change-hook
-              'lui-track-active)
-    (setq lui-track-initialized-p t)))
-
-(defun lui-track-set-modified-status (buffer status &optional faces)
-  "Set the modified status of BUFFER to STATUS.
-When STATUS is non-nil, the buffer is considered to be modified.
-If STATUS is nil, the buffer is considered unmodified.
-
-Modified buffers are shown in the mode line, and
-\\[lui-track-next-buffer] cycles through these.
-
-If FACES is given, it's the faces that might be appropriate for
-BUFFER in the mode line."
-  (if (not status)
-      (setq lui-track-buffers (delete buffer lui-track-buffers))
-    (when (not (lui-track-ignored-p buffer faces))
-      (let* ((entry (member buffer lui-track-buffers)))
-        (if entry
-            (setcar entry (lui-faces-merge (car entry)
-                                           faces))
-          (setq lui-track-buffers
-                (nconc lui-track-buffers
-                       (list (lui-faces-merge buffer
-                                              faces))))))))
-  (setq lui-track-mode-line-buffers (lui-track-status))
-  (sit-for 0) ;; Update mode line
-  )
-
-(defun lui-track-ignored-p (buffer faces)
-  "Return non-nil when BUFFER with FACES shouldn't be tracked.
-This uses `lui-track-ignored-buffers'."
-  (catch 'return
-    (mapc (lambda (entry)
-            (if (and (stringp entry)
-                     (string-match entry buffer))
-                (throw 'return t)
-              (when (and (string-match (car entry) buffer)
-                         (not (lui-any-in (or (cdr entry)
-                                              lui-track-faces-priorities)
-                                          faces)))
-                (throw 'return t))))
-          lui-track-ignored-buffers)
-    nil))
-
-(defun lui-any-in (lista listb)
-  "Return non-nil when any element in LISTA is in LISTB"
-  (catch 'return
-    (mapc (lambda (entry)
-            (when (memq entry listb)
-              (throw 'return t)))
-          lista)
-    nil))
-
-(defun lui-track-status ()
-  "Return the current track status."
-  (let ((shortened (lui-track-shorten lui-track-buffers)))
-    (if shortened
-        (concat " [" (mapconcat #'identity shortened ",") "] ")
-      "")))
-
-(defun lui-track-shorten (buffers)
-  "Shorten BUFFERS according to `lui-track-shorten-buffer-names-p'."
-  (if lui-track-shorten-buffer-names-p
-      (let ((all-buffers (mapcar #'buffer-name (buffer-list))))
-        (mapcar (lambda (buffer)
-                  (lui-track-shorten-single buffer
-                                            (remove buffer all-buffers)))
-                buffers))
-    buffers))
-
-(defun lui-track-shorten-single (str list)
-  "Return the shortest form of STR which is unambiguous in LIST."
-  (let ((prefix (substring str 0 1))
-        (prefix-length 1)
-        (str-length (length str)))
-    (catch 'return
-      (while (< prefix-length
-                str-length)
-        (setq prefix (substring str 0 prefix-length))
-        (when (not (lui-track-find-prefix prefix list))
-          (throw 'return prefix))
-        (setq prefix-length (+ 1 prefix-length)))
-      str)))
-
-(defun lui-track-find-prefix (prefix list)
-  "Return non-nil when a string in LIST begins with PREFIX."
-  (let ((rx (concat "^" (regexp-quote prefix))))
-    (catch 'return
-      (while list
-        (when (string-match rx (car list))
-          (throw 'return t))
-        (setq list (cdr list)))
-      nil)))
-
-(defun lui-track-active ()
-  "Remove visible buffers from the tracked buffers.
-This is usually called via `window-configuration-changed-hook'."
-  (interactive)
-  (mapc (lambda (buffer)
-          (when (or (not (get-buffer buffer))
-                    (get-buffer-window buffer
-                                       lui-track-frame-behavior))
-            (lui-track-set-modified-status buffer nil)))
-        lui-track-buffers)
-  (setq lui-track-mode-line-buffers (lui-track-status))
-  )
-
-(defvar lui-track-start-buffer nil
-  "The buffer we started from when cycling through the active buffers.")
-
-(defvar lui-track-last-buffer nil
-  "The buffer we last switched to with `lui-track-next-buffer'.
-When this is not the current buffer when we continue switching, a
-new `lui-track-start-buffer' is created.")
-
-(defun lui-track-next-buffer ()
-  "Switch to the next active buffer."
-  (interactive)
-  (cond
-   ((and (not lui-track-buffers)
-         lui-track-start-buffer)
-    (let ((buf lui-track-start-buffer))
-      (setq lui-track-start-buffer nil)
-      (switch-to-buffer buf)))
-   ((not lui-track-buffers)
-    nil)
-   (t
-    (when (not (eq lui-track-last-buffer
-                   (current-buffer)))
-      (setq lui-track-start-buffer (current-buffer)))
-    (let ((new (car lui-track-buffers)))
-      (setq lui-track-buffers (cdr lui-track-buffers)
-            lui-track-mode-line-buffers (lui-track-status))
-      (switch-to-buffer new))
-    (setq lui-track-last-buffer (current-buffer))
-    (sit-for 0) ;; Update mode line
-    )))
-
-(defun lui-track-previous-buffer ()
-  "Switch to the last active buffer."
-  (interactive)
-  (when lui-track-buffers
-    (switch-to-buffer (car (last lui-track-buffers)))))
-
-(defun lui-faces-merge (string faces)
-  "Merge faces into string, adhering to `lui-track-faces-priorities'.
-This returns STRING with the new face."
-  (let ((faces (cons (get-text-property 0 'face string)
-                     faces)))
-    (catch 'return
-      (mapc (lambda (candidate)
-              (when (memq candidate faces)
-                (throw 'return
-                       (propertize string 'face candidate))))
-            lui-track-faces-priorities)
-      string)))
 
 
 (provide 'lui)
