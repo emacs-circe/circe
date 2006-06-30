@@ -385,7 +385,7 @@ It can be customized for an application by specifying a
   (add-hook 'change-major-mode-hook
             'lui-change-major-mode
             nil t)
-  (tracking-initialize)
+  (tracking-mode 1)
   (when lui-flyspell-p
     (require 'flyspell)
     (lui-flyspell-change-dictionary))
