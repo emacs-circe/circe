@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-06-30 00:56:52"
+(defvar circe-time-stamp "2006-07-28 19:42:08"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -1564,24 +1564,24 @@ command and argument."
 
 (defun circe-command-AWAY (reason)
   "Set yourself away."
-  (interactive)
+  (interactive "sReason: ")
   (circe-server-send (format "AWAY :%s" reason)))
 
-(defun circe-command-BACK (reason)
+(defun circe-command-BACK (&optional ignored)
   "Mark yourself not away anymore."
   (interactive)
   (circe-server-send "AWAY"))
 
 (defun circe-command-QUIT (reason)
   "Quit the current server."
-  (interactive)
+  (interactive "sReason: ")
   (with-circe-server-buffer
     (setq circe-server-quitting-p t)
     (circe-server-send (format "QUIT :%s" reason))))
 
 (defun circe-command-GAWAY (reason)
   "Set yourself away on all servers."
-  (interactive)
+  (interactive "sReason: ")
   (mapc (lambda (buf)
           (with-current-buffer buf
             (when (and (eq major-mode 'circe-server-mode)
@@ -1592,7 +1592,7 @@ command and argument."
 
 (defun circe-command-GQUIT (reason)
   "Quit all servers."
-  (interactive)
+  (interactive "sReason: ")
   (mapc (lambda (buf)
           (with-current-buffer buf
             (when (and (eq major-mode 'circe-server-mode)
@@ -1600,6 +1600,18 @@ command and argument."
                            'open))
               (circe-command-QUIT reason))))
         (buffer-list)))
+
+(defun circe-command-INVITE (nick &optional channel)
+  "Invite NICK to CHANNEL.
+When CHANNEL is not given, NICK is assumed to be a string
+consisting of two words, the nick and the channel."
+  (interactive "sInvite who: \nsWhere: ")
+  (when (not channel)
+    (if (string-match "^\\([^ ]+\\) +\\([^ ]+\\)" nick)
+        (setq channel (match-string 2 nick)
+              nick (match-string 1 nick))
+      (circe-server-message "Usage: /INVITE <nick> <channel>")))
+  (circe-server-send (format "INVITE %s %s" nick channel)))
 
 (defun circe-command-SV (&optional ignored)
   "Tell the current channel about your client and Emacs version."
@@ -2565,15 +2577,13 @@ The list consists of words and spaces."
       (goto-char (point-min))
       (while (< (point)
                 (point-max))
-        (if (looking-at "\\w")
-            (let ((beg (point)))
-              (forward-word)
-              (setq lis (cons (buffer-substring beg (point))
-                              lis)))
-          (setq lis (cons (buffer-substring (point)
-                                            (+ 1 (point)))
-                          lis))
-          (forward-char))))
+        (if (or (looking-at "\\w+\\W*")
+                (looking-at ".\\s-*"))
+            (progn
+              (setq lis (cons (match-string 0)
+                              lis))
+              (replace-match ""))
+          (error "Can't happen"))))
     (reverse lis)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
