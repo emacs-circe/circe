@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-08-10 20:02:01"
+(defvar circe-time-stamp "2006-08-10 21:04:39"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -954,13 +954,14 @@ This is used by Circe to know where to put spurious messages."
                              (match-end 1)
                              '(face circe-highlight-nick-face))))
      ((eq circe-highlight-nick-type 'message)
-      (let* ((start (text-property-any (point-min)
-                                       (point-max)
-                                       'lui-format-argument 'body))
-             (end (when start
-                    (next-single-property-change start 'lui-format-argument))))
-        (when (and start end)
-          (add-text-properties start end '(face circe-highlight-nick-face)))))
+      (when (re-search-forward nick-regex nil t)
+        (let* ((start (text-property-any (point-min)
+                                         (point-max)
+                                         'lui-format-argument 'body))
+               (end (when start
+                      (next-single-property-change start 'lui-format-argument))))
+          (when (and start end)
+            (add-text-properties start end '(face circe-highlight-nick-face))))))
      ((eq circe-highlight-nick-type 'all)
       (when (re-search-forward nick-regex nil t)
         (add-text-properties (point-min)
