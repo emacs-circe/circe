@@ -17,7 +17,7 @@ copy of the license is included in the file @file{COPYING.GFDL}.
 
 @dircategory Emacs
 @direntry
-* circe:: A Client for IRC in Emacs
+* Circe: (circe). A Client for IRC in Emacs
 @end direntry
 
 @titlepage
