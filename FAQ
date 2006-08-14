@@ -1,6 +1,10 @@
 Frequently Asked Questions about Circe, a Client for IRC on Emacs -*-outline-*-
 
 * General
+Q: Where can I get button.el?
+A: It's included in CVS Emacs. If you use 21.4, you can get it from
+   http://cvs.savannah.gnu.org/viewcvs/emacs/lisp/button.el?rev=1.21&root=emacs&view=auto
+
 Q: Why doesn't Circe re-use old channel buffers after the server
    buffer got killed?
 A: It is not possible to find out whether we can use that channel
