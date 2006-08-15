@@ -2,8 +2,8 @@
 
 include Makefile.defs
 
-EL  = $(subst $(PACKAGE)-auto.el,,$(wildcard *.el)) $(PACKAGE)-auto.el
-ELC = $(patsubst %.el,%.elc,$(wildcard *.el))
+EL  = $(wildcard *.el) $(PACKAGE)-auto.el
+ELC = $(patsubst %.el,%.elc,$(EL))
 
 TEXI = $(PACKAGE).texi
 INFO = $(patsubst %.texi,%.info,$(TEXI))
