@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-08-10 21:04:39"
+(defvar circe-time-stamp "2006-08-15 19:38:32"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -543,7 +543,7 @@ to reconnect to the server.
             'circe-buffer-killed)
   (run-hooks 'circe-server-mode-hook))
 
-;;; No ;;;###autoload because this has a hand-written autoloads line.
+;;;###autoload
 (defun circe (host service &optional network pass nick user realname)
   "Connect to the IRC server HOST at SERVICE.
 NETWORK is the shorthand used for indicating where we're connected
