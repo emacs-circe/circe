@@ -716,50 +716,41 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
 
 (defun lui-insert (str &optional not-tracked-p)
   "Insert STR into the current Lui buffer."
-  (let ((old-output-marker (marker-position lui-output-marker)))
-    ;; Don't modify the undo list. The undo list is for the user's
-    ;; input only.
-    (let ((buffer-undo-list t))
-      (save-excursion
-        (save-restriction
-          (let ((inhibit-read-only t))
-            (widen)
-            (goto-char lui-output-marker)
-            (let ((beg (point))
-                  (end nil))
-              (insert str "\n")
-              (setq end (point))
-              (set-marker lui-output-marker (point))
-              (narrow-to-region beg end))
-            (goto-char (point-min))
-            (add-text-properties (point-min)
-                                 (point-max)
-                                 `(lui-raw-text ,str))
-            (run-hooks 'lui-pre-output-hook)
-            (lui-highlight-keywords)
-            (lui-buttonize)
-            (lui-fill)
-            (lui-time-stamp)
-            (goto-char (point-min))
-            (run-hooks 'lui-post-output-hook)
-            (lui-fools)
-            (goto-char (point-min))
-            (let ((faces (lui-faces-in-region (point-min)
-                                              (point-max))))
-              (widen)
-              (lui-truncate)
-              (lui-read-only)
-              (when (and (not not-tracked-p)
-                         (not (get-text-property (point) 'lui-fool)))
-                (tracking-add-buffer (current-buffer)
-                                     faces)))))))
-    (let ((distance (- lui-output-marker old-output-marker)))
-      (when (consp buffer-undo-list)
-        ;; Not t :-)
-        (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
-                                                     old-output-marker
-                                                     distance)))
-      nil)))
+  (lui-save-undo-list
+   (save-excursion
+     (save-restriction
+       (let ((inhibit-read-only t))
+         (widen)
+         (goto-char lui-output-marker)
+         (let ((beg (point))
+               (end nil))
+           (insert str "\n")
+           (setq end (point))
+           (set-marker lui-output-marker (point))
+           (narrow-to-region beg end))
+         (goto-char (point-min))
+         (add-text-properties (point-min)
+                              (point-max)
+                              `(lui-raw-text ,str))
+         (run-hooks 'lui-pre-output-hook)
+         (lui-highlight-keywords)
+         (lui-buttonize)
+         (lui-fill)
+         (lui-time-stamp)
+         (goto-char (point-min))
+         (run-hooks 'lui-post-output-hook)
+         (lui-fools)
+         (goto-char (point-min))
+         (let ((faces (lui-faces-in-region (point-min)
+                                           (point-max))))
+           (widen)
+           (lui-truncate)
+           (lui-read-only)
+           (when (and (not not-tracked-p)
+                      (not (get-text-property (point) 'lui-fool)))
+             (tracking-add-buffer (current-buffer)
+                                  faces)))))))
+  )
 
 (defun lui-adjust-undo-list (list old-begin shift)
   "Adjust undo positions in LIST by SHIFT.
@@ -773,8 +764,8 @@ Only positions after OLD-BEGIN are affected."
   (let* ((adjust-position (lambda (pos)
                             (if (and (numberp pos)
                                      ;; After the boundary: Adjust
-                                     (> (abs pos)
-                                        old-begin))
+                                     (>= (abs pos)
+                                         old-begin))
                                 (* (if (< pos 0)
                                        -1
                                      1)
@@ -834,21 +825,39 @@ unexpecting user.")
 (defun lui-set-prompt (prompt)
   "Set PROMPT as the current Lui prompt."
   (let ((inhibit-read-only t))
-    (save-excursion
-      (goto-char lui-output-marker)
-      (insert prompt)
-      (if (> lui-input-marker (point))
-          (delete-region (point) lui-input-marker)
-        (set-marker lui-input-marker (point)))
-      (add-text-properties lui-output-marker lui-input-marker
-                           `(read-only t
-                             rear-nonsticky t
-                             field lui-prompt
-                             keymap ,lui-prompt-map
-                             ;; XEmacs stuff.
-                             start-open t
-                             end-open t
-                             )))))
+    (lui-save-undo-list
+     (save-excursion
+       (goto-char lui-output-marker)
+       (insert prompt)
+       (if (> lui-input-marker (point))
+           (delete-region (point) lui-input-marker)
+         (set-marker lui-input-marker (point)))
+       (add-text-properties lui-output-marker lui-input-marker
+                            `(read-only t
+                                        rear-nonsticky t
+                                        field lui-prompt
+                                        keymap ,lui-prompt-map
+                                        ;; XEmacs stuff.
+                                        start-open t
+                                        end-open t
+                                        ))))))
+
+(defmacro lui-save-undo-list (&rest body)
+  (let ((old-marker-sym (make-symbol "old-marker")))
+    `(let ((,old-marker-sym (marker-position lui-input-marker))
+           (val nil))
+       ;; Don't modify the undo list. The undo list is for the user's
+       ;; input only.
+       (let ((buffer-undo-list t))
+         (setq val (progn ,@body)))
+       (let ((distance (- lui-input-marker ,old-marker-sym)))
+         (message "XX: %S - %S" lui-input-marker ,old-marker-sym)
+         (when (consp buffer-undo-list)
+           ;; Not t :-)
+           (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
+                                                        ,old-marker-sym
+                                                        distance))))
+       val)))
 
 (defun lui-prompt-end-of-line (&optional N)
   "Move past the prompt, and then to the end of the line.
