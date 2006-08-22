@@ -850,13 +850,12 @@ unexpecting user.")
        ;; input only.
        (let ((buffer-undo-list t))
          (setq val (progn ,@body)))
-       (let ((distance (- lui-input-marker ,old-marker-sym)))
-         (message "XX: %S - %S" lui-input-marker ,old-marker-sym)
-         (when (consp buffer-undo-list)
-           ;; Not t :-)
-           (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
-                                                        ,old-marker-sym
-                                                        distance))))
+       (when (consp buffer-undo-list)
+         ;; Not t :-)
+         (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
+                                                      ,old-marker-sym
+                                                      (- lui-input-marker
+                                                         ,old-marker-sym))))
        val)))
 
 (defun lui-prompt-end-of-line (&optional N)
