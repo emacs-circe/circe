@@ -351,6 +351,27 @@ Use `lui-insert' instead of accessing this marker directly.")
 (make-variable-buffer-local 'lui-input-ring-index)
 
 
+;;;;;;;;;;;;;;
+;;; Macros ;;;
+;;;;;;;;;;;;;;
+
+(defmacro lui-save-undo-list (&rest body)
+  (let ((old-marker-sym (make-symbol "old-marker")))
+    `(let ((,old-marker-sym (marker-position lui-input-marker))
+           (val nil))
+       ;; Don't modify the undo list. The undo list is for the user's
+       ;; input only.
+       (let ((buffer-undo-list t))
+         (setq val (progn ,@body)))
+       (when (consp buffer-undo-list)
+         ;; Not t :-)
+         (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
+                                                      ,old-marker-sym
+                                                      (- lui-input-marker
+                                                         ,old-marker-sym))))
+       val)))
+
+
 ;;;;;;;;;;;;;;;;;;
 ;;; Major Mode ;;;
 ;;;;;;;;;;;;;;;;;;
@@ -841,22 +862,6 @@ unexpecting user.")
                                         start-open t
                                         end-open t
                                         ))))))
-
-(defmacro lui-save-undo-list (&rest body)
-  (let ((old-marker-sym (make-symbol "old-marker")))
-    `(let ((,old-marker-sym (marker-position lui-input-marker))
-           (val nil))
-       ;; Don't modify the undo list. The undo list is for the user's
-       ;; input only.
-       (let ((buffer-undo-list t))
-         (setq val (progn ,@body)))
-       (when (consp buffer-undo-list)
-         ;; Not t :-)
-         (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
-                                                      ,old-marker-sym
-                                                      (- lui-input-marker
-                                                         ,old-marker-sym))))
-       val)))
 
 (defun lui-prompt-end-of-line (&optional N)
   "Move past the prompt, and then to the end of the line.
