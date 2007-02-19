@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2006-08-15 19:38:32"
+(defvar circe-time-stamp "2007-02-18 23:46:21"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -158,7 +158,9 @@ are displayed as if `circe-auto-query-p' was nil."
 (defcustom circe-prompt-string (concat (propertize ">"
                                                    'face 'circe-prompt-face)
                                        " ")
-  "*The string to use for the prompt."
+  "*The string to initialize the prompt with.
+To change the prompt dynamically or just in specific buffers, use
+`lui-set-prompt' in the appropriate hooks."
   :type 'string
   :group 'circe)
 
