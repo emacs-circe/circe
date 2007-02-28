@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2007-02-18 23:46:21"
+(defvar circe-time-stamp "2007-02-22 16:58:04"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -2608,6 +2608,10 @@ The list consists of words and spaces."
      "PRIVMSG NickServ :IDENTIFY %s")
     ("oftc"
      "NickServ" "services" "services.oftc.net"
+     "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
+     "PRIVMSG NickServ :IDENTIFY %s")
+    ("coldfront"
+     "NickServ" "services" "coldfront.net"
      "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
      "PRIVMSG NickServ :IDENTIFY %s"))
   "*A list of nickserv configurations.
