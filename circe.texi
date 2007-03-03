@@ -419,8 +419,7 @@ the source, for information more suited for developers.
 @chapter Extension Modules
 
 To extend Circe for other purposes than those features in the core you
-have to write an extension module. An example extension module for Circe
-can be found in the sources as @file{circe-highlight-all-nicks.el}.
+have to write an extension module.
 
 There are only few requirements for extension modules. A hypothetical
 @code{grovel} module should be provided in a @file{circe-grovel.el}
@@ -431,8 +430,66 @@ two commands, named @code{enable-circe-grovel} and
 It is also advisable that the enable function be annotated with an
 autoloads line.
 
+Currently there are two extension modules.
 
-@node Design Decisions,  , Extension Modules, top
+@menu
+* Highlight all nicks::   Highlight all nicknames in a channel
+* Logging::               Save your conversation history
+@end menu
+
+@node Highlight all nicks, Logging, , Extension Modules
+@chapter Highlight all nicks
+
+The highlight all nicks module provided by the file
+@file{circe-highlight-all-nicks.el} is a good example of how you can
+extend circe with modules. It highlights all nicknames of a channel when
+they appear in conversations.
+
+You activate the module by typing @kbd{M-x
+enable-circe-highlight-all-nicks}. If you want nick-highlighting as
+default behavior add this line to your @file{.emacs}.
+
+@lisp
+(enable-circe-highlight-all-nicks)
+@end lisp
+
+@node Logging, , Highlight all nicks, Extension Modules
+@chapter Logging
+
+The logging module provides a history of chat conversations. Whenever a
+logging enabled chat buffer is closed its contents will be saved in a
+log file. When you enter the same chat again the log will be inserted.
+
+To enable logging add
+
+@lisp
+(enable-circe-log)
+@end lisp
+
+into your @file{.emacs} or enable it manually with @kbd{M-x
+enable-circe-log}.
+
+Which chats will be logged can be configured with the two variables:
+
+@defopt circe-log-buffer-regexp
+Only buffers matching this regexp and not matching
+`circe-log-exlude-buffer-regexp' will be logged.
+@end defopt
+
+@defopt circe-log-exclude-buffer-regexp
+Only buffers not matching this regexp and matching
+`circe-log-buffer-regexp' will be logged. By default query buffers for
+ChanServ and NickServ will be ignored.
+@end defopt
+
+The logs will be saved in the directory specified with
+
+@defopt circe-log-directory
+The directory in which circe's log files should reside.
+@end defopt
+
+
+@node Design Decisions, , Extension Modules, top
 @chapter Design Decisions
 
 The basic design decision behind Circe is the separation of the frontend
