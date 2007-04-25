@@ -110,6 +110,8 @@ current buffer."
     (make-directory circe-log-directory))
   (write-file (circe-log-file-name)))
 
+(define-key circe-channel-mode-map (kbd "C-x C-s") ' circe-log-save-buffer)
+
 (defun circe-log-insert ()
   "Inserts the log file's content into the current buffer."
   (let ((log-buffer   " *circe log*")
