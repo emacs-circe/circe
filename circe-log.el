@@ -106,9 +106,11 @@ current buffer."
 (defun circe-log-save-buffer ()
   "Saves the current buffer in a log file."
   (interactive)
-  (when (not (file-exists-p circe-log-directory))
-    (make-directory circe-log-directory))
-  (write-file (circe-log-file-name)))
+  (let ((buf (buffer-name)))
+    (when (not (file-exists-p circe-log-directory))
+      (make-directory circe-log-directory))
+    (write-file (circe-log-file-name))
+    (rename-buffer buf)))
 
 (define-key circe-channel-mode-map (kbd "C-x C-s") ' circe-log-save-buffer)
 
