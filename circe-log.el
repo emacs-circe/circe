@@ -113,6 +113,7 @@ current buffer."
     (rename-buffer buf)))
 
 (define-key circe-channel-mode-map (kbd "C-x C-s") ' circe-log-save-buffer)
+(define-key circe-query-mode-map (kbd "C-x C-s") ' circe-log-save-buffer)
 
 (defun circe-log-insert ()
   "Inserts the log file's content into the current buffer."

@@ -1359,6 +1359,12 @@ This uses `circe-channel-nick-prefixes'."
 (defvar circe-query-mode-hook nil
   "Hook run when query mode is activated.")
 
+(defvar circe-query-mode-map
+  (let ((map (make-sparse-keymap)))
+    map)
+  "The key map for query mode buffers.")
+
+
 (defun circe-query-mode (target server-buffer)
   "The circe query chat major mode.
 This mode represents a query you are talking in.
@@ -1366,10 +1372,13 @@ This mode represents a query you are talking in.
 TARGET is the default target to send data to.
 SERVER-BUFFER is the server-buffer of this chat buffer.
 
-\\{lui-mode-map}"
+\\{circe-query-mode-map}"
   (circe-chat-mode target server-buffer)
   (setq major-mode 'circe-query-mode
         mode-name "Circe Query")
+  (use-local-map circe-query-mode-map)
+  (set-keymap-parent circe-query-mode-map
+                     lui-mode-map)
   (set (make-local-variable 'lui-possible-completions-function)
        'circe-query-completions)
   (run-hooks 'circe-query-mode-hook))
