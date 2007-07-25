@@ -228,7 +228,7 @@
   :group 'lui-irc-colors)
 
 (defvar lui-irc-colors-regex
-  "\\(\\|\\|\\|\\|\\)"
+  "\\(\x02\\|\x1F\\|\x16\\|\x0F\\|\x03\\)"
   "A regular expression matching IRC control codes.")
 
 ;;;###autoload
