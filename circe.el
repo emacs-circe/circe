@@ -1060,7 +1060,7 @@ initialize a new buffer if none exists."
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun circe-ignored-p (nick user host command args)
-  (or (run-hook-with-args-until-success circe-ignore-functions
+  (or (run-hook-with-args-until-success 'circe-ignore-functions
                                         nick user host
                                         command args)
       (let ((string (concat nick "!" user "@" host))
