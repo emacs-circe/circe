@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2007-02-22 16:58:04"
+(defvar circe-time-stamp "2008-11-22 13:20:27"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -555,6 +555,8 @@ NICK is the nick name to use (defaults to `circe-default-nick')
 USER is the user name to use (defaults to `circe-default-user')
 REALNAME is the real name to use (defaults to `circe-default-realname')"
   (interactive "sHost: \nsPort: ")
+  (when (equal service "")
+    (setq service 6667))
   (let* ((buffer-name (format "%s:%s" host service))
          (server-buffer (generate-new-buffer buffer-name)))
     (with-current-buffer server-buffer
