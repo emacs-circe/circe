@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2008-11-22 13:20:27"
+(defvar circe-time-stamp "2009-02-27 08:54:58"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -347,7 +347,8 @@ strings."
 
 (defcustom circe-format-not-tracked '(circe-format-server-message
                                       circe-format-server-notice
-                                      circe-format-server-numeric)
+                                      circe-format-server-numeric
+                                      circe-format-server-topic)
   "*A list of formats that should not trigger tracking."
   :type '(repeat symbol)
   :group 'circe-format)
@@ -497,11 +498,6 @@ ispell is started for the first, but might take long enough for
 the second message to be processed first. Nice, isn't it.")
 (make-variable-buffer-local 'circe-server-processing-p)
 
-(defvar circe-server-ping-timer nil
-  "A timer for sending periodic PING requests to the server.
-This helps Emacs find out whether a connection died.")
-(make-variable-buffer-local 'circe-server-ping-timer)
-
 (defvar circe-display-table nil
   "A hash table mapping commands to their display functions.")
 
@@ -631,7 +627,8 @@ See `circe-server-max-reconnect-attempts'.")
             circe-server-process (open-network-stream circe-server-name
                                                       (current-buffer)
                                                       circe-server-name
-                                                      circe-server-service))
+                                                      circe-server-service)
+            circe-server-flood-queue nil)
       (set-process-filter circe-server-process
                           #'circe-server-filter-function)
       (set-process-sentinel circe-server-process
@@ -675,9 +672,6 @@ See `circe-server-max-reconnect-attempts'.")
 (defun circe-server-sentinel (process event)
   "The process sentinel for the server."
   (with-current-buffer (process-buffer process)
-    (when circe-server-ping-timer
-      (cancel-timer circe-server-ping-timer))
-    (setq circe-server-registered-p nil)
     (circe-server-message "Disconnected")
     (circe-mapc-chat-buffers
      (lambda (buf)
@@ -1062,7 +1056,7 @@ initialize a new buffer if none exists."
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun circe-ignored-p (nick user host command args)
-  (or (run-hook-with-args-until-success 'circe-ignore-functions
+  (or (run-hook-with-args-until-success circe-ignore-functions
                                         nick user host
                                         command args)
       (let ((string (concat nick "!" user "@" host))
@@ -1233,7 +1227,7 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
   "Non-nil when we're currently receving a NAMES list.")
 (make-variable-buffer-local 'circe-server-receiving-names-p)
 
-(defvar circe-channel-nick-prefixes "@+%"
+(defvar circe-channel-nick-prefixes "@+%&"
   "The list of nick prefixes this server knows about.
 From 005 RPL_ISUPPORT.")
 (make-variable-buffer-local 'circe-server-nick-prefixes)
@@ -1361,12 +1355,6 @@ This uses `circe-channel-nick-prefixes'."
 (defvar circe-query-mode-hook nil
   "Hook run when query mode is activated.")
 
-(defvar circe-query-mode-map
-  (let ((map (make-sparse-keymap)))
-    map)
-  "The key map for query mode buffers.")
-
-
 (defun circe-query-mode (target server-buffer)
   "The circe query chat major mode.
 This mode represents a query you are talking in.
@@ -1374,13 +1362,10 @@ This mode represents a query you are talking in.
 TARGET is the default target to send data to.
 SERVER-BUFFER is the server-buffer of this chat buffer.
 
-\\{circe-query-mode-map}"
+\\{lui-mode-map}"
   (circe-chat-mode target server-buffer)
   (setq major-mode 'circe-query-mode
         mode-name "Circe Query")
-  (use-local-map circe-query-mode-map)
-  (set-keymap-parent circe-query-mode-map
-                     lui-mode-map)
   (set (make-local-variable 'lui-possible-completions-function)
        'circe-query-completions)
   (run-hooks 'circe-query-mode-hook))
@@ -1816,10 +1801,7 @@ command, and args of the message."
    ((string= command "001")             ; RPL_WELCOME
     (circe-server-set-my-nick (car args))
     (setq circe-server-registered-p t
-          circe-server-reconnect-attempts 0
-          circe-server-ping-timer (run-at-time 60 nil
-                                               'circe-server-ping
-                                               (current-buffer)))
+          circe-server-reconnect-attempts 0)
     (run-hooks 'circe-server-connected-hook))
    ;; If we didn't get our nick yet...
    ((and (not circe-server-registered-p)
@@ -1829,13 +1811,6 @@ command, and args of the message."
                                                   (cadr args))))))
   (circe-channel-message-handler nick user host command args)
   )
-
-(defun circe-server-ping (server-buffer)
-  "Send a PING request to the server.
-This helps Emacs to find out whether we are disconnected."
-  (with-current-buffer server-buffer
-    (circe-server-send (format "PING %s" circe-server-nick))
-    (run-at-time 60 nil 'circe-server-ping server-buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTCP Functions ;;;
@@ -2615,7 +2590,7 @@ The list consists of words and spaces."
 (defcustom circe-nickserv-alist
   '(("freenode"
      "NickServ" "NickServ" "services."
-     "/msg\\s-NickServ\\s-\C-bIDENTIFY\C-b\\s-<password>"
+     "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      "PRIVMSG NickServ :IDENTIFY %s")
     ("oftc"
      "NickServ" "services" "services.oftc.net"
@@ -2624,6 +2599,10 @@ The list consists of words and spaces."
     ("coldfront"
      "NickServ" "services" "coldfront.net"
      "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
+     "PRIVMSG NickServ :IDENTIFY %s")
+    ("double0"
+     "NickServ" "services" "double0.net"
+     "/msg\\s-NickServ\\s-IDENTIFY\\s-password"
      "PRIVMSG NickServ :IDENTIFY %s"))
   "*A list of nickserv configurations.
 Each element of this list is a list with the following items:
