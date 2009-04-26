@@ -206,11 +206,19 @@ This can be one of the following values:
   'left
       At the left side of the output. The output is thereby moved
       to the right.
+  'right-margin
+      In the right margin.  You will need to set right-margin-width
+      in all circe buffers.
+  'left-margin
+      In the left margin.  You will need to set left-margin-width
+      in all circe buffers.
   nil
       Do not add any time stamp."
   :type '(choice (const :tag "Right" right)
                  (integer :tag "Column")
                  (const :tag "Left" left)
+                 (const :tag "Right Margin" right-margin)
+                 (const :tag "Left Margin" left-margin)
                  (const :tag "None" nil))
   :group 'lui)
 
@@ -1057,7 +1065,19 @@ function."
                 (overlay-put ov 'field 'lui-time-stamp-indentation)
                 (overlay-put ov 'before-string indent-string))
             (insert indent-string))
-          (forward-line 1)))))
+          (forward-line 1))))
+     ((or (eq lui-time-stamp-position 'right-margin)
+          (eq lui-time-stamp-position 'left-margin))
+      (when (or (not lui-time-stamp-only-when-changed-p)
+                (not lui-time-stamp-last)
+                (not (string= ts lui-time-stamp-last)))
+        (let ((ts (propertize ts 'face 'lui-time-stamp-face)))
+          (let ((ov (make-overlay (point-min) (point-max)))
+                (time-stamp
+                 (propertize
+                  " "
+                  'display `((margin ,lui-time-stamp-position) ,ts))))
+            (overlay-put ov 'before-string time-stamp))))))
     (setq lui-time-stamp-last ts)))
 
 
