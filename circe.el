@@ -34,7 +34,7 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2009-02-27 08:54:58"
+(defvar circe-time-stamp "2009-04-26 10:29:34"
   "The modification date of Circe source file.")
 
 (defvar circe-version (format "from CVS (%s)" circe-time-stamp)
@@ -2647,8 +2647,8 @@ password for this network."
                (string= command "NOTICE"))
       (catch 'return
         (mapc (lambda (entry)
-                (when (and (string= (nth 0 entry)
-                                    circe-server-network)
+                (when (and (string-match (nth 0 entry)
+                                         circe-server-network)
                            (string= (nth 1 entry)
                                     nick)
                            (string= (nth 2 entry)
