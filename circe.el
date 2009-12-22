@@ -549,6 +549,7 @@ the second message to be processed first. Nice, isn't it.")
   "Non-nil when quitting from the server.
 This is only non-nil when the user is quitting the current
 server. See `circe-command-QUIT'.")
+(make-variable-buffer-local 'circe-server-quitting-p)
 
 (defvar circe-chat-target nil
   "The current target for the buffer.
