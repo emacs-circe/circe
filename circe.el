@@ -2189,6 +2189,17 @@ command, and args of the message."
                (nreverse result)
                " ")))
 
+(circe-set-display-handler "329" 'circe-display-329)
+(defun circe-display-329 (nick user host command args)
+  "Show a 329 numeric (topic set on...)"
+  (with-current-buffer (circe-server-get-chat-buffer (cadr args))
+    (let ((time (string-to-number (nth 2 args))))
+      (circe-server-message
+       (format "Topic set on %s (%s ago)"
+               (current-time-string (seconds-to-time time))
+               (circe-duration-string (- (float-time)
+                                         time)))))))
+
 (circe-set-display-handler "333" 'circe-display-333)
 (defun circe-display-333 (nick user host command args)
   "Show a 333 numeric (topic set by...)"
