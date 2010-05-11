@@ -1288,12 +1288,14 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
     nil)
    ;; Ignore commands in multiline input
    ((and (not (string-match "\n" str))
-         (string-match "\\`/\\([^ ]*\\) ?\\([^\n]*\\)\\'" str))
+         (string-match "\\`/\\([^/ ][^ ]*\\|[^/ ]*\\) ?\\([^\n]*\\)\\'" str))
     (let* ((command (match-string 1 str))
            (args (match-string 2 str))
            (handler (intern-soft (format "circe-command-%s"
                                          (upcase command)))))
       (cond
+       ((string= command "")
+        (circe-command-SAY args))
        (handler
         (funcall handler args))
        (circe-server-send-unknown-command-p
