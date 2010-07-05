@@ -90,6 +90,13 @@ Each element of this list has one of the following forms:
                                (repeat face))))
   :group 'tracking)
 
+(defcustom tracking-most-recent-first nil
+  "When non-nil, newly tracked buffers will go to the front of the
+list, rather than to the end."
+  :type 'boolean
+  :group 'tracking)
+
+
 ;;; Internal variables
 (defvar tracking-buffers nil
   "The list of currently tracked buffers.")
@@ -171,9 +178,13 @@ decided according to `tracking-faces-priorities'."
           (setcar entry (tracking-faces-merge (car entry)
                                               faces))
         (setq tracking-buffers
-              (nconc tracking-buffers
-                     (list (tracking-faces-merge (buffer-name buffer)
-                                                 faces))))))
+              (if tracking-most-recent-first
+                  (cons (tracking-faces-merge (buffer-name buffer)
+                                              faces)
+                        tracking-buffers)
+                  (nconc tracking-buffers
+                         (list (tracking-faces-merge (buffer-name buffer)
+                                                     faces)))))))
     (setq tracking-mode-line-buffers (tracking-status))
     (sit-for 0) ;; Update mode line
     ))
