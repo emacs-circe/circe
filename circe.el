@@ -2432,11 +2432,11 @@ number, it shows the missing people due to that split."
   '(("INVITE" active "Invite: {origin} invites you to {1}")
     ("KICK" 0 "Kick: {1} kicked by {origin}: {2}")
     ("ERROR" active "Error: {0-}")
-    ("001" active "{1}")
-    ("002" active "{1}")
-    ("003" active "{1}")
-    ("004" active "{1-}")
-    ("005" active "{1-}")
+    ("001" server "{1}")
+    ("002" server "{1}")
+    ("003" server "{1}")
+    ("004" server "{1-}")
+    ("005" server "{1-}")
     ("200" active "{1-}")
     ("201" active "{1-}")
     ("203" active "{1-}")
@@ -2454,12 +2454,12 @@ number, it shows the missing people due to that split."
     ("235" active "{1-}")
     ("242" active "{1}")
     ("243" active "{1-}")
-    ("250" active "{1}")
-    ("251" active "{1}")
-    ("252" active "{1-}")
-    ("253" active "{1-}")
-    ("254" active "{1-}")
-    ("255" active "{1}")
+    ("250" server "{1}")
+    ("251" server "{1}")
+    ("252" server "{1-}")
+    ("253" server "{1-}")
+    ("254" server "{1-}")
+    ("255" server "{1}")
     ("256" active "{1-}")
     ("257" active "{1}")
     ("258" active "{1}")
@@ -2467,8 +2467,8 @@ number, it shows the missing people due to that split."
     ("261" active "{1-}")
     ("262" active "{1-}")
     ("263" active "{1-}")
-    ("265" active "{1-}")
-    ("266" active "{1-}")
+    ("265" server "{1-}")
+    ("266" server "{1-}")
     ;; This is returned on both WHOIS and PRIVMSG
     ;; It should go to the active window for the former, and the query
     ;; window for the latter. Oh well.
@@ -2511,10 +2511,10 @@ number, it shows the missing people due to that split."
     ("368" 1 "{2}")
     ("369" active "{1} {2}")
     ("371" active "{1}")
-    ("372" active "{1}")
+    ("372" server "{1}")
     ("374" active "{1}")
-    ("375" active "{1}")
-    ("376" active "{1}")
+    ("375" server "{1}")
+    ("376" server "{1}")
     ("378" active "{1-}")
     ("381" active "{1}")
     ("382" active "{1-}")
@@ -2563,6 +2563,7 @@ The target can be any of:
 
   'active  - The last active buffer of this server
   'nick    - The nick who sent this message
+  'server  - The server buffer for this server
   number   - The index of the argument of the target
 
 The strings itself are formatted using `lui-format'. Possible
@@ -2573,6 +2574,7 @@ arguments to the IRC message."
                        (choice :tag "Destination Window"
                                (const :tag "Active Window" active)
                                (const :tag "Originating Nick" nick)
+                               (const :tag "Server Buffer" server)
                                (number :tag "Index"))
                        (string :tag "Format")))
   :group 'circe)
@@ -2628,6 +2630,8 @@ The buffer might be nil if it is not alive."
     (let ((buf (circe-server-last-active-buffer)))
       (cons buf
             (buffer-name buf))))
+   ((eq (nth 1 spec) 'server)
+    (cons (current-buffer) (buffer-name)))
    (t
     (error "Bad target in format string: %s" (nth 1 spec)))))
 
