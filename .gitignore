@@ -1,0 +1,6 @@
+*.elc
+*.el~
+circe-auto.el
+circe.html
+circe.info
+circe.pdf
