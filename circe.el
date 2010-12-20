@@ -2727,7 +2727,10 @@ exist."
 (defun circe-command-TOPIC (channel &optional newtopic)
   "Change the topic of CHANNEL to NEWTOPIC."
   (interactive "sChannel: \nsNew topic: ")
-  (when (and (not newtopic)
+  (when (string-match "^\\s-*$" channel)
+    (setq channel nil))
+  (when (and channel
+             (not newtopic)
              (string-match "^\\s-*\\(\\S-+\\)\\( \\(.*\\)\\)?" channel))
     (setq newtopic (match-string 3 channel)
           channel (match-string 1 channel)))
