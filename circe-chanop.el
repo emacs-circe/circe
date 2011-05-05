@@ -48,17 +48,15 @@
     (circe-server-message "Not in a channel buffer."))))
 
 (defun circe-command-KICK (nick &optional reason)
-  "Remove NICK from the current channel.
-REASON should be a short explanation on why you repress this poor
-soul."
+  "Kick WHO from the current channel with optional REASON."
   (interactive "sKick who: \nsWhy: ")
   (if (not (eq major-mode 'circe-channel-mode))
       (circe-server-message "Not in a channel buffer.")
     (when (not reason)
-      (if (string-match "^\\([^ ]*\\) \\(..*\\)" nick)
+      (if (string-match "^\\([^ ]*\\) +\\(.+\\)" nick)
           (setq reason (match-string 2 nick)
                 nick (match-string 1 nick))
-        (setq reason "Did you see me repress you?")))
+        (setq reason "-")))
     (circe-server-send (format "KICK %s %s :%s"
                                circe-chat-target nick reason))))
 
