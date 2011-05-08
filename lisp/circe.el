@@ -131,6 +131,13 @@ See `circe-fool-list'."
 ;;; Customization Variables ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defcustom circe-networks '()
+  "Alist of networks and connection settings.  Connection
+settings are a plist where allowed properties
+are :host, :service, :nick, :pass, :user, :realname, :network, :tls"
+  :type '(alist :key-type string :value-type plist)
+  :group 'circe)
+
 (defcustom circe-default-nick (user-login-name)
   "*The default nick for circe."
   :type 'string
@@ -597,7 +604,37 @@ to reconnect to the server.
   (run-hooks 'circe-server-mode-hook))
 
 ;;;###autoload
-(defun circe (host service &rest options) 
+(defun circe-lookup-network (network)
+  "Look up NETWORK in `circe-networks' and return a list of
+values that can be applied to `circe' to connect to that
+network."
+  (let ((def (cdr (assoc network circe-networks))))
+    (append (list (plist-get def :host)
+                  (plist-get def :service))
+            def
+            (list :network network))))
+
+(defun circe-read-host ()
+  "Read a host or network name, using `circe-networks' for
+network name completions."
+  (let* ((default-host (if (null circe-networks)
+                           nil
+                           (caar circe-networks)))
+         (host (completing-read "Host: "
+                                circe-networks
+                                nil nil nil nil
+                                default-host))
+         (hostdef (assoc host circe-networks)))
+    (if hostdef
+        (circe-lookup-network host)
+        (list host
+              (let ((service (read-from-minibuffer "Port: ")))
+                (if (equal service "")
+                    nil
+                    (string-to-number service)))))))
+
+;;;###autoload
+(defun circe (host &optional service &rest options) 
   "Connect to the IRC server HOST at SERVICE (a port).
 
 OPTIONS is either a list of arguments in the order of NETWORK,
@@ -611,8 +648,8 @@ to. (defaults to HOST)
 :user is the user name to use (defaults to `circe-default-user')
 :realname is the real name to use (defaults to `circe-default-realname')
 :tls is a boolean indicating as to whether to use TLS or not (defaults to nil)"
-  (interactive "sHost: \nsPort: ")
-  (when (equal service "")
+  (interactive (circe-read-host))
+  (unless service
     (setq service 6667))
   (let* ((buffer-name (format "%s:%s" host service))
          (server-buffer (generate-new-buffer buffer-name))
@@ -632,12 +669,7 @@ to. (defaults to HOST)
     (with-current-buffer server-buffer
       (circe-server-mode)
       (setq circe-server-name host
-            circe-server-service (if (and (stringp service)
-                                          (not
-                                           (zerop
-                                            (string-to-number service))))
-                                     (string-to-number service)
-                                   service)
+            circe-server-service service
             circe-server-network (or network
                                      host)
             circe-server-nick (or nick
