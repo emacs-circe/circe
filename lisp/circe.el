@@ -707,20 +707,25 @@ See `circe-server-max-reconnect-attempts'.")
        (lambda (buf)
          (with-current-buffer buf
            (circe-server-message "Connecting..."))))
-      (setq circe-server-process
-            (cond
-              (circe-server-use-tls
+      (setq circe-server-registered-p nil
+            circe-server-flood-queue nil)
+      (cond
+        (circe-server-use-tls
+         (setq circe-server-process
                (open-tls-stream circe-server-name
                                 (current-buffer)
                                 circe-server-name
-                                circe-server-service)
-               (set-process-filter circe-server-process
-                                   #'circe-server-filter-function)
-               (set-process-sentinel circe-server-process
-                                     #'circe-server-sentinel)
-               (set-process-coding-system circe-server-process
-                                          'raw-text-dos 'raw-text-dos))
-              (t
+                                circe-server-service))
+         (when circe-server-process
+           (set-process-filter circe-server-process
+                               #'circe-server-filter-function)
+           (set-process-sentinel circe-server-process
+                                 #'circe-server-sentinel)
+           (set-process-coding-system circe-server-process
+                                      'raw-text-dos 'raw-text-dos)
+           (circe-server-sentinel circe-server-process "open")))
+        (t
+         (setq circe-server-process
                (make-network-process :name circe-server-name
                                      :buffer (current-buffer)
                                      :host circe-server-name
@@ -730,9 +735,7 @@ See `circe-server-max-reconnect-attempts'.")
                                      :noquery t
                                      :filter #'circe-server-filter-function
                                      :sentinel #'circe-server-sentinel
-                                     :keepalive t)))
-            circe-server-registered-p nil
-            circe-server-flood-queue nil))))
+                                     :keepalive t)))))))
 
 (defun circe-server-filter-function (process string)
   "The process filter for the circe server."
