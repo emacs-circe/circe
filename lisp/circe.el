@@ -702,26 +702,37 @@ See `circe-server-max-reconnect-attempts'.")
                                                1))
       (when circe-server-process
         (delete-process circe-server-process))
-      (setq circe-server-registered-p nil
-            circe-server-process (funcall (if circe-server-use-tls
-                                              'open-tls-stream
-                                            'open-network-stream)
-                                          circe-server-name
-                                          (current-buffer)
-                                          circe-server-name
-                                          circe-server-service)
-            circe-server-flood-queue nil)
-      (set-process-filter circe-server-process
-                          #'circe-server-filter-function)
-      (set-process-sentinel circe-server-process
-                            #'circe-server-sentinel)
-      (set-process-coding-system circe-server-process 'raw-text-dos 'raw-text-dos)
-      (when circe-server-pass
-        (circe-server-send (format "PASS %s" circe-server-pass)))
-      (circe-server-send (format "NICK %s" circe-server-nick))
-      (circe-server-send (format "USER %s 8 * :%s"
-                                 circe-server-user
-                                 circe-server-realname)))))
+      (circe-server-message "Connecting...")
+      (circe-mapc-chat-buffers
+       (lambda (buf)
+         (with-current-buffer buf
+           (circe-server-message "Connecting..."))))
+      (setq circe-server-process
+            (cond
+              (circe-server-use-tls
+               (open-tls-stream circe-server-name
+                                (current-buffer)
+                                circe-server-name
+                                circe-server-service)
+               (set-process-filter circe-server-process
+                                   #'circe-server-filter-function)
+               (set-process-sentinel circe-server-process
+                                     #'circe-server-sentinel)
+               (set-process-coding-system circe-server-process
+                                          'raw-text-dos 'raw-text-dos))
+              (t
+               (make-network-process :name circe-server-name
+                                     :buffer (current-buffer)
+                                     :host circe-server-name
+                                     :service circe-server-service
+                                     :coding 'raw-text-dos
+                                     :nowait t
+                                     :noquery t
+                                     :filter #'circe-server-filter-function
+                                     :sentinel #'circe-server-sentinel
+                                     :keepalive t)))
+            circe-server-registered-p nil
+            circe-server-flood-queue nil))))
 
 (defun circe-server-filter-function (process string)
   "The process filter for the circe server."
@@ -754,15 +765,24 @@ See `circe-server-max-reconnect-attempts'.")
 (defun circe-server-sentinel (process event)
   "The process sentinel for the server."
   (with-current-buffer (process-buffer process)
-    (circe-server-message "Disconnected")
-    (circe-mapc-chat-buffers
-     (lambda (buf)
-       (with-current-buffer buf
-         (circe-chat-disconnected))))
-    (when (and (not (string-match "^deleted" event)) ; Buffer kill
-               (not circe-server-quitting-p))
-      (circe-reconnect))
-    (setq circe-server-quitting-p nil)))
+    (cond
+      ((string-match "^open" event)
+       (when circe-server-pass
+         (circe-server-send (format "PASS %s" circe-server-pass)))
+       (circe-server-send (format "NICK %s" circe-server-nick))
+       (circe-server-send (format "USER %s 8 * :%s"
+                                  circe-server-user
+                                  circe-server-realname)))
+      (t
+       (circe-server-message "Disconnected")
+       (circe-mapc-chat-buffers
+        (lambda (buf)
+          (with-current-buffer buf
+            (circe-chat-disconnected))))
+       (when (and (not (string-match "^deleted" event)) ; Buffer kill
+                  (not circe-server-quitting-p))
+         (circe-reconnect))
+       (setq circe-server-quitting-p nil)))))
 
 (defvar circe-server-flood-last-message 0
   "When we sent the last message.
