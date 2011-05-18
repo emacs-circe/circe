@@ -560,6 +560,9 @@ This is either a channel or a nick name.")
 ;;; Server Mode ;;;
 ;;;;;;;;;;;;;;;;;;;
 
+(defvar circe-server-mode-map (make-sparse-keymap)
+  "The key map for server mode buffers.")
+
 (defun circe-server-mode ()
   "The mode for circe server buffers.
 This buffer represents a server connection. When you kill it, the
@@ -567,13 +570,16 @@ server connection is closed. This will make all associated
 buffers unusable. Be sure to use \\[circe-reconnect] if you want
 to reconnect to the server.
 
-\\{lui-mode-map}"
+\\{circe-server-mode-map}"
   (lui-mode)
   (make-local-variable 'lui-pre-output-hook)
   (add-hook 'lui-pre-output-hook 'circe-highlight-nick)
   (setq major-mode 'circe-server-mode
         mode-name "Circe Server"
         lui-input-function 'circe-chat-input)
+  (use-local-map circe-server-mode-map)
+  (set-keymap-parent circe-server-mode-map
+                     lui-mode-map)
   (set (make-local-variable 'lui-possible-completions-function)
        'circe-server-completions)
   (lui-set-prompt circe-prompt-string)
