@@ -2164,7 +2164,7 @@ command, and args of the message."
           (circe-server-message
            (if (null (cdr args))
                (format "Part: %s (%s@%s)" nick user host)
-             (format "Part: %s (%s@%s): %s"
+             (format "Part: %s (%s@%s) - %s"
                      nick user host (cadr args)))))
         (circe-joinpart-forget-user nick)))))
 
@@ -2375,7 +2375,7 @@ or nil when this isn't a split."
                        (car args)))))
            ((not (circe-joinpart-is-inactive nick))
             (circe-server-message
-             (format "Quit: %s (%s@%s) has left IRC: %s"
+             (format "Quit: %s (%s@%s) - %s"
                      nick user host (car args)))))
           (circe-joinpart-forget-user nick))))))  
 
@@ -2397,8 +2397,7 @@ or nil when this isn't a split."
         (circe-joinpart-new-user nick))
        (t
         (circe-server-message
-         (format "Join: %s (%s@%s) is now on the channel"
-                 nick user host))))))
+         (format "Join: %s (%s@%s)" nick user host))))))
   ;; Next, query buffers. We do this even when the message should be
   ;; ignored by a netsplit, since this can't flood.
   (circe-mapc-user-channels nick
