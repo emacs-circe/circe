@@ -1363,7 +1363,7 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
 (defvar circe-channel-nick-prefixes "@+%&"
   "The list of nick prefixes this server knows about.
 From 005 RPL_ISUPPORT.")
-(make-variable-buffer-local 'circe-server-nick-prefixes)
+(make-variable-buffer-local 'circe-channel-nick-prefixes)
 
 (defun circe-channel-completions (bolp)
   "Return a list of possible completions for the current buffer.

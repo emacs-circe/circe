@@ -100,8 +100,8 @@ buffers for ChanServ and NickServ will be ignored."
 current buffer."
   (let ((circe-buffer (buffer-name)))
     (concat circe-log-directory
-            "/" circe-buffer
-            "@" (with-circe-server-buffer circe-server-network))))
+            "/" (downcase circe-buffer)
+            "@" (downcase (with-circe-server-buffer circe-server-network)))))
 
 (defun circe-log-save-buffer ()
   "Saves the current buffer in a log file."
