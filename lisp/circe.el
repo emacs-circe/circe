@@ -1229,13 +1229,13 @@ It is always possible to use the mynick or target formats."
                                 (car keywords)
                               keywords))))
          (text (lui-format format keywords)))
-    (when face
-      (font-lock-prepend-text-property 0 (length text)
-                                       'face face
-                                       text))
     ;; add special properties passed in via dynamically-scoped
     ;; *circe-special-display-spec*
     (circe-display-add-special-properties text)
+    (when face
+      (font-lock-append-text-property 0 (length text)
+                                      'face face
+                                      text))
     (lui-insert text
                 (memq format circe-format-not-tracked))))
 
@@ -1271,7 +1271,7 @@ It is always possible to use the mynick or target formats."
                       (font-lock-prepend-text-property start end 'face val text)
                       (setq start (text-property-any
                                    end len 'highlight-area t text))))
-                (font-lock-prepend-text-property 0 len 'face val text)))
+                (font-lock-append-text-property 0 len 'face val text)))
           (put-text-property 0 len key val text))
         (setq properties (cddr properties))))))
 
