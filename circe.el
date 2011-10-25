@@ -397,7 +397,7 @@ strings."
   :type 'string
   :group 'circe-format)
 
-(defcustom circe-format-self-action "* {mynick} {body}"
+(defcustom circe-format-self-action "* {nick} {body}"
   "*The format for actions to queries or channels.
 {body} - The body of the action."
   :type 'string
@@ -1582,7 +1582,8 @@ The length is specified in `circe-split-line-length'."
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
     (circe-display 'circe-format-self-action
-                   :body line)
+                   :body line
+                   :nick (circe-server-nick))
     (circe-server-send (format "PRIVMSG %s :\C-aACTION %s\C-a"
                                circe-chat-target line))))
 
