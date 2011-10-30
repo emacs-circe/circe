@@ -89,12 +89,13 @@ file name for lui applications.")
 (defun disable-lui-logging ()
   "Disable lui logging."
   (interactive)
+  (when (and (boundp 'lui-logging-timer)
+             lui-logging-timer)
+    (cancel-timer lui-logging-timer)
+    (setq lui-logging-timer nil))
   (when (and (boundp 'lui-logging-queue)
              lui-logging-queue)
     (remove-hook 'lui-pre-output-hook 'lui-logging)
-    (when lui-logging-timer
-      (cancel-timer lui-logging-timer)
-      (setq lui-logging-timer nil))
     (lui-logging-flush (current-buffer))))
 
 (defun lui-logging-make-directory ()
