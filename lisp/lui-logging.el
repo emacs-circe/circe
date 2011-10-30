@@ -77,62 +77,63 @@ file name for lui applications.")
   "The timer used to flush lui-logged buffers")
 (make-variable-buffer-local 'lui-logging-flush-timer)
 
-(defvar lui-logging-file-name ""
-  "Holds the name of the current log file")
-(make-variable-buffer-local 'lui-logging-file-name)
-
 (defun enable-lui-logging ()
   "Enable lui logging."
   (interactive)
   (add-hook 'lui-pre-output-hook 'lui-logging)
   (add-hook 'kill-buffer-hook 'disable-lui-logging)
+  (lui-logging-make-directory)
   (setq lui-logging-timer
-        (run-with-timer (random 30) 30 #'lui-logging-flush)))
+        (run-with-timer (random 30) 30 #'lui-logging-flush (current-buffer))))
 
 (defun disable-lui-logging ()
   "Disable lui logging."
   (interactive)
-  (remove-hook 'lui-pre-output-hook 'lui-logging)
-  (cancel-timer lui-logging-timer)
-  (lui-logging-flush))
+  (when (and (boundp 'lui-logging-queue)
+             lui-logging-queue)
+    (remove-hook 'lui-pre-output-hook 'lui-logging)
+    (when lui-logging-timer
+      (cancel-timer lui-logging-timer)
+      (setq lui-logging-timer nil))
+    (lui-logging-flush (current-buffer))))
 
-
-(defun lui-logging-flush ()
-  "Flush out the lui-logging queue."
-  (message (format-time-string "%T lui-logging-flush"))
-  (let* ((file lui-logging-file-name)
-         (dir (file-name-directory file))
-         (queue lui-logging-queue))
+(defun lui-logging-make-directory ()
+  "Create the log directory belonging to the current buffer's log filename"
+  (let* ((file (lui-logging-file-name))
+         (dir (file-name-directory file)))
     (when (not (file-directory-p dir))
-      (make-directory dir t))
-    (with-temp-buffer
-      (when queue
-        (write-region
-         (apply #'concat ;; yes, i know using nreverse is fucking gross. i don't care. 8)
-                (nreverse queue))
-         nil file t 'nomessage)))
-    (setq lui-logging-queue nil)))
+      (make-directory dir t))))
 
-(defun lui-logging ()
-  "Append the to-be-logged string to the output queue.
-This should be added to `lui-pre-output-hook'."
-  (message (format-time-string "%T lui-logging"))
-  (let ((log-format lui-logging-format)
-          (concat lui-logging-directory "/"
+(defun lui-logging-file-name ()
+  "Create the name of the log file based on `lui-logging-file-format'."
+  (concat lui-logging-directory "/"
           (downcase
            (apply 'lui-format
                   (format-time-string lui-logging-file-format)
                   :buffer (buffer-name (current-buffer))
-                  lui-logging-format-arguments)))
+                  lui-logging-format-arguments))))
+
+(defun lui-logging-flush (buf)
+  "Flush out the lui-logging queue."
+  (with-current-buffer buf
+    (when lui-logging-queue
+      (write-region
+       (apply #'concat ;; yes, i know using nreverse is fucking gross. i don't care. 8)
+              (nreverse lui-logging-queue))
+       nil (lui-logging-file-name) t 'nomessage)
+      (setq lui-logging-queue nil))))
+
+(defun lui-logging ()
+  "Append the to-be-logged string to the output queue.
+This should be added to `lui-pre-output-hook'."
+  (let ((log-format lui-logging-format)
         (text (buffer-string)))
-    (with-temp-buffer
-      (push
-       (with-output-to-string
-           (princ (apply #'lui-format
-                   (format-time-string log-format)
-                   :text text
-                   lui-logging-format-arguments)))
-       lui-logging-queue))))
+    (push
+     (with-output-to-string
+       (princ (lui-format
+               (format-time-string log-format)
+               :text text)))
+     lui-logging-queue)))
 
 (provide 'lui-logging)
 ;;; lui-logging.el ends here
