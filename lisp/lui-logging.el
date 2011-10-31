@@ -73,9 +73,9 @@ file name for lui applications.")
   "The queue of pending log messages, flushed every n seconds by a timer.")
 (make-variable-buffer-local 'lui-logging-queue)
 
-(defvar lui-logging-flush-timer nil
+(defvar lui-logging-timer nil
   "The timer used to flush lui-logged buffers")
-(make-variable-buffer-local 'lui-logging-flush-timer)
+(make-variable-buffer-local 'lui-logging-timer)
 
 (defun enable-lui-logging ()
   "Enable lui logging."
@@ -84,7 +84,7 @@ file name for lui applications.")
   (add-hook 'kill-buffer-hook 'disable-lui-logging)
   (lui-logging-make-directory)
   (setq lui-logging-timer
-        (run-with-timer (random 30) 30 #'lui-logging-flush (current-buffer))))
+        (run-with-timer (random 60) 60 #'lui-logging-flush (current-buffer))))
 
 (defun disable-lui-logging ()
   "Disable lui logging."
@@ -93,9 +93,9 @@ file name for lui applications.")
              lui-logging-timer)
     (cancel-timer lui-logging-timer)
     (setq lui-logging-timer nil))
+  (remove-hook 'lui-pre-output-hook 'lui-logging)
   (when (and (boundp 'lui-logging-queue)
              lui-logging-queue)
-    (remove-hook 'lui-pre-output-hook 'lui-logging)
     (lui-logging-flush (current-buffer))))
 
 (defun lui-logging-make-directory ()
