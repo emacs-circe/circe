@@ -235,18 +235,20 @@ decided according to `tracking-faces-priorities'."
 
 (defun tracking-ignored-p (buffer faces)
   "Return non-nil when BUFFER with FACES shouldn't be tracked.
-This uses `tracking-ignored-buffers'."
+This uses `tracking-ignored-buffers'.  Actual returned value is
+the entry from tracking-ignored-buffers that causes this buffer
+to be ignored."
   (catch 'return
     (let ((buffer-name (buffer-name buffer)))
       (mapc (lambda (entry)
               (if (stringp entry)
                   (and (string-match entry buffer-name)
-                       (throw 'return t))
+                       (throw 'return entry))
                 (when (and (string-match (car entry) buffer-name)
                            (not (tracking-any-in (or (cdr entry)
                                                      tracking-faces-priorities)
                                                  faces)))
-                  (throw 'return t))))
+                  (throw 'return entry))))
             tracking-ignored-buffers))
     nil))
 
