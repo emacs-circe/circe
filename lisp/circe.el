@@ -1702,20 +1702,18 @@ nick and the message."
 If COMMAND is not given, WHO is parsed to contain all of who,
 command and argument."
   (when (not command)
-    (if (string-match "^\\([^ ]*\\) \\([^ ]*\\) ?\\(.*\\)" who)
+    (if (string-match "^\\([^ ]*\\) *\\([^ ]*\\) *\\(.*\\)" who)
         (setq command (upcase (match-string 2 who))
               argument (match-string 3 who)
               who (match-string 1 who))
       (circe-server-message "Usage: /CTCP <who> <what>")))
-  (when command
-    (circe-server-send (format "PRIVMSG %s :\C-a%s%s%s\C-a"
+  (when (not (string= "" command))
+    (circe-server-send (format "PRIVMSG %s :\C-a%s%s\C-a"
                                who
                                command
-                               (if argument
-                                   " "
-                                 "")
-                               (or argument
-                                   "")))))
+                               (if (string= argument "")
+                                   ""
+                                 (concat " " argument))))))
 
 (defun circe-command-AWAY (reason)
   "Set yourself away."
