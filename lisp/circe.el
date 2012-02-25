@@ -2528,7 +2528,7 @@ number, it shows the missing people due to that split."
     ("330" active "{1} is logged in as {2}")
     ("331" 1 "No topic for {1} set")
     ("332" 1 "Topic for {1}: {2}")
-    ("341" active "Inviting {2} to {1}")
+    ("341" active "Inviting {1} to {2}")
     ("346" 1 "Invite mask: {2}")
     ("347" 1 "{2}")
     ("348" 1 "Except mask: {2}")
