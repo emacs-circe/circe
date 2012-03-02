@@ -20,7 +20,7 @@ EMACSVERSION = `$(EMACS) -q $(SITEFLAG) -batch -l ./scripts/build-helper.el -f b
 ELCDIR = $(PREFIX)/share/emacs/$(EMACSVERSION)/site-lisp/$(PACKAGE)/
 ELDIR = $(PREFIX)/share/emacs/site-lisp/$(PACKAGE)/
 DOCDIR = $(PREFIX)/share/doc/$(PACKAGE)/
-AUXDOC = README FAQ NEWS COPYING COPYING.FDL Makefile Makefile.defs
+AUXDOC = README FAQ COPYING COPYING.FDL Makefile Makefile.defs
 
 ### Programs
 MAKEINFO = makeinfo
