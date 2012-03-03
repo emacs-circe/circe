@@ -46,6 +46,10 @@
 (require 'timer)
 (require 'lcs)
 
+;; Used to be optional. But sorry, we're in the 21st century already.
+(require 'lui-irc-colors)
+(enable-lui-irc-colors)
+
 (when (featurep 'xemacs)
   (require 'circe-xemacs))
 
