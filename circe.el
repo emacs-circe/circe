@@ -120,6 +120,16 @@ See the {topic-diff} parameter to `circe-format-server-topic'.")
 See the {topic-diff} parameter to `circe-format-server-topic'."
   :group 'circe)
 
+(defvar circe-fool-face 'circe-fool-face
+  "The face used for fools.
+See `circe-fool-list'.")
+(defface circe-fool-face
+  '((t (:foreground "grey40" :bold t)))
+  "The face used for fools.
+See `circe-fool-list'."
+  :group 'circe)
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Customization Variables ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -192,13 +202,20 @@ To change the prompt dynamically or just in specific buffers, use
   :group 'circe)
 
 (defcustom circe-ignore-list nil
-  "*List of regular expressions to ignore."
-;; - This will be true again some time in the future.
-;; "Messages from such people are still inserted, but not shown. They
-;; can be displayed using \\[lui-toggle-ignored].
-;;
-;; If this ever poses a problem in combination with buffer
-;; truncation, please notify the author."
+  "*List of regular expressions to ignore.
+
+Each regular expression is matched against nick!user@host."
+  :type '(repeat regexp)
+  :group 'circe)
+
+(defcustom circe-fool-list nil
+  "*List of regular expressions for fools.
+
+Each regular expression is matched against nick!user@host.
+
+Messages from such people are still inserted, but not shown. They
+can be displayed using \\[lui-toggle-ignored]. If this is not
+wanted, set `circe-ignore-hard-p'."
   :type '(repeat regexp)
   :group 'circe)
 
@@ -894,6 +911,14 @@ It is always possible to use the mynick or target formats."
       (font-lock-prepend-text-property 0 (length text)
                                        'face face
                                        text))
+    ;; Dynamically-scoped variable
+    (when *circe-fool-p*
+      (font-lock-prepend-text-property 0 (length text)
+                                       'face 'circe-fool-face
+                                       text)
+      (put-text-property 0 (length text)
+                         'lui-fool t
+                         text))
     (lui-insert text
                 (memq format circe-format-not-tracked))))
 
@@ -1064,11 +1089,8 @@ initialize a new buffer if none exists."
 ;;; Ignore Handling ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun circe-ignored-p (nick user host command args)
-  (or (run-hook-with-args-until-success circe-ignore-functions
-                                        nick user host
-                                        command args)
-      (let ((string (concat nick "!" user "@" host))
+(defun circe-ignore-matches-p (nick user host command args alist)
+  (let ((string (concat nick "!" user "@" host))
             (target (when (and (string= command "PRIVMSG")
                                (not (circe-server-my-nick-p (car args)))
                                (string-match "^\\([^ ]*\\)[:, ]" (cadr args)))
@@ -1080,8 +1102,23 @@ initialize a new buffer if none exists."
                   (when (and (stringp target)
                              (string-match regex target))
                     (throw 'return t)))
-                circe-ignore-list)
-          nil))))
+                alist)
+          nil)))
+
+(defun circe-ignored-p (nick user host command args)
+  "True iff this user or message is being ignored.
+See `circe-ignore-functions' and `circe-ignore-list'."
+  (or (run-hook-with-args-until-success circe-ignore-functions
+                                        nick user host
+                                        command args)
+      (circe-ignore-matches-p nick user host command args
+                              circe-ignore-list)))
+
+(defun circe-fool-p (nick user host command args)
+  "True iff this user or message is a fool.
+See `circe-fool-list'."
+  (circe-ignore-matches-p nick user host command args
+                          circe-fool-list))
 
 (defun circe-command-IGNORE (line)
   "Add the regex on LINE to the `circe-ignore-list'."
@@ -1676,13 +1713,12 @@ This uses `circe-display-table'."
          (user (aref parsed 1))
          (host (aref parsed 2))
          (command (aref parsed 3))
-         (args (aref parsed 4))
-         (ignoredp (circe-ignored-p nick user host command args)))
-    (if (and (or (string= command "PRIVMSG")
-                 (string= command "NOTICE"))
-             (string-match "^\C-a\\([^ ]*\\)\\( \\(.*\\)\\)?\C-a$"
-                           (cadr args)))
-        (when (not ignoredp)
+         (args (aref parsed 4)))
+    (when (not (circe-ignored-p nick user host command args))
+      (if (and (or (string= command "PRIVMSG")
+                   (string= command "NOTICE"))
+               (string-match "^\C-a\\([^ ]*\\)\\( \\(.*\\)\\)?\C-a$"
+                             (cadr args)))
           (let ((ctcp (match-string 1 (cadr args)))
                 (arg (match-string 3 (cadr args))))
             (circe-server-ctcp-handler nick user host
@@ -1690,34 +1726,41 @@ This uses `circe-display-table'."
                                        ctcp
                                        (car args)
                                        (or arg
-                                           ""))))
-      (unwind-protect
-          (progn
-            (run-hook-with-args 'circe-receive-message-functions
-                                nick user host command args)
-            (when (not ignoredp)
-              (circe-server-display nick user host command args)))
-        (circe-server-internal-handler nick user host command args)))))
+                                           "")))
+        (unwind-protect
+            (progn
+              (run-hook-with-args 'circe-receive-message-functions
+                                  nick user host command args)
+              (circe-server-display nick user host command args))
+          (circe-server-internal-handler nick user host command args))))))
 
+;; I'm a bit unhappy about this. The choice for the face for the
+;; message happens very deeply within the call stack, and on the way
+;; we lose who the message was from. So we keep a "global variable"
+;; (dynamically scoped) saying whether we are handling a fool's
+;; message or not.
+(defvar *circe-fool-p* nil
+  "Internal use. Set this to nil. Do not change it. Go away.")
 (defun circe-server-display (nick user host command args)
   "Display the message."
-  (when (not (circe-ignored-p nick user host command args))
-    (let ((display (circe-display-handler command)))
-      (if display
-          (funcall display nick user host command args)
-        (or (circe-server-default-display-command nick user host
-                                                  command args)
-            (with-current-buffer (circe-server-last-active-buffer)
-              (circe-server-message
-               (format "[%s from %s%s] %s"
-                       command
-                       nick
-                       (if (or user host)
-                           (format " (%s@%s)" user host)
-                         "")
-                       (mapconcat #'identity
-                                  args
-                                  " ")))))))))
+  (let ((display (circe-display-handler command))
+        ;; Dynamic scoping
+        (*circe-fool-p* (circe-fool-p nick user host command args)))
+    (if display
+        (funcall display nick user host command args)
+      (or (circe-server-default-display-command nick user host
+                                                command args)
+          (with-current-buffer (circe-server-last-active-buffer)
+            (circe-server-message
+             (format "[%s from %s%s] %s"
+                     command
+                     nick
+                     (if (or user host)
+                         (format " (%s@%s)" user host)
+                       "")
+                     (mapconcat #'identity
+                                args
+                                " "))))))))
 
 (defun circe-server-ctcp-handler (nick user host requestp ctcp target text)
   "Handle a CTCP message."
