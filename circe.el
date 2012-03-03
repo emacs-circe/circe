@@ -2452,34 +2452,56 @@ channels."
                                string)))
   :group 'circe)
 
+(defcustom circe-server-auto-join-channels-after-auth nil
+  "*The default channels to join after authentication.
+The format is the same as `circe-server-auto-join-channels'.
+These channels are joined only after nickserv authentication has
+succeeded."
+  :type '(repeat (cons (regexp :tag "Server or Network")
+                       (repeat :tag channels
+                               string)))
+  :group 'circe)
+
+(defun circe-auto-join-alist (alist)
+  "Join the appropriate channels in `alist'.
+See `circe-server-auto-join-channels' for the format."
+  (catch 'exit
+    (mapc (lambda (entry)
+            (when (if (symbolp (car entry))
+                      (funcall (car entry))
+                    (string-match (car entry) circe-server-network))
+              (mapc (lambda (channel)
+                      (circe-command-JOIN channel)
+                      (remhash channel rejoins))
+                    (cdr entry))
+              (throw 'exit t)))
+          alist)))
+
 (add-hook 'circe-server-connected-hook 'circe-auto-join)
 (defun circe-auto-join ()
   "Join default channels, as per `circe-server-auto-join-channels'.
 This also makes sure to re-join channels for which buffers still
 exist."
+  (circe-auto-join-alist circe-server-auto-join-channels)
   (let ((rejoins (make-hash-table :test 'circe-case-fold)))
-    (catch 'exit
-      (when circe-server-chat-buffers
-        (maphash (lambda (key value)
-                   (when (with-current-buffer value
-                           (eq major-mode 'circe-channel-mode))
-                     (puthash (buffer-name value)
-                              (buffer-name value)
-                              rejoins)))
-                 circe-server-chat-buffers))
-      (mapc (lambda (entry)
-              (when (if (symbolp (car entry))
-                        (funcall (car entry))
-                      (string-match (car entry) circe-server-network))
-                (mapc (lambda (channel)
-                        (circe-command-JOIN channel)
-                        (remhash channel rejoins))
-                      (cdr entry))
-                (throw 'exit t)))
-            circe-server-auto-join-channels))
+    (when circe-server-chat-buffers
+      (maphash (lambda (key value)
+                 (when (with-current-buffer value
+                         (eq major-mode 'circe-channel-mode))
+                   (puthash (buffer-name value)
+                            (buffer-name value)
+                            rejoins)))
+               circe-server-chat-buffers))
     (maphash (lambda (key value)
                (circe-command-JOIN value))
              rejoins)))
+
+(add-hook 'circe-nickserv-authenticated-hook 'circe-auto-join-after-auth)
+(defun circe-auto-join-after-auth ()
+  "Join the default channels, as per
+`circe-server-auto-join-channels-after-auth'."
+  (circe-auto-join-alist circe-server-auto-join-channels-after-auth))
+
 
 ;;;;;;;;;;;;;;;;;;;
 ;;; Topic Handling
@@ -2596,22 +2618,22 @@ The list consists of words and spaces."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Nickserv Authentication
+(defcustom circe-nickserv-authenticated-hook nil
+  "*Functions called after nickserv authenticated succeeded.
+This is run every time nickserv confirms nick authentication,
+which can happen multiple times per connection."
+  :type 'hook
+  :group 'circe)
+
 (defcustom circe-nickserv-alist
   '(("freenode"
      "NickServ" "NickServ" "services."
      "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
-     "PRIVMSG NickServ :IDENTIFY %s")
-    ("oftc"
-     "NickServ" "services" "services.oftc.net"
-     "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
-     "PRIVMSG NickServ :IDENTIFY %s")
+     "PRIVMSG NickServ :IDENTIFY %s"
+     "You are now identified for .*.")
     ("coldfront"
      "NickServ" "services" "coldfront.net"
      "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
-     "PRIVMSG NickServ :IDENTIFY %s")
-    ("double0"
-     "NickServ" "services" "double0.net"
-     "/msg\\s-NickServ\\s-IDENTIFY\\s-password"
      "PRIVMSG NickServ :IDENTIFY %s"))
   "*A list of nickserv configurations.
 Each element of this list is a list with the following items:
@@ -2622,6 +2644,7 @@ Each element of this list is a list with the following items:
   HOST      - The hostname of the nickserv
   NOTICE    - A regular expression matching the message from nickserv
   REPLY     - The message sent to the nickserv, where %s is the password
+  CONFIRM   - A regular expression matching a confirmation
 
 See also `circe-nickserv-password'."
   :type '(repeat (list (regexp :tag "Network")
@@ -2663,16 +2686,23 @@ password for this network."
                            (string= (nth 2 entry)
                                     user)
                            (string= (nth 3 entry)
-                                    host)
-                           (string-match (nth 4 entry)
-                                         (cadr args)))
-                  (let ((pass (assoc circe-server-network
-                                     circe-nickserv-passwords)))
-                    (when pass
-                      (circe-server-send (format (nth 5 entry)
-                                                 (cadr pass)))
-                      (setq circe-nickserv-registered-p t)
-                      (throw 'return t)))))
+                                    host))
+                  ;; This is actually from nickserv on this network
+                  (cond
+                   ;; Nickserv challenge
+                   ((string-match (nth 4 entry)
+                                  (cadr args))
+                    (let ((pass (assoc circe-server-network
+                                       circe-nickserv-passwords)))
+                      (when pass
+                        (circe-server-send (format (nth 5 entry)
+                                                   (cadr pass)))
+                        (setq circe-nickserv-registered-p t))))
+                   ;; Nickserv confirmation
+                   ((string-match (nth 6 entry)
+                                  (cadr args))
+                    (run-hook 'circe-nickserv-authenticated-hook)))
+                  (throw 'return t)))
               circe-nickserv-alist)))))
 
 ;;; Local Variables:
