@@ -57,7 +57,6 @@
            (< emacs-major-version 22))
   (require 'circe-e21))
 
-
 (defgroup circe nil
   "Yet Another Emacs IRC Client."
   :prefix "circe-"
@@ -105,11 +104,17 @@
   "The face used to highlight the originator of a message."
   :group 'circe)
 
+(defvar circe-topic-diff-new-face 'circe-topic-diff-new-face
+  "The face used for text added to a topic.
+See the {topic-diff} parameter to `circe-format-server-topic'.")
 (defface circe-topic-diff-new-face '((t (:background "DarkGreen")))
   "The face used for text added to a topic.
 See the {topic-diff} parameter to `circe-format-server-topic'."
   :group 'circe)
 
+(defvar circe-topic-diff-removed-face 'circe-topic-diff-removed-face
+  "The face used for text removed from a topic.
+See the {topic-diff} parameter to `circe-format-server-topic'.")
 (defface circe-topic-diff-removed-face '((t (:background "DarkRed")))
   "The face used for text removed from a topic.
 See the {topic-diff} parameter to `circe-format-server-topic'."
