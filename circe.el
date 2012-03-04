@@ -34,10 +34,8 @@
 
 ;;; Code:
 
-(defvar circe-time-stamp "2009-04-26 10:29:34"
-  "The modification date of Circe source file.")
 
-(defvar circe-version (format "from CVS (%s)" circe-time-stamp)
+(defvar circe-version "0.9devel (from Git)"
   "Circe version string.")
 
 (require 'lui)
@@ -2747,13 +2745,6 @@ password for this network."
                     (run-hook 'circe-nickserv-authenticated-hook)))
                   (throw 'return t)))
               circe-nickserv-alist)))))
-
-;;; Local Variables:
-;;; time-stamp-start: "^(defvar circe-time-stamp \""
-;;; time-stamp-end: "\""
-;;; time-stamp-line-limit: 60
-;;; time-stamp-format: "%:y-%02m-%02d %02H:%02M:%02S"
-;;; End:
 
 (provide 'circe)
 ;;; circe.el ends here
