@@ -1149,6 +1149,36 @@ See `circe-fool-list'."
       (circe-server-message
        "Who do you want to unignore? UNIGNORE requires one argument")))))
 
+(defun circe-command-FOOL (line)
+  "Add the regex on LINE to the `circe-fool-list'."
+  (with-current-buffer (circe-server-last-active-buffer)
+    (cond
+     ((string-match "\\S-+" line)
+      (let ((regex (match-string 0 line)))
+        (add-to-list 'circe-fool-list regex)
+        (circe-server-message (format "Recognizing %s as a fool"
+                                      regex))))
+     ((not circe-ignore-list)
+      (circe-server-message "Your do not know any fools"))
+     (t
+      (circe-server-message "Your list of fools:")
+      (mapc (lambda (regex)
+              (circe-server-message (format "- %s" regex)))
+            circe-ignore-list)))))
+
+(defun circe-command-UNFOOL (line)
+  "Remove an entry from `circe-fool-list'."
+  (with-current-buffer (circe-server-last-active-buffer)
+    (cond
+     ((string-match "\\S-+" line)
+      (let ((regex (match-string 0 line)))
+        (setq circe-fool-list (delete regex circe-fool-list))
+        (circe-server-message (format "Assuming %s is not a fool anymore"
+                                      regex))))
+     (t
+      (circe-server-message
+       "No one is not a fool anymore? UNFOOL requires one argument")))))
+
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Chat Buffers ;;;
