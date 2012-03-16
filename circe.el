@@ -34,7 +34,6 @@
 
 ;;; Code:
 
-
 (defvar circe-version "0.9devel (from Git)"
   "Circe version string.")
 
@@ -607,27 +606,29 @@ REALNAME is the real name to use (defaults to `circe-default-realname')"
 
 (defmacro with-circe-server-buffer (&rest body)
   "Run BODY with the current buffer being the current server buffer."
-  `(let ((XXserver (cond
-                    ((eq major-mode 'circe-server-mode)
-                     (current-buffer))
-                    (circe-server-buffer
-                     circe-server-buffer)
-                    (t
-                     (error "`with-circe-server-buffer' outside of an circe buffer.")))))
-     (when (and XXserver ;; Might be dead!
-                (bufferp XXserver)
-                (buffer-live-p XXserver))
-       (with-current-buffer XXserver
-         ,@body))))
+  (let ((server (gensym)))
+    `(let ((,server (cond
+                      ((eq major-mode 'circe-server-mode)
+                       (current-buffer))
+                      (circe-server-buffer
+                       circe-server-buffer)
+                      (t
+                       (error "`with-circe-server-buffer' outside of an circe buffer.")))))
+       (when (and ,server ;; Might be dead!
+                  (bufferp ,server)
+                  (buffer-live-p ,server))
+         (with-current-buffer ,server
+           ,@body)))))
 (put 'with-circe-server-buffer 'lisp-indent-function 0)
 
 (defmacro with-circe-chat-buffer (name &rest body)
   "Run BODY with the current buffer the chat buffer of NAME.
 If no such buffer exists, do nothing."
-  `(let ((XXbuf (circe-server-get-chat-buffer ,name)))
-     (when XXbuf
-       (with-current-buffer XXbuf
-         ,@body))))
+  (let ((buf (gensym)))
+    `(let ((,buf (circe-server-get-chat-buffer ,name)))
+       (when ,buf
+         (with-current-buffer ,buf
+           ,@body)))))
 (put 'with-circe-chat-buffer 'lisp-indent-function 1)
 
 (defvar circe-server-reconnect-attempts 0
@@ -1074,13 +1075,13 @@ initialize a new buffer if none exists."
        (t
         nil)))))
 
-(defun circe-mapc-chat-buffers (fun)
+(defun circe-mapc-chat-buffers (XXfun) ;; XX to prevent accidental capturing
   "Apply FUN to every chat buffer of the current server."
   (let ((hash (with-circe-server-buffer
                 circe-server-chat-buffers)))
     (when hash
-      (maphash (lambda (XXkey XXvalue) ;; XX to prevent accidental capturing
-                 (funcall fun XXvalue))
+      (maphash (lambda (XXkey XXvalue)
+                 (funcall XXfun XXvalue))
                hash))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -1373,7 +1374,8 @@ This uses `circe-channel-nick-prefixes'."
           (split-string name-string
                         (format "\\(^\\| \\)[%s]*" circe-channel-nick-prefixes))))
 
-(defun circe-mapc-user-channels (user fun)
+(defun circe-mapc-user-channels (XXuser fun)  ;; XX to prevent
+                                              ;; accidental capturing
   "Return a list of channels for USER."
   ;; ;; The trivial implementation doesn't work due to Emacs' dynamic
   ;; ;; scoping. Please wait while I puke outside.
@@ -1387,7 +1389,7 @@ This uses `circe-channel-nick-prefixes'."
     (when hash
       (maphash (lambda (XXignored XXbuf)
                  (when (with-current-buffer XXbuf
-                         (circe-channel-user-p user))
+                         (circe-channel-user-p XXuser))
                    (funcall fun XXbuf)))
                hash))))
 (put 'circe-mapc-user-channels 'lisp-indent-function 1)
