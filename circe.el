@@ -2507,45 +2507,55 @@ succeeded."
                                string)))
   :group 'circe)
 
-(defun circe-auto-join-alist (alist)
-  "Join the appropriate channels in `alist'.
-See `circe-server-auto-join-channels' for the format."
-  (catch 'exit
-    (mapc (lambda (entry)
-            (when (if (symbolp (car entry))
-                      (funcall (car entry))
-                    (string-match (car entry) circe-server-network))
-              (mapc (lambda (channel)
-                      (circe-command-JOIN channel)
-                      (remhash channel rejoins))
-                    (cdr entry))
-              (throw 'exit t)))
-          alist)))
+(defun circe-auto-join-get-channels (alist)
+  "Return a hash with the channel names we want to join from `alist'.
+See `circe-server-auto-join-channels' for the format.
+
+Must be called in a server buffer."
+  (let ((joined (circe-case-fold-table)))
+    (catch 'exit
+      (mapc (lambda (entry)
+              (when (if (symbolp (car entry))
+                        (funcall (car entry))
+                      (string-match (car entry) circe-server-network))
+                (mapc (lambda (channel)
+                        (puthash channel channel joined))
+                      (cdr entry))
+               (throw 'exit t)))
+           alist))
+   joined))
 
 (add-hook 'circe-server-connected-hook 'circe-auto-join)
 (defun circe-auto-join ()
   "Join default channels, as per `circe-server-auto-join-channels'.
 This also makes sure to re-join channels for which buffers still
 exist."
-  (circe-auto-join-alist circe-server-auto-join-channels)
-  (let ((rejoins (make-hash-table :test 'circe-case-fold)))
+  (let* ((to-join (circe-auto-join-get-channels
+                   circe-server-auto-join-channels))
+         ;; We do not automatically join channels that need auth.
+         (excluded (circe-auto-join-get-channels
+                   circe-server-auto-join-channels-after-auth)))
     (when circe-server-chat-buffers
-      (maphash (lambda (key value)
-                 (when (with-current-buffer value
-                         (eq major-mode 'circe-channel-mode))
-                   (puthash (buffer-name value)
-                            (buffer-name value)
-                            rejoins)))
+      (maphash (lambda (key channel)
+                 (let ((name (buffer-name channel)))
+                   (when (with-current-buffer channel
+                           (eq major-mode 'circe-channel-mode))
+                     (when (not (gethash name excluded))
+                       (puthash name name to-join)))))
                circe-server-chat-buffers))
-    (maphash (lambda (key value)
-               (circe-command-JOIN value))
-             rejoins)))
+    (maphash (lambda (key channel)
+               (circe-command-JOIN channel))
+             to-join)))
 
 (add-hook 'circe-nickserv-authenticated-hook 'circe-auto-join-after-auth)
 (defun circe-auto-join-after-auth ()
   "Join the default channels, as per
 `circe-server-auto-join-channels-after-auth'."
-  (circe-auto-join-alist circe-server-auto-join-channels-after-auth))
+  (message "circe-auto-join-after-auth")
+  (maphash (lambda (key channel)
+             (circe-command-JOIN channel))
+           (circe-auto-join-get-channels
+            circe-server-auto-join-channels-after-auth)))
 
 
 ;;;;;;;;;;;;;;;;;;;
@@ -2741,12 +2751,13 @@ password for this network."
                                        circe-nickserv-passwords)))
                       (when pass
                         (circe-server-send (format (nth 5 entry)
-                                                   (cadr pass)))
-                        (setq circe-nickserv-registered-p t))))
+                                                   (cadr pass))))))
                    ;; Nickserv confirmation
-                   ((string-match (nth 6 entry)
-                                  (cadr args))
-                    (run-hook 'circe-nickserv-authenticated-hook)))
+                   ((and (nth 6 entry)
+                         (string-match (nth 6 entry)
+                                       (cadr args)))
+                    (setq circe-nickserv-registered-p t)
+                    (run-hooks 'circe-nickserv-authenticated-hook)))
                   (throw 'return t)))
               circe-nickserv-alist)))))
 
