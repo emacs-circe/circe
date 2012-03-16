@@ -719,7 +719,8 @@ If it is \"\", disable flyspell."
         (when (or (not (boundp 'flyspell-mode))
                   (not flyspell-mode))
           (flyspell-mode 1))
-        (setq ispell-local-dictionary dictionary))))))
+        (ispell-change-dictionary dictionary))))))
+
 
 (defun lui-find-dictionary (buffer-name)
   "Return a dictionary appropriate for BUFFER-NAME."
