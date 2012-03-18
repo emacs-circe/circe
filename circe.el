@@ -171,6 +171,13 @@ are displayed as if `circe-auto-query-p' was nil."
   :type 'integer
   :group 'circe)
 
+(defcustom circe-reduce-joinpart-spam nil
+  "*If enabled, Circe will stop showing JOIN, PART, QUIT and NICK
+messages for users on channels that have not spoken yet. When
+they speak for the first time, Circe displays their join time."
+  :type 'boolean
+  :group 'circe)
+
 (defcustom circe-prompt-string (concat (propertize ">"
                                                    'face 'circe-prompt-face)
                                        " ")
@@ -371,7 +378,8 @@ strings."
 (defcustom circe-format-not-tracked '(circe-format-server-message
                                       circe-format-server-notice
                                       circe-format-server-numeric
-                                      circe-format-server-topic)
+                                      circe-format-server-topic
+                                      circe-format-server-joinpart-activity)
   "*A list of formats that should not trigger tracking."
   :type '(repeat symbol)
   :group 'circe-format)
@@ -449,6 +457,15 @@ strings."
 {new-topic} - The new topic.
 {old-topic} - The previous topic.
 {topic-diff} - A colorized diff of the topics."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-joinpart-activity "*** First activity: {nick} joined {joindelta} ago."
+  "*The format for a server notice.
+{nick} - The originator.
+{oldnick} - The original nick of the user.
+{jointime} - The join time of the user (in seconds).
+{joindelta} - The duration from joining until now."
   :type 'string
   :group 'circe-format)
 
@@ -2040,6 +2057,7 @@ command, and args of the message."
    (t                                   ; Channel talk
     (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                        'circe-channel-mode)
+      (circe-joinpart-mark-as-active nick)
       (circe-display 'circe-format-say
                      :nick nick
                      :body (cadr args))))))
@@ -2053,6 +2071,7 @@ command, and args of the message."
                                                                    nick
                                                                  (car args)))
                                  (circe-server-last-active-buffer))
+          (circe-joinpart-mark-as-active nick)
           (circe-display 'circe-format-notice
                          :nick nick
                          :body (cadr args)))
@@ -2071,9 +2090,11 @@ command, and args of the message."
   (circe-mapc-user-channels nick
     (lambda (buf)
       (with-current-buffer buf
-        (circe-server-message
-         (format "Nick change: %s (%s@%s) is now known as %s"
-                 nick user host (car args)))))))
+        (when (not (circe-joinpart-is-inactive nick))
+          (circe-server-message
+           (format "Nick change: %s (%s@%s) is now known as %s"
+                   nick user host (car args))))
+        (circe-joinpart-nick-change nick (car args))))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick user host command args)
@@ -2100,11 +2121,13 @@ command, and args of the message."
   (let ((buf (circe-server-get-chat-buffer (car args))))
     (when buf
       (with-current-buffer buf
+        (when (not (circe-joinpart-is-inactive nick))
           (circe-server-message
            (if (null (cdr args))
                (format "Part: %s (%s@%s)" nick user host)
              (format "Part: %s (%s@%s): %s"
-                     nick user host (cadr args))))))))
+                     nick user host (cadr args)))))
+        (circe-joinpart-forget-user nick)))))
 
 ;;; These are here to display the time distance.
 (defun circe-duration-string (duration)
@@ -2159,6 +2182,61 @@ command, and args of the message."
                (current-time-string (seconds-to-time time))
                (circe-duration-string (- (float-time)
                                          time)))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Join/Part Spam Protections ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar circe-joinpart-users nil
+  "A table of so-far inactive users. Used to reduce join/part spam.
+
+See `circe-reduce-joinpart-spam'.")
+(make-variable-buffer-local 'circe-channel-suppressed-users)
+
+(defun circe-joinpart-new-user (nick)
+  "Add NICK as an inactive user."
+  (when (not circe-joinpart-users)
+    (setq circe-joinpart-users (circe-case-fold-table)))
+  (puthash nick (list nick (float-time))
+           circe-joinpart-users))
+
+(defun circe-joinpart-forget-user (nick)
+  "Forget that NICK was around. E.g. when they leave."
+  (when circe-joinpart-users
+    (remhash nick circe-joinpart-users)))
+
+(defun circe-joinpart-clear ()
+  "Clear the current table."
+  (setq circe-joinpart-users nil))
+
+(defun circe-joinpart-is-inactive (nick)
+  "Return a true value if this nick has been inactive so far."
+  (when circe-joinpart-users
+    (gethash nick circe-joinpart-users nil)))
+
+(defun circe-joinpart-nick-change (oldnick newnick)
+  "Change the nick from OLDNICK to NEWNICK, if the user was
+inactive so far."
+  (when circe-joinpart-users
+    (let ((val (gethash oldnick circe-joinpart-users nil)))
+      (when val
+        (puthash newnick val circe-joinpart-users)))))
+
+(defun circe-joinpart-mark-as-active (nick)
+  "Mark NICK as active now."
+  (when circe-joinpart-users
+    (let ((val (gethash nick circe-joinpart-users)))
+      (when val
+        (remhash nick circe-joinpart-users)
+        (circe-display 'circe-format-server-joinpart-activity
+                       :nick nick
+                       :oldnick (car val)
+                       :jointime (cadr val)
+                       :joindelta (circe-duration-string 
+                                   (- (float-time)
+                                      (cadr val))))))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Netsplit Handling ;;;
@@ -2245,34 +2323,39 @@ or nil when this isn't a split."
       (circe-mapc-user-channels nick
         (lambda (buf)
           (with-current-buffer buf
-            (circe-server-message message)))))))
+            (when (not (circe-joinpart-is-inactive nick))
+              (circe-server-message message))
+            (circe-joinpart-forget-user nick)))))))
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick user host command args)
   "Show a JOIN message."
-  (let* ((split (circe-netsplit-join nick))
-         (message (if split
-                      (if (< (+ (cadr split) circe-netsplit-delay)
-                             (float-time))
-                          (format "Netmerge: %s (Use /WL to see who's still missing)"
-                                  (car split))
-                        nil)
-                    (format "Join: %s (%s@%s) is now on the channel"
-                            nick user host))))
-    (when message
-      (with-current-buffer (circe-server-get-chat-buffer (car args)
-                                                         'circe-channel-mode)
-        (circe-server-message message)))
-    ;; Check query buffers. We do this even when the message should be
-    ;; ignored by a netsplit, since this can't flood.
-    (circe-mapc-user-channels nick
-      (lambda (buf)
-        (with-current-buffer buf
-          (when (eq major-mode 'circe-query-mode)
-            (circe-server-message
-             (format "Join: %s (%s@%s) is now on %s"
-                     nick user host (car args)))))))))
-
+  ;; First, channel buffers for this user.
+  (let ((split (circe-netsplit-join nick)))
+    (with-current-buffer (circe-server-get-chat-buffer (car args)
+                                                       'circe-channel-mode)
+      (cond
+       (split
+        (when (< (+ (cadr split) circe-netsplit-delay)
+                 (float-time))
+          (circe-server-message
+           (format "Netmerge: %s (Use /WL to see who's still missing)"
+                   (car split)))))
+       (circe-reduce-joinpart-spam
+        (circe-joinpart-new-user nick))
+       (t
+        (circe-server-message
+         (format "Join: %s (%s@%s) is now on the channel"
+                 nick user host))))))
+  ;; Next, query buffers. We do this even when the message should be
+  ;; ignored by a netsplit, since this can't flood.
+  (circe-mapc-user-channels nick
+    (lambda (buf)
+      (with-current-buffer buf
+        (when (eq major-mode 'circe-query-mode)
+          (circe-server-message
+           (format "Join: %s (%s@%s) is now on %s"
+                   nick user host (car args))))))))
 
 (defun circe-command-WL (&optional split)
   "Show the people who left in a netsplit.
