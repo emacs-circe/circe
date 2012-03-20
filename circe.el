@@ -2196,10 +2196,12 @@ See `circe-reduce-joinpart-spam'.")
 
 (defun circe-joinpart-new-user (nick)
   "Add NICK as an inactive user."
-  (when (not circe-joinpart-users)
-    (setq circe-joinpart-users (circe-case-fold-table)))
-  (puthash nick (list nick (float-time))
-           circe-joinpart-users))
+  ;; Never assume we ourselves are inactive
+  (when (not (circe-server-my-nick-p nick))
+    (when (not circe-joinpart-users)
+      (setq circe-joinpart-users (circe-case-fold-table)))
+    (puthash nick (list nick (float-time))
+             circe-joinpart-users)))
 
 (defun circe-joinpart-forget-user (nick)
   "Forget that NICK was around. E.g. when they leave."
