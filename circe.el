@@ -2192,7 +2192,7 @@ command, and args of the message."
   "A table of so-far inactive users. Used to reduce join/part spam.
 
 See `circe-reduce-joinpart-spam'.")
-(make-variable-buffer-local 'circe-channel-suppressed-users)
+(make-variable-buffer-local 'circe-joinpart-users)
 
 (defun circe-joinpart-new-user (nick)
   "Add NICK as an inactive user."
@@ -2309,23 +2309,23 @@ or nil when this isn't a split."
 (circe-set-display-handler "QUIT" 'circe-display-QUIT)
 (defun circe-display-QUIT (nick user host command args)
   "Show a QUIT message."
-  (let* ((split (circe-netsplit-quit (car args)
-                                     nick))
-         (message (if split
-                      (if (< (+ split circe-netsplit-delay)
-                             (float-time))
-                          (format "Netsplit: %s (Use /WL to see who left)"
-                                  (car args))
-                        nil)
-                    (format "Quit: %s (%s@%s) has left IRC: %s"
-                            nick user host (car args)))))
-    (when message
-      (circe-mapc-user-channels nick
-        (lambda (buf)
-          (with-current-buffer buf
-            (when (not (circe-joinpart-is-inactive nick))
-              (circe-server-message message))
-            (circe-joinpart-forget-user nick)))))))
+  (let ((split (circe-netsplit-quit (car args)
+                                    nick)))
+    (circe-mapc-user-channels nick
+      (lambda (buf)
+        (with-current-buffer buf
+          (cond
+           (split
+            (when (< (+ split circe-netsplit-delay)
+                     (float-time))
+              (circe-server-message
+               (format "Netsplit: %s (Use /WL to see who left)"
+                       (car args)))))
+           ((not (circe-joinpart-is-inactive nick))
+            (circe-server-message
+             (format "Quit: %s (%s@%s) has left IRC: %s"
+                     nick user host (car args)))))
+          (circe-joinpart-forget-user nick))))))  
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick user host command args)
