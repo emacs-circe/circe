@@ -623,7 +623,7 @@ REALNAME is the real name to use (defaults to `circe-default-realname')"
 
 (defmacro with-circe-server-buffer (&rest body)
   "Run BODY with the current buffer being the current server buffer."
-  (let ((server (gensym)))
+  (let ((server (make-symbol "server")))
     `(let ((,server (cond
                       ((eq major-mode 'circe-server-mode)
                        (current-buffer))
@@ -641,7 +641,7 @@ REALNAME is the real name to use (defaults to `circe-default-realname')"
 (defmacro with-circe-chat-buffer (name &rest body)
   "Run BODY with the current buffer the chat buffer of NAME.
 If no such buffer exists, do nothing."
-  (let ((buf (gensym)))
+  (let ((buf (make-symbol "buf")))
     `(let ((,buf (circe-server-get-chat-buffer ,name)))
        (when ,buf
          (with-current-buffer ,buf
