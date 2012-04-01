@@ -1931,6 +1931,7 @@ command, and args of the message."
                            :body (cadr args)))))
     (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                        'circe-channel-mode)
+      (circe-joinpart-mark-as-active nick)
       (circe-display 'circe-format-action
                      :nick nick
                      :body (cadr args)))))
