@@ -2818,7 +2818,7 @@ Each element of this list is a list with the following items:
   NETWORK   - A regular expression matching the network or server name
   NICK      - The nick of the nickserv
   USER      - The user name of the nickserv
-  HOST      - The hostname of the nickserv
+  HOST      - A regexp matching the hostname of the nickserv
   NOTICE    - A regular expression matching the message from nickserv
   REPLY     - The message sent to the nickserv, where %s is the password
   CONFIRM   - A regular expression matching a confirmation
