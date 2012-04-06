@@ -502,6 +502,10 @@ strings."
 This is required for reconnecting.")
 (make-variable-buffer-local 'circe-server-pass)
 
+(defvar circe-server-use-tls nil
+  "If non-nil, use `open-tls-stream' to connect to the server.")
+(make-variable-buffer-local 'circe-server-use-tls)
+
 (defvar circe-server-process nil
   "The process of the server connection.")
 (make-variable-buffer-local 'circe-server-process)
@@ -582,19 +586,38 @@ to reconnect to the server.
   (run-hooks 'circe-server-mode-hook))
 
 ;;;###autoload
-(defun circe (host service &optional network pass nick user realname)
-  "Connect to the IRC server HOST at SERVICE.
-NETWORK is the shorthand used for indicating where we're connected
+(defun circe (host service &rest options) 
+  "Connect to the IRC server HOST at SERVICE (a port).
+
+OPTIONS is either a list of arguments in the order of NETWORK,
+PASS, NICK, USER, REALNAME, or a list of keyword arguments with
+values using the following keywords:
+
+:network is the shorthand used for indicating where we're connected
 to. (defaults to HOST)
-PASS is the password.
-NICK is the nick name to use (defaults to `circe-default-nick')
-USER is the user name to use (defaults to `circe-default-user')
-REALNAME is the real name to use (defaults to `circe-default-realname')"
+:pass is the password.
+:nick is the nick name to use (defaults to `circe-default-nick')
+:user is the user name to use (defaults to `circe-default-user')
+:realname is the real name to use (defaults to `circe-default-realname')
+:tls is a boolean indicating as to whether to use TLS or not (defaults to nil)"
   (interactive "sHost: \nsPort: ")
   (when (equal service "")
     (setq service 6667))
   (let* ((buffer-name (format "%s:%s" host service))
-         (server-buffer (generate-new-buffer buffer-name)))
+         (server-buffer (generate-new-buffer buffer-name))
+         network pass nick user realname tls)
+    (if (keywordp (car options))
+        (setq network (plist-get options :network)
+              pass (plist-get options :pass)
+              nick (plist-get options :nick)
+              user (plist-get options :user)
+              realname (plist-get options :realname)
+              tls (plist-get options :tls))
+      (setq network (nth 0 options)
+            pass (nth 1 options)
+            nick (nth 2 options)
+            user (nth 3 options)
+            realname (nth 4 options)))
     (with-current-buffer server-buffer
       (circe-server-mode)
       (setq circe-server-name host
@@ -612,10 +635,13 @@ REALNAME is the real name to use (defaults to `circe-default-realname')"
                                   circe-default-user)
             circe-server-realname (or realname
                                       circe-default-realname)
-            circe-server-pass pass)
-      (circe-reconnect))
-    (when (interactive-p)
-      (switch-to-buffer server-buffer))))
+            circe-server-pass pass
+            circe-server-use-tls tls)
+      (when tls
+        (require 'tls))
+      (circe-reconnect)
+      (when (interactive-p)
+        (switch-to-buffer server-buffer)))))
 
 (defvar circe-server-buffer nil
   "The buffer of the server associated with the current chat buffer.")
@@ -666,10 +692,13 @@ See `circe-server-max-reconnect-attempts'.")
       (when circe-server-process
         (delete-process circe-server-process))
       (setq circe-server-registered-p nil
-            circe-server-process (open-network-stream circe-server-name
-                                                      (current-buffer)
-                                                      circe-server-name
-                                                      circe-server-service)
+            circe-server-process (funcall (if circe-server-use-tls
+                                              'open-tls-stream
+                                            'open-network-stream)
+                                          circe-server-name
+                                          (current-buffer)
+                                          circe-server-name
+                                          circe-server-service)
             circe-server-flood-queue nil)
       (set-process-filter circe-server-process
                           #'circe-server-filter-function)
