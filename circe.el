@@ -2799,14 +2799,19 @@ which can happen multiple times per connection."
 
 (defcustom circe-nickserv-alist
   '(("freenode"
-     "NickServ" "NickServ" "services."
+     "NickServ" "NickServ" "^services\\.$"
      "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      "PRIVMSG NickServ :IDENTIFY %s"
      "You are now identified for .*.")
     ("coldfront"
-     "NickServ" "services" "coldfront.net"
+     "NickServ" "services" "^coldfront.net$"
      "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
-     "PRIVMSG NickServ :IDENTIFY %s"))
+     "PRIVMSG NickServ :IDENTIFY %s")
+    ("bitlbee"
+     "bitlbee" "bitlbee" ""
+     "use the \x02identify\x02 command to identify yourself"
+     "PRIVMSG &bitlbee :identify %s"
+     "Password accepted, settings and accounts loaded"))
   "*A list of nickserv configurations.
 Each element of this list is a list with the following items:
 
@@ -2848,7 +2853,8 @@ password for this network."
       (setq circe-nickserv-registered-p nil))
     (when (and (not circe-nickserv-registered-p)
                circe-nickserv-passwords
-               (string= command "NOTICE"))
+               ;; bitlbee uses PRIVMSG
+               (member command '("NOTICE" "PRIVMSG")))
       (catch 'return
         (mapc (lambda (entry)
                 (when (and (string-match (nth 0 entry)
@@ -2857,8 +2863,8 @@ password for this network."
                                     nick)
                            (string= (nth 2 entry)
                                     user)
-                           (string= (nth 3 entry)
-                                    host))
+                           (string-match (nth 3 entry)
+                                         host))
                   ;; This is actually from nickserv on this network
                   (cond
                    ;; Nickserv challenge
