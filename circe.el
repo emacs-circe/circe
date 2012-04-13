@@ -1204,13 +1204,13 @@ See `circe-fool-list'."
         (add-to-list 'circe-fool-list regex)
         (circe-server-message (format "Recognizing %s as a fool"
                                       regex))))
-     ((not circe-ignore-list)
+     ((not circe-fool-list)
       (circe-server-message "Your do not know any fools"))
      (t
       (circe-server-message "Your list of fools:")
       (mapc (lambda (regex)
               (circe-server-message (format "- %s" regex)))
-            circe-ignore-list)))))
+            circe-fool-list)))))
 
 (defun circe-command-UNFOOL (line)
   "Remove an entry from `circe-fool-list'."
