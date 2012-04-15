@@ -1700,7 +1700,8 @@ nick and the message."
 (defun circe-command-CTCP (who &optional command argument)
   "Send a CTCP message COMMAND to WHO, with ARGUMENT.
 If COMMAND is not given, WHO is parsed to contain all of who,
-command and argument."
+command and argument.
+If ARGUMENT is nil, it is interpreted as no argument."
   (when (not command)
     (if (string-match "^\\([^ ]*\\) *\\([^ ]*\\) *\\(.*\\)" who)
         (setq command (upcase (match-string 2 who))
@@ -1711,7 +1712,8 @@ command and argument."
     (circe-server-send (format "PRIVMSG %s :\C-a%s%s\C-a"
                                who
                                command
-                               (if (string= argument "")
+                               (if (or (null argument)
+                                       (string= argument ""))
                                    ""
                                  (concat " " argument))))))
 
