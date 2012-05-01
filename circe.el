@@ -2842,7 +2842,7 @@ which can happen multiple times per connection."
      "PRIVMSG &bitlbee :identify %s"
      "Password accepted, settings and accounts loaded")
     ("oftc"
-     "NickServ" "services" "^services\\.$"
+     "NickServ" "services" "^services\\.oftc\\.net$"
      "This nickname is registered and protected."
      "PRIVMSG NickServ :IDENTIFY %s"
      "You are successfully identified as")
