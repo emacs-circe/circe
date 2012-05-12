@@ -1784,7 +1784,8 @@ This uses `circe-display-table'."
                   (decode-coding-string line
                                         (if (consp circe-server-coding-system)
                                             (cdr circe-server-coding-system)
-                                          circe-server-coding-system))))
+                                          circe-server-coding-system)
+                                        t)))
          (nick (aref parsed 0))
          (user (aref parsed 1))
          (host (aref parsed 2))
