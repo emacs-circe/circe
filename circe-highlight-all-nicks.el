@@ -85,7 +85,7 @@ See `enable-circe-highlight-all-nicks'."
           (regex nil))
       (when body
         (when circe-channel-users
-          (maphash (lambda (_ nick)
+          (maphash (lambda (nick _)
                      (when (not (circe-server-my-nick-p nick))
                        (setq nicks (cons nick nicks))))
                    circe-channel-users))

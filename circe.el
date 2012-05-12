@@ -2841,7 +2841,13 @@ which can happen multiple times per connection."
      "bitlbee" "bitlbee" ""
      "use the \x02identify\x02 command to identify yourself"
      "PRIVMSG &bitlbee :identify %s"
-     "Password accepted, settings and accounts loaded"))
+     "Password accepted, settings and accounts loaded")
+    ("oftc"
+     "NickServ" "services" "^services\\.oftc\\.net$"
+     "This nickname is registered and protected."
+     "PRIVMSG NickServ :IDENTIFY %s"
+     "You are successfully identified as")
+    )
   "*A list of nickserv configurations.
 Each element of this list is a list with the following items:
 
