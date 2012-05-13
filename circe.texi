@@ -107,7 +107,7 @@ The following documents a sample Circe configuration for your
 (setq ;;; On Freenode, automatically join the channel #emacs
       circe-server-auto-join-channels '(("^freenode$" "#emacs"))
       ;;; Also use our Nickserv password on Freenode
-      circe-nickserv-passwords `(("freenode" ,freenode-passwd))
+      circe-nickserv-auth-info `(("freenode" "FreenodeNick" ,freenode-passwd))
       ;;; Truncate long buffers to conserve memory.
       lui-max-buffer-size 30000
       ;;; Also, do spell checking. This only works when you have ispell

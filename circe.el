@@ -2831,22 +2831,31 @@ which can happen multiple times per connection."
   '(("freenode"
      "NickServ" "NickServ" "^services\\.$"
      "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
-     "PRIVMSG NickServ :IDENTIFY %s"
-     "You are now identified for .*.")
+     "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     "You are now identified for .*."
+     "PRIVMSG NickServ :GHOST {nick}"
+     "has been ghosted.")
     ("coldfront"
      "NickServ" "services" "^coldfront.net$"
      "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
-     "PRIVMSG NickServ :IDENTIFY %s")
+     "PRIVMSG NickServ :IDENTIFY {password}"
+     nil
+     nil
+     nil)
     ("bitlbee"
      "bitlbee" "bitlbee" ""
      "use the \x02identify\x02 command to identify yourself"
-     "PRIVMSG &bitlbee :identify %s"
-     "Password accepted, settings and accounts loaded")
+     "PRIVMSG &bitlbee :identify {password}"
+     "Password accepted, settings and accounts loaded"
+     nil
+     nil)
     ("oftc"
      "NickServ" "services" "^services\\.oftc\\.net$"
      "This nickname is registered and protected."
-     "PRIVMSG NickServ :IDENTIFY %s"
-     "You are successfully identified as")
+     "PRIVMSG NickServ :IDENTIFY {password} {nick}"
+     "You are successfully identified as"
+     "PRIVMSG NickServ :REGAIN {nick}"
+     nil)
     )
   "*A list of nickserv configurations.
 Each element of this list is a list with the following items:
@@ -2856,23 +2865,42 @@ Each element of this list is a list with the following items:
   USER      - The user name of the nickserv
   HOST      - A regexp matching the hostname of the nickserv
   NOTICE    - A regular expression matching the message from nickserv
-  REPLY     - The message sent to the nickserv, where %s is the password
-  CONFIRM   - A regular expression matching a confirmation
+  REPLY     - The message to send to identify with the nickserv
+              Accepts {nick} and {password}
+  CONFIRM   - A regular expression matching a confirmation for authentication
+  REGAIN    - The message to send to regain/ghost your nick
+              Accepts {nick}
+  REGAINED  - A regular expression matching a confirmation for regain
+              This is used to know when we can set our nick to the regained one
+              Leave nil if regaining automatically sets your nick
 
-See also `circe-nickserv-password'."
+See also `circe-nickserv-auth-info'."
   :type '(repeat (list (regexp :tag "Network")
                        (string :tag "Nick")
                        (string :tag "User")
                        (string :tag "Host")
                        (regexp :tag "Notice")
-                       (string :tag "Reply")))
+                       (string :tag "Reply")
+                       (choice :tag "Confirm"
+                               (const nil)
+                               (regexp))
+                       (choice :tag "Regain"
+                               (const nil)
+                               (string))
+                       (choice :tag "Regain Confirm"
+                               (const nil)
+                               (regexp))))
   :group 'circe)
 
-(defcustom circe-nickserv-passwords nil
-  "*A list of nickserv passwords.
-Each entry consists of two elements, the network name and the
-password for this network."
+(defcustom circe-nickserv-auth-info nil
+  "*A list of nickserv nicks and passwords.
+Each entry consists of two elements, the network name and a
+pair (nick . password) for this network.
+When nick is nil, circe-default-nick will be used."
   :type '(repeat (list (string :tag "Network")
+                       (choice :tag "Nick"
+                               (const :tag "Default" nil)
+                               (string))
                        (string :tag "Password")))
   :group 'circe)
 
@@ -2888,7 +2916,7 @@ password for this network."
       ;; Reconnect!
       (setq circe-nickserv-registered-p nil))
     (when (and (not circe-nickserv-registered-p)
-               circe-nickserv-passwords
+               circe-nickserv-auth-info
                ;; bitlbee uses PRIVMSG
                (member command '("NOTICE" "PRIVMSG")))
       (catch 'return
@@ -2906,19 +2934,55 @@ password for this network."
                    ;; Nickserv challenge
                    ((string-match (nth 4 entry)
                                   (cadr args))
-                    (let ((pass (assoc circe-server-network
-                                       circe-nickserv-passwords)))
+                    (let* ((authinfo (cdr (assoc circe-server-network
+                                                 circe-nickserv-auth-info)))
+                           (nick (or (car authinfo) circe-default-nick))
+                           (pass (cadr authinfo)))
                       (when pass
-                        (circe-server-send (format (nth 5 entry)
-                                                   (cadr pass))))))
+                        (circe-server-send (lui-format (nth 5 entry)
+                                                       :nick nick
+                                                       :password pass)))))
                    ;; Nickserv confirmation
                    ((and (nth 6 entry)
                          (string-match (nth 6 entry)
                                        (cadr args)))
                     (setq circe-nickserv-registered-p t)
-                    (run-hooks 'circe-nickserv-authenticated-hook)))
+                    (run-hooks 'circe-nickserv-authenticated-hook))
+                  ;; Nickserv regain confirmation
+                   ((and (nth 8 entry)
+                         (string-match (nth 8 entry)
+                                       (cadr args)))
+                    (circe-command-NICK
+                     (or (cadr (assoc circe-server-network
+                                      circe-nickserv-auth-info))
+                         circe-default-nick))))
                   (throw 'return t)))
               circe-nickserv-alist)))))
+
+(defcustom circe-auto-regain-p nil
+  "Whether circe should automatically regain/ghost your nick."
+  :type '(choice (const :tag "On" t)
+                 (const :tag "Off" nil))
+  :group 'circe)
+
+(add-hook 'circe-nickserv-authenticated-hook 'circe-auto-regain)
+(defun circe-auto-regain ()
+  "Regain/ghost your nick if necessary."
+  (when circe-auto-regain-p
+    (with-circe-server-buffer
+      (let ((nick (or (cadr (assoc circe-server-network
+                                   circe-nickserv-auth-info))
+                      circe-default-nick)))
+        (when (not (circe-server-my-nick-p nick))
+          (catch 'return
+            (mapc (lambda (entry)
+                    (when (and (string-match (nth 0 entry)
+                                             circe-server-network)
+                               (nth 7 entry))
+                      (circe-server-send (lui-format (nth 7 entry)
+                                                     :nick nick))
+                      (throw 'return t)))
+                  circe-nickserv-alist)))))))
 
 (provide 'circe)
 ;;; circe.el ends here
