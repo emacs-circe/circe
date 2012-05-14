@@ -868,6 +868,7 @@ unexpecting user.")
                                         rear-nonsticky t
                                         field lui-prompt
                                         keymap ,lui-prompt-map
+                                        front-sticky t
                                         ;; XEmacs stuff.
                                         start-open t
                                         end-open t
