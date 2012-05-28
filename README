@@ -52,7 +52,7 @@ follows is the configuration of the author.
       '(("^freenode$" "#emacs" "#scheme" "#scsh" "#darcs" "#wiki" "#css"
                       "#latex" "#ideologies" "##linguistics")
         ("^IRCnet" "#StarWars" "+linux.de"))
-      circe-nickserv-auth-info `(("freenode" "FreenodeNick" ,freenode-passwd)))
+      circe-nickserv-auth-info `(("freenode" "freenode" "FreenodeNick" ,freenode-passwd)))
 
 (setq lui-max-buffer-size 30000
       lui-flyspell-p t
