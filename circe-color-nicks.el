@@ -91,40 +91,40 @@ by 256. This also helps preventing integer overflow."
              (* 4 dg dg)
              (ash (* (- 767 red-mean) dr dr) -8)))))
 
-(defvar circe-colors
-  (let ((min-distance 200); heuristics
+(defun circe-generate-nick-color ()
+  "Compute a suitable random nick color. Suitable means
+1) Not a shade of gray
+2) Not similar to foreground, background, or my-message colors
+Similarity is computed with `circe-color-distance'"
+  (let ((min-distance 200)
+        (fg (face-foreground 'default))
         (bg (face-background 'default))
-        candidates)
-    (dolist (item color-name-rgb-alist)
-      (let ((color (car item)))
-        (when (and (not (color-gray-p color))
-                   (> (circe-color-distance color bg) min-distance))
-          (setq candidates (cons color candidates)))))
-    candidates)
-  "Colors to use for nicks in circe.
-By default, all the non-grey colors that are very different from
-the default background are candidates.  This uses `circe-color-distance'
-to compute distance between colors.
+        (nick (face-foreground 'circe-my-message-face))
+        (color (car (elt color-name-rgb-alist (random (length color-name-rgb-alist))))))
+    (if (and (not (color-gray-p color))
+             (> (circe-color-distance color bg) min-distance)
+             (> (circe-color-distance color fg) min-distance)
+             (> (circe-color-distance color nick) min-distance))
+        color
+      (circe-generate-nick-color))))
 
-To check out the list, evaluate (list-colors-display circe-colors).")
-
-(defvar circe-color-mapping (make-hash-table :test 'equal)
+(defvar circe-nick-color-mapping (make-hash-table :test 'equal)
   "Hash-map mapping nicks to color names.")
 
 (defun circe-color-nicks ()
   "Color all occurances of all nicks in the current channel."
   (when (eq major-mode 'circe-channel-mode)
     (let ((nickstart (text-property-any (point-min) (point-max)
-                                      'lui-format-argument 'nick)))
+                                        'lui-format-argument 'nick)))
       (when nickstart
         (goto-char nickstart)
         (let* ((nickend (next-property-change nickstart))
                (nick (buffer-substring-no-properties nickstart nickend)))
           (when (not (circe-server-my-nick-p nick))
-            (let ((color (gethash nick circe-color-mapping)))
+            (let ((color (gethash nick circe-nick-color-mapping)))
               (when (not color)
-                (setq color (elt circe-colors (random (length circe-colors))))
-                (puthash nick color circe-color-mapping))
+                (setq color (circe-generate-nick-color))
+                (puthash nick color circe-nick-color-mapping))
               (put-text-property nickstart nickend 'face `(:foreground ,color)))))))
     (let ((body (text-property-any (point-min) (point-max)
                                    'lui-format-argument 'body))
@@ -134,7 +134,7 @@ To check out the list, evaluate (list-colors-display circe-colors).")
         (maphash (lambda (nick _)
                    (when (not (circe-server-my-nick-p nick))
                      (setq nicks (cons nick nicks))))
-                 circe-color-mapping)
+                 circe-nick-color-mapping)
         (setq regex (regexp-opt nicks 'words))
         (goto-char body)
         (while (re-search-forward regex nil t)
@@ -142,7 +142,7 @@ To check out the list, evaluate (list-colors-display circe-colors).")
                              (match-end 0)
                              'face `(:foreground
                                      ,(gethash (match-string-no-properties 0)
-                                               circe-color-mapping))))))))
+                                               circe-nick-color-mapping))))))))
 
 (provide 'circe-color-nicks)
 ;;; circe-color-nicks.el ends here
