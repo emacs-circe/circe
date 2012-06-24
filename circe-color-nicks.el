@@ -104,7 +104,7 @@ Similarity is computed with `circe-color-distance'"
     (if (and (not (color-gray-p color))
              (> (circe-color-distance color bg) min-distance)
              (> (circe-color-distance color fg) min-distance)
-             (> (circe-color-distance color nick) min-distance))
+             (or (not nick) (> (circe-color-distance color nick) min-distance)))
         color
       (circe-generate-nick-color))))
 
