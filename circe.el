@@ -2847,7 +2847,7 @@ which can happen multiple times per connection."
      nil
      nil)
     ("bitlbee"
-     "bitlbee" "bitlbee" ""
+     "root" "root" ""
      "use the \x02identify\x02 command to identify yourself"
      "PRIVMSG &bitlbee :identify {password}"
      "Password accepted, settings and accounts loaded"
