@@ -2834,7 +2834,7 @@ which can happen multiple times per connection."
      "PRIVMSG NickServ :IDENTIFY {nick} {password}"
      "You are now identified for .*."
      "PRIVMSG NickServ :GHOST {nick}"
-     "has been ghosted.")
+     "has been ghosted\\.$\\|is not online\\.$")
     ("coldfront"
      "NickServ" "services" "^coldfront.net$"
      "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
