@@ -2478,6 +2478,8 @@ number, it shows the missing people due to that split."
     ("305" active "{1}")
     ("306" active "{1}")
     ("307" active "{1-}")
+    ;; Coldfront: 310 <nick> is available for help.
+    ("310" active "{1-}")
     ("311" active "{1} is {2}@{3} ({5})")
     ("312" active "{1} is on {2} ({3})")
     ("313" active "{1} {2}")
@@ -2542,6 +2544,8 @@ number, it shows the missing people due to that split."
     ("477" active "{1-}")
     ("481" 1 "{2-}")
     ("484" active "{1-}")
+    ;; Coldfront: 671 <nick> is using a Secure Connection
+    ("671" active "{1-}")
     ("728" 1 "Quiet mask: {3}")
     ("729" 1 "{3-}")
     )
