@@ -112,10 +112,10 @@ Similarity is computed with `circe-color-distance'"
   "Hash-map mapping nicks to color names.")
 
 (defcustom circe-color-nicks-everywhere nil
-  "Whether nicks should be colored in message bodies etc.")
+  "Whether nicks should be colored in message bodies too.")
 
 (defun circe-color-nicks ()
-  "Color all occurances of all nicks in the current channel."
+  "Color nicks on this lui output line."
   (when (eq major-mode 'circe-channel-mode)
     (let ((nickstart (text-property-any (point-min) (point-max)
                                         'lui-format-argument 'nick)))
