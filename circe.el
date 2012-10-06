@@ -399,6 +399,7 @@ strings."
 
 (defcustom circe-format-self-action "* {nick} {body}"
   "*The format for actions to queries or channels.
+{nick} - Your nick.
 {body} - The body of the action."
   :type 'string
   :group 'circe-format)
