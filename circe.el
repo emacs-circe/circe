@@ -2677,6 +2677,7 @@ channels."
 The format is the same as `circe-server-auto-join-channels'.
 These channels are joined only after nickserv authentication has
 succeeded.
+
 When using auto-regain functionality, it is recommended to use
 `circe-server-auto-join-channels-after-acquired-preferred-nick'
 instead, so as to not send a NICK message to channels right after
