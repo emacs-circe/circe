@@ -1765,11 +1765,8 @@ consisting of two words, the nick and the channel."
     (if (string-match "^\\([^ ]+\\) +\\([^ ]+\\)" nick)
         (setq channel (match-string 2 nick)
               nick (match-string 1 nick))
-      (when (or (and (null channel)
-                     (string= "" nick))
-                (and (null channel)
-                     (null nick)))
-        (circe-server-message "Usage: /INVITE <nick> <channel>")))
+      (when (or (string= "" nick) (null nick))
+        (circe-server-message "Usage: /INVITE <nick> <channel>"))))
   (circe-server-send (format "INVITE %s %s" nick
                              (if (and (null channel)
                                       (not (null nick)))
