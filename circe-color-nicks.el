@@ -111,6 +111,9 @@ Similarity is computed with `circe-color-distance'"
 (defvar circe-nick-color-mapping (make-hash-table :test 'equal)
   "Hash-map mapping nicks to color names.")
 
+(defcustom circe-color-nicks-everywhere nil
+  "Whether nicks should be colored in message bodies etc.")
+
 (defun circe-color-nicks ()
   "Color all occurances of all nicks in the current channel."
   (when (eq major-mode 'circe-channel-mode)
@@ -126,23 +129,24 @@ Similarity is computed with `circe-color-distance'"
                 (setq color (circe-generate-nick-color))
                 (puthash nick color circe-nick-color-mapping))
               (put-text-property nickstart nickend 'face `(:foreground ,color)))))))
-    (let ((body (text-property-any (point-min) (point-max)
-                                   'lui-format-argument 'body))
-          (nicks '())
-          (regex nil))
-      (when body
-        (maphash (lambda (nick _)
-                   (when (not (circe-server-my-nick-p nick))
-                     (setq nicks (cons nick nicks))))
-                 circe-nick-color-mapping)
-        (setq regex (regexp-opt nicks 'words))
-        (goto-char body)
-        (while (re-search-forward regex nil t)
-          (put-text-property (match-beginning 0)
-                             (match-end 0)
-                             'face `(:foreground
-                                     ,(gethash (match-string-no-properties 0)
-                                               circe-nick-color-mapping))))))))
+    (when circe-color-nicks-everywhere
+      (let ((body (text-property-any (point-min) (point-max)
+                                     'lui-format-argument 'body))
+            (nicks '())
+            (regex nil))
+        (when body
+          (maphash (lambda (nick _)
+                     (when (not (circe-server-my-nick-p nick))
+                       (setq nicks (cons nick nicks))))
+                   circe-nick-color-mapping)
+          (setq regex (regexp-opt nicks 'words))
+          (goto-char body)
+          (while (re-search-forward regex nil t)
+            (put-text-property (match-beginning 0)
+                               (match-end 0)
+                               'face `(:foreground
+                                       ,(gethash (match-string-no-properties 0)
+                                                 circe-nick-color-mapping)))))))))
 
 (provide 'circe-color-nicks)
 ;;; circe-color-nicks.el ends here
