@@ -1,27 +1,24 @@
-Circe is a Client for IRC in Emacs                                -*-outline-*-
+Circe is a Client for IRC in Emacs
 
-Project homepage: http://www.nongnu.org/circe/
-
-Mailing list: Mail to circe-help-request@lists.nongnu.org
-              Subject: subscribe
-              Also: http://lists.nongnu.org/mailman/listinfo/circe-help
+Project homepage: http://www.jorgenschaefer.de/software/circe/
+Github: https://github.com/jorgenschaefer/circe
 
 
-* Overview
+# Overview
 Circe was initially written in three or four days because the author
 got terribly annoyed at bugs in ERC. Nontheless, many ideas are taken
 directly from ERC, and that client has served the author well for a
 long time. Thanks to all the people who worked on ERC!
 
 
-* Lui
+# Lui
 Circe uses Lui, the Linewise User Interface. This provides many
 features with a clean interface so that Circe doesn't have to worry
 about the whole displaying stuff. Lui can also be used by other
 clients, so that for example the tracking feature is extensible.
 
 
-* Installation
+# Installation
 To install Circe, put all files in a directory, say, ~/.elisp/circe/
 Then add the following code to your .emacs:
 
@@ -31,7 +28,7 @@ Then add the following code to your .emacs:
 Now you can run M-x circe and connect to an IRC server of your choice.
 
 
-* Sample Configuration
+# Sample Configuration
 Circe is extensively configurable, and quite well extensible. What
 follows is the configuration of the author.
 
