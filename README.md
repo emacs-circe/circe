@@ -1,6 +1,7 @@
 # Circe, a Client for IRC in Emacs
 
 Project homepage: http://www.jorgenschaefer.de/software/circe/
+
 Github: https://github.com/jorgenschaefer/circe
 
 
