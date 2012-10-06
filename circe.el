@@ -561,7 +561,12 @@ This is either a channel or a nick name.")
 ;;; Server Mode ;;;
 ;;;;;;;;;;;;;;;;;;;
 
-(defvar circe-server-mode-map (make-sparse-keymap)
+(defvar circe-server-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-j") 'circe-command-JOIN)
+    (define-key map (kbd "C-c C-r") 'circe-reconnect)
+    (set-keymap-parent map lui-mode-map)
+    map)
   "The key map for server mode buffers.")
 
 (defun circe-server-mode ()
@@ -579,8 +584,6 @@ to reconnect to the server.
         mode-name "Circe Server"
         lui-input-function 'circe-chat-input)
   (use-local-map circe-server-mode-map)
-  (set-keymap-parent circe-server-mode-map
-                     lui-mode-map)
   (set (make-local-variable 'lui-possible-completions-function)
        'circe-server-completions)
   (lui-set-prompt circe-prompt-string)
@@ -1314,6 +1317,9 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c C-n") 'circe-command-NAMES)
     (define-key map (kbd "C-c C-t") 'circe-command-CHTOPIC)
+    (define-key map (kbd "C-c C-j") 'circe-command-JOIN)
+    (define-key map (kbd "C-c C-r") 'circe-reconnect)
+    (set-keymap-parent map lui-mode-map)
     map)
   "The key map for channel mode buffers.")
 
@@ -1329,8 +1335,6 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
   (setq major-mode 'circe-channel-mode
         mode-name "Circe Channel")
   (use-local-map circe-channel-mode-map)
-  (set-keymap-parent circe-channel-mode-map
-                     lui-mode-map)
   (set (make-local-variable 'lui-possible-completions-function)
        'circe-channel-completions)
   (run-hooks 'circe-channel-mode-hook))
@@ -1485,6 +1489,14 @@ This uses `circe-channel-nick-prefixes'."
 (defvar circe-query-mode-hook nil
   "Hook run when query mode is activated.")
 
+(defvar circe-query-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-j") 'circe-command-JOIN)
+    (define-key map (kbd "C-c C-r") 'circe-reconnect)
+    (set-keymap-parent map lui-mode-map)
+    map)
+  "The key map for query mode buffers.")
+
 (defun circe-query-mode (target server-buffer)
   "The circe query chat major mode.
 This mode represents a query you are talking in.
@@ -1492,12 +1504,13 @@ This mode represents a query you are talking in.
 TARGET is the default target to send data to.
 SERVER-BUFFER is the server-buffer of this chat buffer.
 
-\\{lui-mode-map}"
+\\{circe-query-mode-map}"
   (circe-chat-mode target server-buffer)
   (setq major-mode 'circe-query-mode
         mode-name "Circe Query")
   (set (make-local-variable 'lui-possible-completions-function)
        'circe-query-completions)
+  (use-local-map circe-channel-mode-map)
   (run-hooks 'circe-query-mode-hook))
 
 (defun circe-query-killed ()
