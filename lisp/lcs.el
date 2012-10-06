@@ -109,7 +109,7 @@ elements should be considered equal."
       (setq equalp 'equal))
     (catch 'return
       (if (= M+N 0)
-          '(0 ())
+          (throw 'return '(0 ()))
         (lcs-for d 0 M+N 1
           (lcs-for k (- d) d 2
             (let ((x nil)
