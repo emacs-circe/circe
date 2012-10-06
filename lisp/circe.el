@@ -2065,7 +2065,7 @@ command, and args of the message."
                                        (- (point-max)
                                           1)))
                  (error
-                  (current-time-string)))))))
+                  (current-time-string))))))))
 
 (circe-set-display-handler "CTCP-TIME" 'circe-ctcp-display-TIME)
 (defun circe-ctcp-display-TIME (nick user host command args)

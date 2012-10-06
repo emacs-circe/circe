@@ -63,6 +63,20 @@ Lui applications can provide further format strings. See
   :type 'string
   :group 'lui-logging)
 
+(defcustom lui-logging-flush-delay 0
+  "The number of seconds to delay writing newly-received messages
+to disk. This can increase performance/decrease IO-wait at the
+cost of a little bit of safety."
+  :type 'integer
+  :group 'lui-logging)
+
+(defcustom lui-logging-flush-perturbation 30
+  "Start the logging timer at a random offset between 0 and this
+value. This avoids all of the log-flushes occurring at the same
+time."
+  :type 'integer
+  :group 'lui-logging)
+
 (defvar lui-logging-format-arguments nil
   "A list of arguments to be passed to `lui-format'.
 This can be used to extend the formatting possibilities of the
@@ -77,14 +91,20 @@ file name for lui applications.")
   "The timer used to flush lui-logged buffers")
 (make-variable-buffer-local 'lui-logging-timer)
 
+(defun lui-logging-delayed ()
+  (> lui-logging-flush-delay 0))
+
 (defun enable-lui-logging ()
   "Enable lui logging."
   (interactive)
   (add-hook 'lui-pre-output-hook 'lui-logging)
   (add-hook 'kill-buffer-hook 'disable-lui-logging)
   (lui-logging-make-directory)
-  (setq lui-logging-timer
-        (run-with-timer (random 60) 60 #'lui-logging-flush (current-buffer))))
+  (when (lui-logging-delayed)
+    (setq lui-logging-timer
+          (run-with-timer (random lui-logging-flush-perturbation)
+                          lui-logging-flush-delay
+                          #'lui-logging-flush (current-buffer)))))
 
 (defun disable-lui-logging ()
   "Disable lui logging."
@@ -118,23 +138,30 @@ file name for lui applications.")
   "Flush out the lui-logging queue."
   (with-current-buffer buf
     (when lui-logging-queue
-      (write-region
+      (lui-logging-write-to-log
        (apply #'concat ;; yes, i know using nreverse is fucking gross. i don't care. 8)
               (nreverse lui-logging-queue))
-       nil (lui-logging-file-name) t 'nomessage)
+       (lui-logging-file-name))
       (setq lui-logging-queue nil))))
 
+(defun lui-logging-write-to-log (content filename)
+  "Actually perform the write to the logfile"
+  (write-region content nil filename t 'nomessage))
+
+(defun lui-logging-format-string (text)
+  (with-output-to-string
+    (princ (lui-format
+            (format-time-string lui-logging-format)
+            :text text))))
+
 (defun lui-logging ()
-  "Append the to-be-logged string to the output queue.
+  "If output-queueing is enabled, append the to-be-logged string
+to the output queue. Otherwise, write directly to the logfile.
 This should be added to `lui-pre-output-hook'."
-  (let ((log-format lui-logging-format)
-        (text (buffer-string)))
-    (push
-     (with-output-to-string
-       (princ (lui-format
-               (format-time-string log-format)
-               :text text)))
-     lui-logging-queue)))
+  (let ((text (lui-logging-format-string (buffer-string))))
+    (if (lui-logging-delayed)
+        (push text lui-logging-queue)
+      (lui-logging-write-to-log text (lui-logging-file-name)))))
 
 (provide 'lui-logging)
 ;;; lui-logging.el ends here
