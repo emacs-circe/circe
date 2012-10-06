@@ -2676,7 +2676,21 @@ channels."
   "*The default channels to join after authentication.
 The format is the same as `circe-server-auto-join-channels'.
 These channels are joined only after nickserv authentication has
-succeeded."
+succeeded.
+When using auto-regain functionality, it is recommended to use
+`circe-server-auto-join-channels-after-acquired-preferred-nick'
+instead, so as to not send a NICK message to channels right after
+joining."
+  :type '(repeat (cons (regexp :tag "Server or Network")
+                       (repeat :tag channels
+                               string)))
+  :group 'circe)
+
+(defcustom circe-server-auto-join-channels-after-acquired-preferred-nick nil
+  "*The default channels to join after we're sure we have the wanted nick.
+The format is the same as `circe-server-auto-join-channels'.
+These servers are joined after authentication if we immediately get the nick we want,
+or after a successful auto-regain action."
   :type '(repeat (cons (regexp :tag "Server or Network")
                        (repeat :tag channels
                                string)))
@@ -2709,7 +2723,9 @@ exist."
                    circe-server-auto-join-channels))
          ;; We do not automatically join channels that need auth.
          (excluded (circe-auto-join-get-channels
-                   circe-server-auto-join-channels-after-auth)))
+                    (append
+                     circe-server-auto-join-channels-after-auth
+                     circe-server-auto-join-channels-after-acquired-preferred-nick))))
     (when circe-server-chat-buffers
       (maphash (lambda (key channel)
                  (let ((name (buffer-name channel)))
@@ -2731,6 +2747,17 @@ exist."
              (circe-command-JOIN channel))
            (circe-auto-join-get-channels
             circe-server-auto-join-channels-after-auth)))
+
+(add-hook 'circe-acquired-preferred-nick-hook
+          'circe-auto-join-after-acquired-preferred-nick)
+(defun circe-auto-join-after-acquired-preferred-nick ()
+  "Join the default channels, as per
+`circe-server-auto-join-channels-after-acquired-preferred-nick'."
+  (message "circe-auto-join-after-acquired-preferred-nick")
+  (maphash (lambda (key channel)
+             (circe-command-JOIN channel))
+           (circe-auto-join-get-channels
+            circe-server-auto-join-channels-after-acquired-preferred-nick)))
 
 
 ;;;;;;;;;;;;;;;;;;;
@@ -2858,12 +2885,18 @@ which can happen multiple times per connection."
   :type 'hook
   :group 'circe)
 
+(defcustom circe-acquired-preferred-nick-hook nil
+  "*Hook run after we're sure we have the nick we want.
+Only used when auto-regain is enabled. See `circe-auto-regain-p'."
+  :type 'hook
+  :group 'circe)
+
 (defcustom circe-nickserv-style-list
   '(("freenode"
      "NickServ" "NickServ" "^services\\.$"
      "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      "PRIVMSG NickServ :IDENTIFY {nick} {password}"
-     "You are now identified for .*."
+     "^You are now identified for .*\\.$"
      "PRIVMSG NickServ :GHOST {nick}"
      "has been ghosted\\.$\\|is not online\\.$")
     ("coldfront"
@@ -2884,8 +2917,8 @@ which can happen multiple times per connection."
      "NickServ" "services" "^services\\.oftc\\.net$"
      "This nickname is registered and protected."
      "PRIVMSG NickServ :IDENTIFY {password} {nick}"
-     "You are successfully identified as"
-     "PRIVMSG NickServ :REGAIN {nick}"
+     "^You are successfully identified as .*\\.$"
+     nil
      nil)
     )
   "*A list of nickserv configurations.
@@ -2936,9 +2969,26 @@ When nick is nil, circe-default-nick will be used."
                        (string :tag "Password")))
   :group 'circe)
 
+(defcustom circe-auto-regain-p nil
+  "*Whether circe should automatically regain your nick."
+  :type '(choice (const :tag "On" t)
+                 (const :tag "Off" nil))
+  :group 'circe)
+
 (defvar circe-nickserv-registered-p nil
   "Non-nil when we did register with nickserv here.")
 (make-variable-buffer-local 'circe-nickserv-registered-p)
+
+(defun circe-server-preferred-nick ()
+  "Returns the nick we would like to have rather than the current one, or nil.
+The preferred nick is the one found in `circe-nickserv-auth-info',
+and defaults to `circe-default-nick'."
+  (with-circe-server-buffer
+    (let ((nick (or (nth 2 (assoc circe-server-network
+                                  circe-nickserv-auth-info))
+                    circe-default-nick)))
+      (unless (circe-server-my-nick-p nick)
+        nick))))
 
 (defun circe-nickserv-auth ()
   "Authenticate with nickserv."
@@ -2956,10 +3006,8 @@ When nick is nil, circe-default-nick will be used."
 (defun circe-nickserv-regain ()
   "Regain/reclaim/ghost your nick if necessary."
   (with-circe-server-buffer
-    (let ((nick (or (nth 2 (assoc circe-server-network
-                                  circe-nickserv-auth-info))
-                    circe-default-nick)))
-      (when (not (circe-server-my-nick-p nick))
+    (let ((nick (circe-server-preferred-nick)))
+      (when nick
         (let ((ns-style (assoc circe-server-network
                                circe-nickserv-style-list)))
           (when (and ns-style
@@ -2967,53 +3015,59 @@ When nick is nil, circe-default-nick will be used."
             (circe-server-send (lui-format (nth 7 ns-style)
                                            :nick nick))))))))
 
-(defcustom circe-auto-regain-p nil
-  "Whether circe should automatically regain your nick."
-  :type '(choice (const :tag "On" t)
-                 (const :tag "Off" nil))
-  :group 'circe)
+(defvar circe-auto-regain-awaiting-nick-change nil
+  "Set to `t' when circe is awaiting confirmation for a regain request.")
+(make-variable-buffer-local 'circe-auto-regain-awaiting-nick-change)
 
 (add-hook 'circe-receive-message-functions 'circe-nickserv-handler)
 (defun circe-nickserv-handler (nick user host command args)
   "React to messages relevant to nickserv authentication and auto-regain."
   (with-circe-server-buffer
-    (when (string= command "001")
+    (cond
+     ((string= command "001")
       ;; Reconnect!
       (setq circe-nickserv-registered-p nil))
-    (when (and circe-nickserv-auth-info
-               ;; bitlbee uses PRIVMSG
-               (member command '("NOTICE" "PRIVMSG")))
+     ((and circe-nickserv-auth-info
+           ;; bitlbee uses PRIVMSG
+           (member command '("NOTICE" "PRIVMSG")))
       (let ((ns-style (assoc circe-server-network
                              circe-nickserv-style-list)))
-        (when ns-style
-          (when (and (string= (nth 1 ns-style)
-                              nick)
-                     (string= (nth 2 ns-style)
-                              user)
-                     (string-match (nth 3 ns-style)
-                                   host))
-            ;; This is actually from nickserv on this network
-            (cond
-             ;; Nickserv challenge
-             ((string-match (nth 4 ns-style)
-                            (cadr args))
-              (circe-nickserv-auth))
-             ;; Nickserv confirmation
-             ((and (nth 6 ns-style)
-                   (string-match (nth 6 ns-style)
-                                 (cadr args)))
-              (setq circe-nickserv-registered-p t)
-              (when circe-auto-regain-p
-                (circe-nickserv-regain))
-              (run-hooks 'circe-nickserv-authenticated-hook))
-             ;; Nickserv regain confirmation
-             ((and (nth 8 ns-style)
-                   (string-match (nth 8 ns-style)
-                                 (cadr args)))
-              (circe-command-NICK
-               (or (nth 2 (assoc circe-server-network
-                                 circe-nickserv-auth-info))
-                   circe-default-nick))))))))))
+        (when (and ns-style
+                   (string= (nth 1 ns-style) nick)
+                   (string= (nth 2 ns-style) user)
+                   (string-match (nth 3 ns-style) host))
+          ;; This is actually from nickserv on this network
+          (cond
+           ;; Nickserv challenge
+           ((string-match (nth 4 ns-style)
+                          (cadr args))
+            (circe-nickserv-auth))
+           ;; Nickserv confirmation
+           ((and (nth 6 ns-style)
+                 (string-match (nth 6 ns-style)
+                               (cadr args)))
+            (setq circe-nickserv-registered-p t)
+            (run-hooks 'circe-nickserv-authenticated-hook)
+            (when circe-auto-regain-p
+              (if (null (circe-server-preferred-nick))
+                  (run-hooks 'circe-acquired-preferred-nick-hook)
+                (circe-nickserv-regain)
+                (setq circe-auto-regain-awaiting-nick-change t))))
+           ;; Nickserv regain confirmation
+           ((and circe-auto-regain-awaiting-nick-change
+                 (nth 8 ns-style)
+                 (string-match (nth 8 ns-style)
+                               (cadr args)))
+            (circe-command-NICK
+             (or (nth 2 (assoc circe-server-network
+                               circe-nickserv-auth-info))
+                 circe-default-nick)))))))
+     ((and circe-auto-regain-awaiting-nick-change
+           (string= command "NICK")
+           (circe-server-my-nick-p nick)
+           (string= (car args) (circe-server-preferred-nick)))
+      (setq circe-auto-regain-awaiting-nick-change nil)
+      (run-hooks 'circe-acquired-preferred-nick-hook)))))
 
 (provide 'circe)
 ;;; circe.el ends here
