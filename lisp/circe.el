@@ -1771,7 +1771,7 @@ consisting of two words, the nick and the channel."
                              (if (and (null channel)
                                       (not (null nick)))
                                  circe-chat-target
-                               channel)))))
+                               channel))))
 
 (defun circe-command-SV (&optional ignored)
   "Tell the current channel about your client and Emacs version."
