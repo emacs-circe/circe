@@ -140,7 +140,7 @@ See `circe-fool-list'."
 (defcustom circe-default-realname (if (string= (user-full-name) "")
                                       circe-default-nick
                                     (user-full-name))
-  "*The default real name for circe."
+  "The default real name for circe."
   :type 'string
   :group 'circe)
 
@@ -186,7 +186,7 @@ they speak for the first time, Circe displays their join time."
 (defcustom circe-prompt-string (concat (propertize ">"
                                                    'face 'circe-prompt-face)
                                        " ")
-  "*The string to initialize the prompt with.
+  "The string to initialize the prompt with.
 To change the prompt dynamically or just in specific buffers, use
 `lui-set-prompt' in the appropriate hooks."
   :type 'string
@@ -290,7 +290,7 @@ it will try to reconnect forever (not recommended)."
                                                (coding-system-p 'utf-8))
                                           '(utf-8 . undecided)
                                         nil)
-  "*Coding systems to use for IRC.
+  "Coding systems to use for IRC.
 This is either a coding system, which is then used both for
 encoding and decoding, or a cons cell with the encoding in the
 car and the decoding coding system in the cdr."
@@ -385,7 +385,7 @@ strings."
                                       circe-format-server-numeric
                                       circe-format-server-topic
                                       circe-format-server-joinpart-activity)
-  "*A list of formats that should not trigger tracking."
+  "A list of formats that should not trigger tracking."
   :type '(repeat symbol)
   :group 'circe-format)
 
@@ -2996,7 +2996,7 @@ Only used when auto-regain is enabled. See `circe-auto-regain-p'."
      nil
      nil)
     )
-  "*A list of nickserv configurations.
+  "A list of nickserv configurations.
 Each element of this list is a list with the following items:
 
   NAME      - The name of this nickserv style
