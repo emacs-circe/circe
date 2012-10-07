@@ -171,12 +171,6 @@ are displayed as if `circe-auto-query-p' was nil."
   :type 'integer
   :group 'circe)
 
-(defcustom circe-always-hail-eris nil
-  "*Always reply to a CTCP TIME with the Erisian date, if
-available.fnord"
-  :type 'boolean
-  :group 'circe)
-
 (defcustom circe-reduce-joinpart-spam nil
   "*If enabled, Circe will stop showing JOIN, PART, QUIT and NICK
 messages for users on channels that have not spoken yet. When
@@ -2089,21 +2083,19 @@ command, and args of the message."
 (defun circe-ctcp-TIME-handler (nick user host command args)
   "Handle a CTCP TIME request."
   (when (string= command "CTCP-TIME")
-    (let ((hail-eris (or circe-always-hail-eris
-                         (= 2 (random 3)))))
-      (circe-server-send
-       (format "NOTICE %s :\C-aTIME %s\C-a"
-               nick
-               (if (not hail-eris)
-                   (current-time-string)
-                 (condition-case nil
-                     (with-temp-buffer
-                       (call-process "ddate" nil (current-buffer))
-                       (buffer-substring (point-min)
-                                         (- (point-max)
-                                            1)))
-                   (error
-                    (current-time-string)))))))))
+    (circe-server-send
+     (format "NOTICE %s :\C-aTIME %s\C-a"
+             nick
+             (if (not (= 2 (random 3)))
+                 (current-time-string)
+               (condition-case nil
+                   (with-temp-buffer
+                     (call-process "ddate" nil (current-buffer))
+                     (buffer-substring (point-min)
+                                       (- (point-max)
+                                          1)))
+                 (error
+                  (current-time-string))))))))
 
 (circe-set-display-handler "CTCP-TIME" 'circe-ctcp-display-TIME)
 (defun circe-ctcp-display-TIME (nick user host command args)
