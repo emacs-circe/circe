@@ -131,13 +131,6 @@ See `circe-fool-list'."
 ;;; Customization Variables ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defcustom circe-networks '()
-  "Alist of networks and connection settings.  Connection
-settings are a plist where allowed properties
-are :host, :service, :nick, :pass, :user, :realname, :network, :tls"
-  :type '(alist :key-type string :value-type plist)
-  :group 'circe)
-
 (defcustom circe-default-nick (user-login-name)
   "*The default nick for circe."
   :type 'string
@@ -153,6 +146,15 @@ are :host, :service, :nick, :pass, :user, :realname, :network, :tls"
                                     (user-full-name))
   "*The default real name for circe."
   :type 'string
+  :group 'circe)
+
+(defcustom circe-networks
+  '(("Freenode" :host "irc.freenode.net" :service 6667 :network "freenode")
+    )
+  "Alist of networks and connection settings.  Connection
+settings are a plist where allowed properties
+are :host, :service, :nick, :pass, :user, :realname, :network, :tls"
+  :type '(alist :key-type string :value-type plist)
   :group 'circe)
 
 (defcustom circe-new-buffer-behavior 'display
@@ -608,7 +610,7 @@ to reconnect to the server.
   "Look up NETWORK in `circe-networks' and return a list of
 values that can be applied to `circe' to connect to that
 network."
-  (let ((def (cdr (assoc network circe-networks))))
+  (let ((def (cdr (assoc-string network circe-networks t))))
     (append (list (plist-get def :host)
                   (plist-get def :service))
             def
@@ -2954,6 +2956,7 @@ The list consists of words and spaces."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Nickserv Authentication
+
 (defcustom circe-nickserv-authenticated-hook nil
   "*Functions called after nickserv authenticated succeeded.
 This is run every time nickserv confirms nick authentication,
