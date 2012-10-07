@@ -128,12 +128,12 @@ See `circe-fool-list'."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcustom circe-default-nick (user-login-name)
-  "*The default nick for circe."
+  "The default nick for circe."
   :type 'string
   :group 'circe)
 
 (defcustom circe-default-user circe-default-nick
-  "*The default user name for circe."
+  "The default user name for circe."
   :type 'string
   :group 'circe)
 
@@ -154,7 +154,7 @@ are :host, :service, :nick, :pass, :user, :realname, :network, :tls"
   :group 'circe)
 
 (defcustom circe-new-buffer-behavior 'display
-  "*How new buffers should be treated.
+  "How new buffers should be treated.
 
   'display  - Show them, but don't select them
   'switch   - Switch to that buffer
@@ -165,19 +165,19 @@ are :host, :service, :nick, :pass, :user, :realname, :network, :tls"
   :group 'circe)
 
 (defcustom circe-auto-query-p t
-  "*Non-nil if queries should be opened automatically."
+  "Non-nil if queries should be opened automatically."
   :type 'boolean
   :group 'circe)
 
 (defcustom circe-auto-query-max 23
-  "*The maximum number of queries which are opened automatically.
+  "The maximum number of queries which are opened automatically.
 If more messages arrive - typically in a flood situation - they
 are displayed as if `circe-auto-query-p' was nil."
   :type 'integer
   :group 'circe)
 
 (defcustom circe-reduce-joinpart-spam nil
-  "*If enabled, Circe will stop showing JOIN, PART, QUIT and NICK
+  "If enabled, Circe will stop showing JOIN, PART, QUIT and NICK
 messages for users on channels that have not spoken yet. When
 they speak for the first time, Circe displays their join time."
   :type 'boolean
@@ -193,7 +193,7 @@ To change the prompt dynamically or just in specific buffers, use
   :group 'circe)
 
 (defcustom circe-highlight-nick-type 'sender
-  "*How to highlight occurrences of our own nick.
+  "How to highlight occurrences of our own nick.
 
   'sender     - Highlight the nick of the sender
   'occurrence - Highlight the occurrences of the nick
@@ -206,19 +206,19 @@ To change the prompt dynamically or just in specific buffers, use
   :group 'circe)
 
 (defcustom circe-completion-suffix ": "
-  "*A suffix for completed nicks at the beginning of a line."
+  "A suffix for completed nicks at the beginning of a line."
   :type '(choice (const :tag "The standard suffix" ": "))
   :group 'circe)
 
 (defcustom circe-ignore-list nil
-  "*List of regular expressions to ignore.
+  "List of regular expressions to ignore.
 
 Each regular expression is matched against nick!user@host."
   :type '(repeat regexp)
   :group 'circe)
 
 (defcustom circe-fool-list nil
-  "*List of regular expressions for fools.
+  "List of regular expressions for fools.
 
 Each regular expression is matched against nick!user@host.
 
@@ -229,14 +229,14 @@ wanted, set `circe-ignore-hard-p'."
   :group 'circe)
 
 (defcustom circe-ignore-functions nil
-  "*A list of functions to check whether we should ignore a message.
+  "A list of functions to check whether we should ignore a message.
 These functions get five arguments: NICK, USER, HOST, COMMAND, and ARGS.
 If one of them returns a non-nil value, the message is ignored."
   :type 'hook
   :group 'circe)
 
 (defcustom circe-split-line-length 440
-  "*The maximum length of a single message.
+  "The maximum length of a single message.
 If a message exceeds this size, it is broken into multiple ones.
 
 IRC allows for lines up to 512 bytes. Two of them are CR LF.
@@ -250,7 +250,7 @@ Good luck."
   :group 'circe)
 
 (defcustom circe-server-flood-margin 10
-  "*A margin on how much excess data we send.
+  "A margin on how much excess data we send.
 The flood protection algorithm of Circe works like the one
 detailed in RFC 2813, section 5.8 \"Flood control of clients\".
 
@@ -299,14 +299,14 @@ car and the decoding coding system in the cdr."
   :group 'circe)
 
 (defcustom circe-netsplit-delay 60
-  "*The number of seconds a netsplit may be dormant.
+  "The number of seconds a netsplit may be dormant.
 If anything happens with a netsplit after this amount of time,
 the user is re-notified."
   :type 'number
   :group 'circe)
 
 (defcustom circe-server-killed-confirmation 'ask
-  "*How to ask for confirmation when a server buffer is killed.
+  "How to ask for confirmation when a server buffer is killed.
 This can be one of the following values:
   ask - Ask the user for confirmation
   ask-and-kill-all - Ask the user, and kill all associated buffers
@@ -318,7 +318,7 @@ This can be one of the following values:
   :group 'circe)
 
 (defcustom circe-channel-killed-confirmation 'ask
-  "*How to ask for confirmation when a channel buffer is killed.
+  "How to ask for confirmation when a channel buffer is killed.
 This can be one of the following values:
   ask - Ask the user for confirmation
   nil - Don't ask, just kill"
@@ -344,7 +344,7 @@ server."
   :group 'circe)
 
 (defcustom circe-nick-next-function 'circe-nick-next
-  "*A function that maps a nick to a new nick.
+  "A function that maps a nick to a new nick.
 This is used when the initial nicks are not used. The default
 just appends dashes as long as possible, and then generates
 random nicks."
@@ -352,20 +352,20 @@ random nicks."
   :group 'circe)
 
 (defcustom circe-receive-message-functions nil
-  "*Functions called when a message from the IRC server arrives.
+  "Functions called when a message from the IRC server arrives.
 Each function is called with 5 arguments: NICK, USER, HOST,
 COMMAND, and ARGS."
   :type 'hook
   :group 'circe)
 
 (defcustom circe-server-connected-hook nil
-  "*Hook run when we successfully connected to a server.
+  "Hook run when we successfully connected to a server.
 This is run from a 001 (RPL_WELCOME) message handler."
   :type 'hook
   :group 'circe)
 
 (defcustom circe-server-mode-hook nil
-  "*Hook run when circe connects to a server."
+  "Hook run when circe connects to a server."
   :type 'hook
   :group 'circe)
 
@@ -390,75 +390,75 @@ strings."
   :group 'circe-format)
 
 (defcustom circe-format-server-message "*** {body}"
-  "*The format for generic server messages.
+  "The format for generic server messages.
 {body} - The body of the message."
   :type 'string
   :group 'circe-format)
 
 (defcustom circe-format-self-say "> {body}"
-  "*The format for messages to queries or channels.
+  "The format for messages to queries or channels.
 {nick} - Your nick.
 {body} - The body of the message."
   :type 'string
   :group 'circe-format)
 
 (defcustom circe-format-self-action "* {nick} {body}"
-  "*The format for actions to queries or channels.
+  "The format for actions to queries or channels.
 {nick} - Your nick.
 {body} - The body of the action."
   :type 'string
   :group 'circe-format)
 
 (defcustom circe-format-self-message "-> *{target}* {body}"
-  "*The format for messages sent to other people outside of queries.
+  "The format for messages sent to other people outside of queries.
 {target} - The target nick.
 {body} - The body of the message."
   :type 'string
   :group 'circe-format)
 
 (defcustom circe-format-action "* {nick} {body}"
-  "*The format for actions in queries or channels.
+  "The format for actions in queries or channels.
 {nick} - The nick doing the action.
 {body} - The body of the action."
   :type 'string
   :group 'circe-format)
 
 (defcustom circe-format-message-action "* *{nick}* {body}"
-  "*The format for actions in messages outside of queries.
+  "The format for actions in messages outside of queries.
 {nick} - The nick doing the action.
 {body} - The body of the action."
   :type 'string
   :group 'circe-format)
 
 (defcustom circe-format-say "<{nick}> {body}"
-  "*The format for normal channel or query talk.
+  "The format for normal channel or query talk.
 {nick} - The nick talking.
 {body} - The message."
   :type 'string
   :group 'circe-format)
 
 (defcustom circe-format-message "*{nick}* {body}"
-  "*The format for a message outside of a query.
+  "The format for a message outside of a query.
 {nick} - The originator.
 {body} - The message."
   :type 'string
   :group 'circe-format)
 
 (defcustom circe-format-notice "-{nick}- {body}"
-  "*The format for a notice.
+  "The format for a notice.
 {nick} - The originator.
 {body} - The notice."
   :type 'string
   :group 'circe-format)
 
 (defcustom circe-format-server-notice "-Server Notice- {body}"
-  "*The format for a server notice.
+  "The format for a server notice.
 {body} - The notice."
   :type 'string
   :group 'circe-format)
 
 (defcustom circe-format-server-topic "*** Topic change by {origin}: {new-topic}"
-  "*The format for topic changes.
+  "The format for topic changes.
 {channel} - Where the topic change happened.
 {new-topic} - The new topic.
 {old-topic} - The previous topic.
@@ -467,7 +467,7 @@ strings."
   :group 'circe-format)
 
 (defcustom circe-format-server-joinpart-activity "*** First activity: {nick} joined {joindelta} ago."
-  "*The format for a server notice.
+  "The format for a server notice.
 {nick} - The originator.
 {oldnick} - The original nick of the user.
 {jointime} - The join time of the user (in seconds).
@@ -2734,7 +2734,7 @@ The buffer might be nil if it is not alive."
 ;;;;;;;;;;;;;
 ;;; Auto-Join
 (defcustom circe-server-auto-join-channels nil
-  "*The default channels to join.
+  "The default channels to join.
 Each element in this list has a regular expression matching a
 server or network name, and a list of channels to join.
 The car can also be a symbol, which is called as a function and
@@ -2746,7 +2746,7 @@ channels."
   :group 'circe)
 
 (defcustom circe-server-auto-join-channels-after-auth nil
-  "*The default channels to join after authentication.
+  "The default channels to join after authentication.
 The format is the same as `circe-server-auto-join-channels'.
 These channels are joined only after nickserv authentication has
 succeeded.
@@ -2761,10 +2761,10 @@ joining."
   :group 'circe)
 
 (defcustom circe-server-auto-join-channels-after-acquired-preferred-nick nil
-  "*The default channels to join after we're sure we have the wanted nick.
+  "The default channels to join after we're sure we have the wanted nick.
 The format is the same as `circe-server-auto-join-channels'.
-These servers are joined after authentication if we immediately get the nick we want,
-or after a successful auto-regain action."
+These servers are joined after authentication if we immediately
+get the nick we want, or after a successful auto-regain action."
   :type '(repeat (cons (regexp :tag "Server or Network")
                        (repeat :tag channels
                                string)))
@@ -2954,14 +2954,14 @@ The list consists of words and spaces."
 ;;; Nickserv Authentication
 
 (defcustom circe-nickserv-authenticated-hook nil
-  "*Functions called after nickserv authenticated succeeded.
+  "Functions called after nickserv authenticated succeeded.
 This is run every time nickserv confirms nick authentication,
 which can happen multiple times per connection."
   :type 'hook
   :group 'circe)
 
 (defcustom circe-acquired-preferred-nick-hook nil
-  "*Hook run after we're sure we have the nick we want.
+  "Hook run after we're sure we have the nick we want.
 Only used when auto-regain is enabled. See `circe-auto-regain-p'."
   :type 'hook
   :group 'circe)
@@ -3032,10 +3032,11 @@ See also `circe-nickserv-auth-info'."
   :group 'circe)
 
 (defcustom circe-nickserv-auth-info nil
-  "*A list of nickserv authentication related information.
-Each entry consists of four elements; the network name, the nickserv style name,
-the nick to use for authentication, and the password to use for authentication.
-When nick is nil, circe-default-nick will be used."
+  "A list of nickserv authentication related information.
+Each entry consists of four elements; the network name, the
+nickserv style name, the nick to use for authentication, and the
+password to use for authentication.  When nick is nil,
+circe-default-nick will be used."
   :type '(repeat (list (string :tag "Network")
                        (string :tag "Nickserv Style")
                        (choice :tag "Nick"
@@ -3045,7 +3046,7 @@ When nick is nil, circe-default-nick will be used."
   :group 'circe)
 
 (defcustom circe-auto-regain-p nil
-  "*Whether circe should automatically regain your nick."
+  "Whether circe should automatically regain your nick."
   :type '(choice (const :tag "On" t)
                  (const :tag "Off" nil))
   :group 'circe)
