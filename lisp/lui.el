@@ -46,7 +46,6 @@
 (defvar lui-version "2"
   "Lui version string.")
 
-(require 'incomplete)
 (require 'ring)
 (require 'flyspell)
 (require 'ispell)
@@ -321,7 +320,7 @@ happens at the beginning of a line.
 
 It is often a good idea to make this variable buffer-local.")
 
-(defvar lui-completion-function 'incomplete
+(defvar lui-completion-function 'completion-at-point
   "A function called to actually do completion.")
 
 
@@ -420,8 +419,9 @@ It can be customized for an application by specifying a
   (when lui-flyspell-p
     (require 'flyspell)
     (lui-flyspell-change-dictionary))
-  (set (make-local-variable 'incomplete-function)
-       'lui-incomplete)
+  (add-hook 'completion-at-point-functions
+            'lui-completion-at-point
+            nil t)
   (run-hooks 'lui-mode-hook))
 
 (defun lui-scroll-to-bottom (window display-start)
@@ -482,18 +482,22 @@ If point is not in the input area, self-insert."
 ;;; Completion ;;;
 ;;;;;;;;;;;;;;;;;;
 
-(defun lui-incomplete ()
-  "Return the string to be completed at point."
-  (let ((end (point))
-        (begin (save-excursion (if (not (re-search-backward "\\s-"
-                                                            lui-input-marker
-                                                            t))
-                                   lui-input-marker
-                                 (forward-char)
-                                 (point)))))
-    (cons (buffer-substring-no-properties begin end)
-          (funcall lui-possible-completions-function (= begin
-                                                        lui-input-marker)))))
+(defun lui-completion-at-point ()
+  "Lui implementation of the completion method.
+
+This function will be on `completion-at-point-functions'."
+  (when lui-possible-completions-function
+    (let ((end (point))
+          (begin (save-excursion (if (not (re-search-backward "\\s-"
+                                                              lui-input-marker
+                                                              t))
+                                     lui-input-marker
+                                   (forward-char)
+                                   (point)))))
+      (list begin end
+            (funcall lui-possible-completions-function
+                     (= begin
+                        lui-input-marker))))))
 
 
 ;;;;;;;;;;;;;;;
