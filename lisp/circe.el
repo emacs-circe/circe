@@ -1368,7 +1368,20 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
         (circe-server-message (format "Unknown command: %s"
                                       command))))))
    (t
-    (mapc #'circe-command-SAY (split-string str "\n")))))
+    (mapc #'circe-command-SAY
+          (circe-list-drop-right (split-string str "\n")
+                                 "^ *$")))))
+
+(defun circe-list-drop-right (list pattern)
+  "Drop elements from the right of LIST that match PATTERN.
+
+LIST should be a list of strings, and PATTERN is used as a
+regular expression."
+  (let ((list (reverse list)))
+    (while (and list
+                (string-match pattern (car list)))
+      (setq list (cdr list)))
+    (reverse list)))
 
 ;;;;;;;;;;;;;;;;
 ;;; Channels ;;;
