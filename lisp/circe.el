@@ -2847,11 +2847,10 @@ front."
         (puthash channel t known)))
     (when circe-server-chat-buffers
       (maphash (lambda (key channel)
-                 (let ((name (buffer-name channel)))
-                   (when (and (with-current-buffer channel
-                                (eq major-mode 'circe-channel-mode))
-                              (not (gethash name known nil)))
-                     (setq result (cons name result)))))
+                 (with-current-buffer channel
+                   (when (and (eq major-mode 'circe-channel-mode)
+                              (not (gethash circe-chat-target known nil)))
+                     (setq result (cons circe-chat-target result)))))
                circe-server-chat-buffers))
     result))
 
