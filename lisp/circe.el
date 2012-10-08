@@ -2362,7 +2362,7 @@ If NO-NOTIFY is true, don't notify the user of this."
     (let ((data (gethash nick circe-channel-users nil)))
       (when data 
         (let ((joined (gethash 'joined data nil))
-              (was-lurker (gethash 'joinpart-is-lurker data nil)))
+              (was-lurker (gethash 'joinpart-is-lurker data t)))
           (puthash 'joinpart-is-lurker nil data)
           (when (and (not no-notify)
                      joined
