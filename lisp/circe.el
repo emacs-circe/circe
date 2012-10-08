@@ -1483,8 +1483,12 @@ buffers."
       (when (not circe-channel-receiving-names-p)
         (setq circe-channel-users nil
               circe-channel-receiving-names-p t))
-      (mapc #'circe-channel-add-user
-            (circe-channel-parse-names (nth 3 args)))))
+      (dolist (nick (circe-channel-parse-names (nth 3 args)))
+        (circe-channel-add-user nick)
+        ;; If we don't mark them active on a NAMES, joining a large
+        ;; channel will cause tons of spammage with "first activity"
+        ;; messages.
+        (circe-joinpart-mark-as-active nick t))))
    ((string= command "366")             ; RPL_ENDOFNAMES
     (setq circe-channel-receiving-names-p nil))
    ))
@@ -1495,7 +1499,9 @@ buffers."
   "Add USER as a channel user."
   (when (not circe-channel-users)
     (setq circe-channel-users (circe-case-fold-table)))
-  (puthash user user circe-channel-users))
+  (let ((data (make-hash-table)))
+    (puthash user data circe-channel-users)
+    (puthash 'joined (float-time) data)))
 
 (defun circe-channel-remove-user (user)
   "Remove USER as a channel user."
@@ -2185,7 +2191,8 @@ command, and args of the message."
                                                                    nick
                                                                  (car args)))
                                  (circe-server-last-active-buffer))
-          (circe-joinpart-mark-as-active nick)
+          (when (eq major-mode 'circe-channel-mode)
+            (circe-joinpart-mark-as-active nick))
           (circe-display 'circe-format-notice
                          :nick nick
                          :body (cadr args)))
@@ -2204,11 +2211,14 @@ command, and args of the message."
   (circe-mapc-user-channels nick
     (lambda (buf)
       (with-current-buffer buf
-        (when (not (circe-joinpart-is-inactive nick))
+        (when (not (circe-joinpart-is-lurker nick))
           (circe-server-message
            (format "Nick change: %s (%s@%s) is now known as %s"
                    nick user host (car args))))
-        (circe-joinpart-nick-change nick (car args))))))
+        (let ((data (gethash nick circe-channel-users nil)))
+          (when data
+            (remhash nick circe-channel-users)
+            (puthash (car args) data circe-channel-users)))))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick user host command args)
@@ -2235,13 +2245,12 @@ command, and args of the message."
   (let ((buf (circe-server-get-chat-buffer (car args))))
     (when buf
       (with-current-buffer buf
-        (when (not (circe-joinpart-is-inactive nick))
+        (when (not (circe-joinpart-is-lurker nick))
           (circe-server-message
            (if (null (cdr args))
                (format "Part: %s (%s@%s)" nick user host)
              (format "Part: %s (%s@%s) - %s"
-                     nick user host (cadr args)))))
-        (circe-joinpart-forget-user nick)))))
+                     nick user host (cadr args)))))))))
 
 ;;; These are here to display the time distance.
 (defun circe-duration-string (duration)
@@ -2313,57 +2322,32 @@ command, and args of the message."
 ;;; Join/Part Spam Protections ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar circe-joinpart-users nil
-  "A table of so-far inactive users. Used to reduce join/part spam.
-
-See `circe-reduce-joinpart-spam'.")
-(make-variable-buffer-local 'circe-joinpart-users)
-
-(defun circe-joinpart-new-user (nick)
-  "Add NICK as an inactive user."
-  ;; Never assume we ourselves are inactive
-  (when (not (circe-server-my-nick-p nick))
-    (when (not circe-joinpart-users)
-      (setq circe-joinpart-users (circe-case-fold-table)))
-    (puthash nick (list nick (float-time))
-             circe-joinpart-users)))
-
-(defun circe-joinpart-forget-user (nick)
-  "Forget that NICK was around. E.g. when they leave."
-  (when circe-joinpart-users
-    (remhash nick circe-joinpart-users)))
-
-(defun circe-joinpart-clear ()
-  "Clear the current table."
-  (setq circe-joinpart-users nil))
-
-(defun circe-joinpart-is-inactive (nick)
+(defun circe-joinpart-is-lurker (nick)
   "Return a true value if this nick has been inactive so far."
-  (when circe-joinpart-users
-    (gethash nick circe-joinpart-users nil)))
+  (when circe-channel-users
+    (let ((data (gethash nick circe-channel-users nil)))
+      (when data
+        (gethash 'joinpart-is-lurker data t)))))
 
-(defun circe-joinpart-nick-change (oldnick newnick)
-  "Change the nick from OLDNICK to NEWNICK, if the user was
-inactive so far."
-  (when circe-joinpart-users
-    (let ((val (gethash oldnick circe-joinpart-users nil)))
-      (when val
-        (puthash newnick val circe-joinpart-users)))))
+(defun circe-joinpart-mark-as-active (nick &optional no-notify)
+  "Mark NICK as active now.
 
-(defun circe-joinpart-mark-as-active (nick)
-  "Mark NICK as active now."
-  (when circe-joinpart-users
-    (let ((val (gethash nick circe-joinpart-users)))
-      (when val
-        (remhash nick circe-joinpart-users)
-        (circe-display 'circe-format-server-joinpart-activity
-                       :nick nick
-                       :oldnick (car val)
-                       :jointime (cadr val)
-                       :joindelta (circe-duration-string 
-                                   (- (float-time)
-                                      (cadr val))))))))
-
+If NO-NOTIFY is true, don't notify the user of this."
+  (when circe-channel-users
+    (let ((data (gethash nick circe-channel-users nil)))
+      (when data 
+        (let ((joined (gethash 'joined data nil))
+              (was-lurker (gethash 'joinpart-is-lurker data nil)))
+          (puthash 'joinpart-is-lurker nil data)
+          (when (and (not no-notify)
+                     joined
+                     was-lurker
+                     circe-reduce-joinpart-spam)
+            (circe-display 'circe-format-server-joinpart-activity
+                           :nick nick
+                           :joindelta (circe-duration-string 
+                                       (- (float-time)
+                                          joined)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Netsplit Handling ;;;
@@ -2448,11 +2432,13 @@ or nil when this isn't a split."
               (circe-server-message
                (format "Netsplit: %s (Use /WL to see who left)"
                        (car args)))))
-           ((not (circe-joinpart-is-inactive nick))
+           ((not (and (eq major-mode 'circe-channel-mode)
+                      (circe-joinpart-is-inactive nick)))
             (circe-server-message
              (format "Quit: %s (%s@%s) - %s"
                      nick user host (car args)))))
-          (circe-joinpart-forget-user nick))))))  
+          (when (eq major-mode 'circe-channel-mode)
+            (circe-joinpart-forget-user nick)))))))  
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick user host command args)
@@ -2468,9 +2454,7 @@ or nil when this isn't a split."
           (circe-server-message
            (format "Netmerge: %s (Use /WL to see who's still missing)"
                    (car split)))))
-       (circe-reduce-joinpart-spam
-        (circe-joinpart-new-user nick))
-       (t
+       ((not circe-reduce-joinpart-spam)
         (circe-server-message
          (format "Join: %s (%s@%s)" nick user host))))))
   ;; Next, query buffers. We do this even when the message should be
