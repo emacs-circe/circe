@@ -724,7 +724,7 @@ See `circe-server-max-reconnect-attempts'.")
   "Reconnect the current server."
   (interactive)
   (with-circe-server-buffer
-    (when (or (interactive-p) ;; Always reconnect if the user wants it
+    (when (or (called-interactively-p) ;; Always reconnect if the user wants it
               (not circe-server-max-reconnect-attempts)
               (< circe-server-reconnect-attempts
                  circe-server-max-reconnect-attempts))
@@ -766,6 +766,15 @@ See `circe-server-max-reconnect-attempts'.")
                                      :filter #'circe-server-filter-function
                                      :sentinel #'circe-server-sentinel
                                      :keepalive t)))))))
+
+(defun circe-reconnect-all ()
+  "Reconnect all Circe connections."
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (eq major-mode 'circe-server-mode)
+        (if (called-interactively-p)
+            (call-interactively 'circe-reconnect)
+          (circe-reconnect))))))
 
 (defun circe-server-filter-function (process string)
   "The process filter for the circe server."
