@@ -2735,8 +2735,24 @@ The buffer might be nil if it is not alive."
 ;;; Auto-Join
 (defcustom circe-server-auto-join-channels nil
   "The default channels to join.
-Each element in this list has a regular expression matching a
-server or network name, and a list of channels to join.
+
+This is a list of lists, mapping networks to channels to join.
+The list of channels to join contains optional keyword. Best
+explained in an example:
+
+\((\"freenode\" \"#emacs\"
+                :after-auth \"#channel\" \"#channel2\"
+  ))
+
+Possible keyword options are:
+
+:immediate - Immediately after registering on the server
+:after-auth - After nickserv authentication succeeded
+:after-nick - After we regained our preferred nick. See
+              `circe-auto-regain-p'.
+
+The default is set in `circe-server-auto-join-default-type'.
+
 The car can also be a symbol, which is called as a function and
 should return non-nil if we should join the appropriate
 channels."
@@ -2745,94 +2761,92 @@ channels."
                                string)))
   :group 'circe)
 
-(defcustom circe-server-auto-join-channels-after-auth nil
-  "The default channels to join after authentication.
-The format is the same as `circe-server-auto-join-channels'.
-These channels are joined only after nickserv authentication has
-succeeded.
+(defcustom circe-server-auto-join-default-type :immediate
+  "The default auto-join type to use.
 
-When using auto-regain functionality, it is recommended to use
-`circe-server-auto-join-channels-after-acquired-preferred-nick'
-instead, so as to not send a NICK message to channels right after
-joining."
-  :type '(repeat (cons (regexp :tag "Server or Network")
-                       (repeat :tag channels
-                               string)))
+Possible options:
+
+:immediate - Immediately after registering on the server
+:after-auth - After nickserv authentication succeeded
+:after-nick - After we regained our preferred nick. See
+              `circe-auto-regain-p'.
+
+See `circe-server-auto-join-channels' for more details."
+  :type '(choice (const :tag "Immediately" :immediate)
+                 (const :tag "After Authentication" :after-auth)
+                 (const :tag "After Nick Regain" :after-nick))
   :group 'circe)
 
-(defcustom circe-server-auto-join-channels-after-acquired-preferred-nick nil
-  "The default channels to join after we're sure we have the wanted nick.
-The format is the same as `circe-server-auto-join-channels'.
-These servers are joined after authentication if we immediately
-get the nick we want, or after a successful auto-regain action."
-  :type '(repeat (cons (regexp :tag "Server or Network")
-                       (repeat :tag channels
-                               string)))
-  :group 'circe)
-
-(defun circe-auto-join-get-channels (alist)
-  "Return a hash with the channel names we want to join from `alist'.
-See `circe-server-auto-join-channels' for the format.
-
-Must be called in a server buffer."
-  (let ((joined (circe-case-fold-table)))
-    (catch 'exit
-      (mapc (lambda (entry)
-              (when (if (symbolp (car entry))
-                        (funcall (car entry))
-                      (string-match (car entry) circe-server-network))
-                (mapc (lambda (channel)
-                        (puthash channel channel joined))
-                      (cdr entry))
-               (throw 'exit t)))
-           alist))
-   joined))
-
-(add-hook 'circe-server-connected-hook 'circe-auto-join)
-(defun circe-auto-join ()
-  "Join default channels, as per `circe-server-auto-join-channels'.
-This also makes sure to re-join channels for which buffers still
-exist."
-  (let* ((to-join (circe-auto-join-get-channels
-                   circe-server-auto-join-channels))
-         ;; We do not automatically join channels that need auth.
-         (excluded (circe-auto-join-get-channels
-                    (append
-                     circe-server-auto-join-channels-after-auth
-                     circe-server-auto-join-channels-after-acquired-preferred-nick))))
-    (when circe-server-chat-buffers
-      (maphash (lambda (key channel)
-                 (let ((name (buffer-name channel)))
-                   (when (with-current-buffer channel
-                           (eq major-mode 'circe-channel-mode))
-                     (when (not (gethash name excluded))
-                       (puthash name name to-join)))))
-               circe-server-chat-buffers))
-    (maphash (lambda (key channel)
-               (circe-command-JOIN channel))
-             to-join)))
+(add-hook 'circe-server-connected-hook 'circe-auto-join-immediate)
+(defun circe-auto-join-immediate ()
+  "Join channels as per `circe-server-auto-join-channels'."
+  (circe-auto-join :immediate))
 
 (add-hook 'circe-nickserv-authenticated-hook 'circe-auto-join-after-auth)
 (defun circe-auto-join-after-auth ()
-  "Join the default channels, as per
-`circe-server-auto-join-channels-after-auth'."
-  (message "circe-auto-join-after-auth")
-  (maphash (lambda (key channel)
-             (circe-command-JOIN channel))
-           (circe-auto-join-get-channels
-            circe-server-auto-join-channels-after-auth)))
+"Join channels as per `circe-server-auto-join-channels'."
+  (circe-auto-join :after-auth))
 
 (add-hook 'circe-acquired-preferred-nick-hook
           'circe-auto-join-after-acquired-preferred-nick)
 (defun circe-auto-join-after-acquired-preferred-nick ()
-  "Join the default channels, as per
-`circe-server-auto-join-channels-after-acquired-preferred-nick'."
-  (message "circe-auto-join-after-acquired-preferred-nick")
-  (maphash (lambda (key channel)
-             (circe-command-JOIN channel))
-           (circe-auto-join-get-channels
-            circe-server-auto-join-channels-after-acquired-preferred-nick)))
+"Join channels as per `circe-server-auto-join-channels'."
+  (circe-auto-join :after-nick))
 
+(defun circe-auto-join (type)
+  "Join channels as specified by TYPE.
+
+See `circe-server-auto-join-channels' for details on TYPE."
+  (dolist (channel (circe-auto-join-channels type))
+    (circe-command-JOIN channel)))
+
+(defun circe-auto-join-channels (type)
+  "Return a list of channels as configured for auto-join type TYPE.
+
+See `circe-server-auto-join-channels' for details. Channels
+joined manually so far and not in that list are added to the
+front."
+  (let ((all-channels (circe-auto-join-channels-entry))
+        (current-type circe-server-auto-join-default-type)
+        (result nil))
+    (setq all-channels (append (circe-auto-join-manually-joined-channels
+                                all-channels)
+                               all-channels))
+    (dolist (channel all-channels)
+      (cond
+       ((stringp channel)
+        (when (eq type current-type)
+          (setq result (cons channel result))))
+       ((keywordp channel)
+        (setq current-type channel))))
+    (reverse result)))
+
+(defun circe-auto-join-channels-entry ()
+  "Get the entry in `circe-auto-join-channels' for this network."
+  (catch 'return
+    (dolist (entry circe-server-auto-join-channels)
+      (when (if (symbolp (car entry))
+                (funcall (car entry))
+              (string-match (car entry) circe-server-network))
+        (throw 'return (cdr entry))))
+    nil))
+
+(defun circe-auto-join-manually-joined-channels (channels)
+  "Return a list of already-joined channels not in CHANNELS."
+  (let ((known (circe-case-fold-table))
+        (result nil))
+    (dolist (channel channels)
+      (when (stringp channel)
+        (puthash channel t known)))
+    (when circe-server-chat-buffers
+      (maphash (lambda (key channel)
+                 (let ((name (buffer-name channel)))
+                   (when (and (with-current-buffer channel
+                                (eq major-mode 'circe-channel-mode))
+                              (not (gethash name known nil)))
+                     (setq result (cons name result)))))
+               circe-server-chat-buffers))
+    result))
 
 ;;;;;;;;;;;;;;;;;;;
 ;;; Topic Handling
