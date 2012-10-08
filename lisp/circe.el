@@ -1493,11 +1493,13 @@ buffers."
         (setq circe-channel-users nil
               circe-channel-receiving-names-p t))
       (dolist (nick (circe-channel-parse-names (nth 3 args)))
-        (circe-channel-add-user nick)
-        ;; If we don't mark them active on a NAMES, joining a large
-        ;; channel will cause tons of spammage with "first activity"
-        ;; messages.
-        (circe-joinpart-mark-as-active nick t))))
+        (when (or (not circe-channel-users)
+                  (not (gethash nick circe-channel-users nil)))
+          (circe-channel-add-user nick)
+          ;; If we don't mark them active on a NAMES, joining a large
+          ;; channel will cause tons of spammage with "first activity"
+          ;; messages.
+          (circe-joinpart-mark-as-active nick t)))))
    ((string= command "366")             ; RPL_ENDOFNAMES
     (setq circe-channel-receiving-names-p nil))
    ))
@@ -2333,7 +2335,8 @@ command, and args of the message."
 
 (defun circe-joinpart-is-lurker (nick)
   "Return a true value if this nick has been inactive so far."
-  (when circe-channel-users
+  (when (and circe-reduce-joinpart-spam
+             circe-channel-users)
     (let ((data (gethash nick circe-channel-users nil)))
       (when data
         (gethash 'joinpart-is-lurker data t)))))
@@ -2441,13 +2444,10 @@ or nil when this isn't a split."
               (circe-server-message
                (format "Netsplit: %s (Use /WL to see who left)"
                        (car args)))))
-           ((not (and (eq major-mode 'circe-channel-mode)
-                      (circe-joinpart-is-inactive nick)))
+           ((not (circe-joinpart-is-lurker nick))
             (circe-server-message
              (format "Quit: %s (%s@%s) - %s"
-                     nick user host (car args)))))
-          (when (eq major-mode 'circe-channel-mode)
-            (circe-joinpart-forget-user nick)))))))  
+                     nick user host (car args))))))))))
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick user host command args)
