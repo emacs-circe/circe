@@ -816,7 +816,7 @@ See `circe-server-max-reconnect-attempts'.")
                                   circe-server-user
                                   circe-server-realname)))
       (t
-       (circe-server-message "Disconnected")
+       (circe-server-message (format "Disconnected (%s)" event))
        (circe-mapc-chat-buffers
         (lambda (buf)
           (with-current-buffer buf
