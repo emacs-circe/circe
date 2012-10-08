@@ -2030,23 +2030,24 @@ command, and args of the message."
 (circe-set-display-handler "CTCP-ACTION" 'circe-ctcp-display-ACTION)
 (defun circe-ctcp-display-ACTION (nick user host command args)
   "Show an ACTION."
-  (if (circe-server-my-nick-p (car args)) ; Query
-      (let ((buf (circe-server-auto-query-buffer nick)))
-        (if buf
-            (with-current-buffer buf
-              (circe-display 'circe-format-action
+  (let ((*circe-fool-p* (circe-fool-p nick user host command args)))
+    (if (circe-server-my-nick-p (car args)) ; Query
+        (let ((buf (circe-server-auto-query-buffer nick)))
+          (if buf
+              (with-current-buffer buf
+                (circe-display 'circe-format-action
+                               :nick nick
+                               :body (cadr args)))
+            (with-current-buffer (circe-server-last-active-buffer)
+              (circe-display 'circe-format-message-action
                              :nick nick
-                             :body (cadr args)))
-          (with-current-buffer (circe-server-last-active-buffer)
-            (circe-display 'circe-format-message-action
-                           :nick nick
-                           :body (cadr args)))))
-    (with-current-buffer (circe-server-get-chat-buffer (car args)
-                                                       'circe-channel-mode)
-      (circe-joinpart-mark-as-active nick)
-      (circe-display 'circe-format-action
-                     :nick nick
-                     :body (cadr args)))))
+                             :body (cadr args)))))
+      (with-current-buffer (circe-server-get-chat-buffer (car args)
+                                                         'circe-channel-mode)
+        (circe-joinpart-mark-as-active nick)
+        (circe-display 'circe-format-action
+                       :nick nick
+                       :body (cadr args))))))
 
 (add-hook 'circe-receive-message-functions 'circe-ctcp-VERSION-handler)
 (defun circe-ctcp-VERSION-handler (nick user host command args)
