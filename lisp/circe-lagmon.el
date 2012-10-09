@@ -114,17 +114,22 @@ send a request if it's time for that. See
 `circe-lagmon-check-interval' to configure the behavior.."
   (let ((now (float-time)))
     (cond
-     ;; No answer so far, and last request sent longer than the
-     ;; timeout seconds ago.
-     ((and (not circe-lagmon-last-receive-time)
-           circe-lagmon-reconnect-interval
-           circe-lagmon-last-send-time
-           (> now
-              (+ circe-lagmon-last-send-time
-                 circe-lagmon-reconnect-interval)))
-      (setq circe-lagmon-last-send-time nil
-            circe-lagmon-last-receive-time nil)
-      (circe-reconnect))
+     ;; No answer so far...
+     ((and circe-lagmon-last-send-time
+           (not circe-lagmon-last-receive-time))
+      ;; Count up until the answer comes.
+      (let ((lag (/ (- now circe-lagmon-last-send-time) 2)))
+        (when (> lag circe-lagmon-server-lag)
+          (setq circe-lagmon-server-lag lag)
+          (circe-lagmon-force-mode-line-update)))
+      ;; Check for timeout.
+      (when (and circe-lagmon-reconnect-interval
+                 (> now
+                    (+ circe-lagmon-last-send-time
+                       circe-lagmon-reconnect-interval)))
+        (setq circe-lagmon-last-send-time nil
+              circe-lagmon-last-receive-time nil)
+        (circe-reconnect)))
      ;; Nothing sent so far, or last send was too long ago.
      ((or (not circe-lagmon-last-send-time)
           (> now
