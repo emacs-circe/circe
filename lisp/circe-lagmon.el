@@ -54,7 +54,7 @@ Increase this to improve performance at the cost of accuracy."
   :type 'number
   :group 'circe-lagmon)
 
-(defcustom circe-lagmon-reconnect-interval 20
+(defcustom circe-lagmon-reconnect-interval 40
   "Seconds after which to automatically reconnect upon a timeout
 of a lag monitor message. A value of nil disables the feature."
   :type '(choice (const :tag "Disable auto-reconnect" nil)
@@ -66,8 +66,8 @@ of a lag monitor message. A value of nil disables the feature."
   :type 'string
   :group 'circe-lagmon)
 
-(defcustom circe-lagmon-mode-line-no-lag-format-string "lag:? "
-  "Format string for displaying no lag in the mode-line."
+(defcustom circe-lagmon-mode-line-unknown-lag-indicator "lag:? "
+  "Indicator string for displaying unknown lag in the mode-line."
   :type 'string
   :group 'circe-lagmon)
 
@@ -146,17 +146,26 @@ send a request if it's time for that. See
   "Suppress the default display of the CTCP LAGMON message."
   'ignored)
 
-(defun circe-lagmon-ctcp-LAGMON-handler (nick user host command args)
-  "Handle CTCP LAGMON, updating the mode-line display, and
-cancelling any ongoing timeout count for this server."
-  (when (and (string= command "CTCP-LAGMON")
-             (circe-case-fold-string= nick circe-server-nick))
+(defun circe-lagmon-message-handler (nick user host command args)
+  "Handle relevant message to lagmon
+
+On a CTCP LAGMON message, store the time and updating the
+mode-line display.
+
+On a NICK change for us, reset the timer as well, as might be
+missing a CTCP response sent to the old nick."
+  (cond
+   ((and (string= command "CTCP-LAGMON")
+         (circe-server-my-nick-p nick))
     (let* ((now (float-time))
            (lag (/ (- now (string-to-number (cadr args)))
                    2)))
       (setq circe-lagmon-server-lag lag
             circe-lagmon-last-receive-time now)
-      (circe-lagmon-force-mode-line-update))))
+      (circe-lagmon-force-mode-line-update)))
+   ((and (string= command "NICK")
+         (circe-server-my-nick-p nick))
+    (setq circe-lagmon-last-send-time nil))))
 
 (defun circe-lagmon-force-mode-line-update ()
   "Call force-mode-line-update on a circe server buffer and all
@@ -174,13 +183,13 @@ of its chat buffers."
    ((eq major-mode 'circe-server-mode)
     (if circe-lagmon-server-lag
         (format circe-lagmon-mode-line-format-string circe-lagmon-server-lag)
-      circe-lagmon-mode-line-no-lag-format-string))
+      circe-lagmon-mode-line-unknown-lag-indicator))
    (circe-server-buffer
     (with-current-buffer circe-server-buffer
       (if circe-lagmon-server-lag
           (format circe-lagmon-mode-line-format-string
                   circe-lagmon-server-lag)
-        circe-lagmon-mode-line-no-lag-format-string)))))
+        circe-lagmon-mode-line-unknown-lag-indicator)))))
 
 (defun circe-lagmon-ignored-network-p ()
   "Check if the current buffer is a server buffer that should be
@@ -225,7 +234,7 @@ in the mode-line."
     (when circe-lagmon-mode
       (add-hook 'mode-line-modes mode-line-entry)
       (add-hook 'circe-receive-message-functions
-                'circe-lagmon-ctcp-LAGMON-handler)
+                'circe-lagmon-message-handler)
       (circe-set-display-handler "CTCP-LAGMON"
                                  'circe-lagmon-ctcp-LAGMON-display-handler)
       (dolist (buffer (buffer-list))
