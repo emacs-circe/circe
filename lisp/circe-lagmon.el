@@ -66,7 +66,7 @@ of a lag monitor message. A value of nil disables the feature."
   :type 'string
   :group 'circe-lagmon)
 
-(defcustom circe-lagmon-mode-line-unknown-lag-indicator "lag:? "
+(defcustom circe-lagmon-mode-line-unknown-lag-string "lag:? "
   "Indicator string for displaying unknown lag in the mode-line."
   :type 'string
   :group 'circe-lagmon)
@@ -183,13 +183,13 @@ of its chat buffers."
    ((eq major-mode 'circe-server-mode)
     (if circe-lagmon-server-lag
         (format circe-lagmon-mode-line-format-string circe-lagmon-server-lag)
-      circe-lagmon-mode-line-unknown-lag-indicator))
+      circe-lagmon-mode-line-unknown-lag-string))
    (circe-server-buffer
     (with-current-buffer circe-server-buffer
       (if circe-lagmon-server-lag
           (format circe-lagmon-mode-line-format-string
                   circe-lagmon-server-lag)
-        circe-lagmon-mode-line-unknown-lag-indicator)))))
+        circe-lagmon-mode-line-unknown-lag-string)))))
 
 (defun circe-lagmon-ignored-network-p ()
   "Check if the current buffer is a server buffer that should be
