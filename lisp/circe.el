@@ -3046,10 +3046,6 @@ circe-default-nick will be used."
                  (const :tag "Off" nil))
   :group 'circe)
 
-(defvar circe-nickserv-registered-p nil
-  "Non-nil when we did register with nickserv here.")
-(make-variable-buffer-local 'circe-nickserv-registered-p)
-
 (defun circe-server-preferred-nick ()
   "Returns the nick we would like to have rather than the current one, or nil.
 The preferred nick is the one found in `circe-nickserv-auth-info',
@@ -3095,9 +3091,6 @@ and defaults to `circe-default-nick'."
   "React to messages relevant to nickserv authentication and auto-regain."
   (with-circe-server-buffer
     (cond
-     ((string= command "001")
-      ;; Reconnect!
-      (setq circe-nickserv-registered-p nil))
      ((and circe-nickserv-auth-info
            ;; bitlbee uses PRIVMSG
            (member command '("NOTICE" "PRIVMSG")))
@@ -3117,7 +3110,6 @@ and defaults to `circe-default-nick'."
            ((and (nth 6 ns-style)
                  (string-match (nth 6 ns-style)
                                (cadr args)))
-            (setq circe-nickserv-registered-p t)
             (run-hooks 'circe-nickserv-authenticated-hook)
             (when circe-auto-regain-p
               (if (null (circe-server-preferred-nick))
