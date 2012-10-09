@@ -3,7 +3,8 @@
 ;; Copyright (C) 2011  John J Foerch <jjfoerch@earthlink.net>
 
 ;; Author: John J Foerch <jjfoerch@earthlink.net>
-;; Keywords: IRC, chat
+
+;; This file is part of Circe.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License

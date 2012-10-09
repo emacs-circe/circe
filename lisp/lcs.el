@@ -4,6 +4,8 @@
 ;;   Copyright (c) 2002-2003 by Shiro Kawai, All rights reserved.
 ;;   Copyright (c) 2006 by Jorgen Schaefer, All rights reserved.
 
+;; This file is part of Circe.
+
 ;;   Redistribution and use in source and binary forms, with or without
 ;;   modification, are permitted provided that the following conditions
 ;;   are met:

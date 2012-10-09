@@ -2,10 +2,9 @@
 
 ;; Copyright (C) 2012  Taylan Ulrich Bayırlı/Kammer
 
-;; Version: 1.0
-;; Keywords: Circe, IRC
 ;; Author: Taylan Ulrich Bayırlı/Kammer <taylanbayirli@gmail.com>
-;; URL: https://github.com/TaylanUB/circe
+
+;; This file is part of Circe.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License

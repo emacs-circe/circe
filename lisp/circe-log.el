@@ -2,10 +2,9 @@
 
 ;; Copyright (C) 2007 Tassilo Horn <tassilo@member.fsf.org>
 
-;; Version: 1.0
-;; Keywords: Circe, IRC
 ;; Author: Tassilo Horn <tassilo@member.fsf.org>
-;; URL: https://github.com/jorgenschaefer/circe
+
+;; This file is part of Circe.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License

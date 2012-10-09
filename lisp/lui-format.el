@@ -2,10 +2,9 @@
 
 ;; Copyright (C) 2005  Jorgen Schaefer
 
-;; Version: 1.0
-;; Keywords: Lui, formatting
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
-;; URL: https://github.com/jorgenschaefer/circe
+
+;; This file is part of Circe.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
