@@ -47,11 +47,10 @@ See `enable-circe-highlight-all-nicks'."
 This module highlights all occurances of nicks in the current
 channel in messages of other people."
   (interactive)
-  (mapc (lambda (buf)
-          (with-current-buffer buf
-            (when (eq major-mode 'circe-channel-mode)
-              (add-circe-highlight-all-nicks))))
-        (buffer-list))
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (eq major-mode 'circe-channel-mode)
+        (add-circe-highlight-all-nicks))))
   (add-hook 'circe-channel-mode-hook
             'add-circe-highlight-all-nicks))
 
@@ -59,11 +58,10 @@ channel in messages of other people."
   "Disable the Highlight Nicks module for Circe.
 See `enable-circe-highlight-all-nicks'."
   (interactive)
-  (mapc (lambda (buf)
-          (with-current-buffer buf
-            (when (eq major-mode 'circe-channel-mode)
-              (remove-circe-highlight-all-nicks))))
-        (buffer-list))
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (eq major-mode 'circe-channel-mode)
+        (remove-circe-highlight-all-nicks))))
   (remove-hook 'circe-channel-mode-hook
                'add-circe-highlight-all-nicks))
 

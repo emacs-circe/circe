@@ -60,11 +60,11 @@ buffers for ChanServ and NickServ will be ignored."
 `circe-log-buffer-regexp' and not matching
 `circe-log-exlude-buffer-regexp'."
   (interactive)
-  (mapc (lambda (buf)
-          (with-current-buffer buf
-            (when (eq major-mode 'circe-chat-mode)
-              (add-circe-log-buffer))))
-        (buffer-list))
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      ;; Can this even work?
+      (when (eq major-mode 'circe-chat-mode)
+        (add-circe-log-buffer))))
   (add-hook 'circe-chat-mode-hook
             'add-circe-log-buffer)
   (add-hook 'circe-chat-mode-hook
@@ -73,11 +73,10 @@ buffers for ChanServ and NickServ will be ignored."
 (defun disable-circe-log ()
   "Disables automatic logging."
   (interactive)
-  (mapc (lambda (buf)
-          (with-current-buffer buf
-            (when (eq major-mode 'circe-chat-mode)
-              (remove-circe-log-buffer))))
-        (buffer-list))
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (eq major-mode 'circe-chat-mode)
+        (remove-circe-log-buffer))))
   (remove-hook 'circe-chat-mode-hook
                'add-circe-log-buffer)
   (remove-hook 'circe-chat-mode-hook

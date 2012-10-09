@@ -79,10 +79,9 @@ feature."
   "Call force-mode-line-update on a circe server buffer and all
 of its chat buffers."
   (force-mode-line-update)
-  (circe-mapc-chat-buffers
-   (lambda (b)
-     (with-current-buffer b
-       (force-mode-line-update)))))
+  (dolist (b (circe-chat-buffers))
+    (with-current-buffer b
+      (force-mode-line-update))))
 
 (defun circe-lagmon-format-mode-line-entry ()
   "Format the mode-line entry for displaying the lag."

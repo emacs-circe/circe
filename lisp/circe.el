@@ -735,10 +735,9 @@ See `circe-server-max-reconnect-attempts'.")
       (when circe-server-process
         (delete-process circe-server-process))
       (circe-server-message "Connecting...")
-      (circe-mapc-chat-buffers
-       (lambda (buf)
-         (with-current-buffer buf
-           (circe-server-message "Connecting..."))))
+      (dolist (buf (circe-chat-buffers))
+        (with-current-buffer buf
+          (circe-server-message "Connecting...")))
       (setq circe-server-registered-p nil
             circe-server-flood-queue nil)
       (cond
@@ -819,10 +818,9 @@ See `circe-server-max-reconnect-attempts'.")
                                   circe-server-realname)))
       (t
        (circe-server-message (format "Disconnected (%s)" event))
-       (circe-mapc-chat-buffers
-        (lambda (buf)
-          (with-current-buffer buf
-            (circe-chat-disconnected))))
+       (dolist (buf (circe-chat-buffers))
+         (with-current-buffer buf
+           (circe-chat-disconnected)))
        (when (and (not (string-match "^deleted" event)) ; Buffer kill
                   (not circe-server-quitting-p))
          (circe-reconnect))
@@ -917,10 +915,9 @@ protection algorithm."
     (error
      t))
   (when (eq circe-server-killed-confirmation 'ask-and-kill-all)
-    (circe-mapc-chat-buffers
-     (lambda (buf)
-       (let ((circe-channel-killed-confirmation nil))
-         (kill-buffer buf))))))
+    (dolist (buf (circe-chat-buffers))
+      (let ((circe-channel-killed-confirmation nil))
+        (kill-buffer buf)))))
 
 (defun circe-server-last-active-buffer ()
   "Return the last active buffer of this server."
@@ -1196,14 +1193,16 @@ initialize a new buffer if none exists."
        (t
         nil)))))
 
-(defun circe-mapc-chat-buffers (XXfun) ;; XX to prevent accidental capturing
-  "Apply FUN to every chat buffer of the current server."
+(defun circe-chat-buffers ()
+  "Return a list of all chat buffer of the current server."
   (let ((hash (with-circe-server-buffer
-                circe-server-chat-buffers)))
+                circe-server-chat-buffers))
+        (result nil))
     (when hash
-      (maphash (lambda (XXkey XXvalue)
-                 (funcall XXfun XXvalue))
-               hash))))
+      (maphash (lambda (key value)
+                 (setq result (cons value result)))
+               hash))
+    result))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ignore Handling ;;;
@@ -1216,13 +1215,12 @@ initialize a new buffer if none exists."
                            (string-match "^\\([^ ]*\\)[:, ]" (cadr args)))
                   (match-string 1 (cadr args)))))
     (catch 'return
-      (mapc (lambda (regex)
-              (when (string-match regex string)
-                (throw 'return t))
-              (when (and (stringp target)
-                         (string-match regex target))
-                (throw 'return t)))
-            alist)
+      (dolist (regex alist)
+        (when (string-match regex string)
+          (throw 'return t))
+        (when (and (stringp target)
+                   (string-match regex target))
+          (throw 'return t)))
       nil)))
 
 (defun circe-ignored-p (nick user host command args)
@@ -1253,9 +1251,8 @@ See `circe-fool-list'."
       (circe-server-message "Your ignore list is empty"))
      (t
       (circe-server-message "Your ignore list:")
-      (mapc (lambda (regex)
-              (circe-server-message (format "- %s" regex)))
-            circe-ignore-list)))))
+      (dolist (regex circe-ignore-list)
+        (circe-server-message (format "- %s" regex)))))))
 
 (defun circe-command-UNIGNORE (line)
   "Remove an entry from `circe-ignore-list'."
@@ -1283,9 +1280,8 @@ See `circe-fool-list'."
       (circe-server-message "Your do not know any fools"))
      (t
       (circe-server-message "Your list of fools:")
-      (mapc (lambda (regex)
-              (circe-server-message (format "- %s" regex)))
-            circe-fool-list)))))
+      (dolist (regex circe-fool-list)
+        (circe-server-message (format "- %s" regex)))))))
 
 (defun circe-command-UNFOOL (line)
   "Remove an entry from `circe-fool-list'."
@@ -1465,28 +1461,26 @@ buffers."
   "Update the users of a channel as appropriate."
   (cond
    ((string= command "NICK")
-    (circe-mapc-chat-buffers
-     (lambda (buf)
-       (with-current-buffer buf
-         (when (and (eq major-mode 'circe-channel-mode)
-                    (circe-channel-user-p nick))
-           (circe-channel-remove-user nick)
-           (circe-channel-add-user (car args)))
-         (when (and (eq major-mode 'circe-query-mode)
-                    (circe-case-fold-string= nick
-                                             circe-chat-target))
-           (setq circe-chat-target (car args))
-           (with-circe-server-buffer
-             (circe-server-remove-chat-buffer nick)
-             (circe-server-add-chat-buffer (car args)
-                                           buf)))))))
+    (dolist (buf (circe-chat-buffers))
+      (with-current-buffer buf
+        (when (and (eq major-mode 'circe-channel-mode)
+                   (circe-channel-user-p nick))
+          (circe-channel-remove-user nick)
+          (circe-channel-add-user (car args)))
+        (when (and (eq major-mode 'circe-query-mode)
+                   (circe-case-fold-string= nick
+                                            circe-chat-target))
+          (setq circe-chat-target (car args))
+          (with-circe-server-buffer
+            (circe-server-remove-chat-buffer nick)
+            (circe-server-add-chat-buffer (car args)
+                                          buf))))))
    ((string= command "QUIT")
-    (circe-mapc-chat-buffers
-     (lambda (buf)
-       (with-current-buffer buf
-         (when (and (eq major-mode 'circe-channel-mode)
-                    (circe-channel-user-p nick))
-           (circe-channel-remove-user nick))))))
+    (dolist (buf (circe-chat-buffers))
+      (with-current-buffer buf
+        (when (and (eq major-mode 'circe-channel-mode)
+                   (circe-channel-user-p nick))
+          (circe-channel-remove-user nick)))))
    ((string= command "JOIN")
     (with-circe-chat-buffer (car args)
       (circe-channel-add-user nick)))
@@ -1498,10 +1492,9 @@ buffers."
       (circe-channel-remove-user (cadr args))))
    ((string= command "005")             ; RPL_ISUPPORT
     (catch 'exit
-      (mapc (lambda (setting)
-              (when (string-match "PREFIX=([^)]*)\\(.*\\)" setting)
-                (setq circe-channel-nick-prefixes (match-string 1 setting))))
-            (cdr args))))
+      (dolist (setting (cdr args))
+        (when (string-match "PREFIX=([^)]*)\\(.*\\)" setting)
+          (setq circe-channel-nick-prefixes (match-string 1 setting))))))
    ((string= command "353")             ; RPL_NAMREPLY
     (with-circe-chat-buffer (nth 2 args)
       (when (not circe-channel-receiving-names-p)
@@ -1549,25 +1542,14 @@ This uses `circe-channel-nick-prefixes'."
           (split-string name-string
                         (format "\\(^\\| \\)[%s]*" circe-channel-nick-prefixes))))
 
-(defun circe-mapc-user-channels (XXuser fun)  ;; XX to prevent
-                                              ;; accidental capturing
+(defun circe-user-channels (user)
   "Return a list of channels for USER."
-  ;; ;; The trivial implementation doesn't work due to Emacs' dynamic
-  ;; ;; scoping. Please wait while I puke outside.
-  ;; (circe-mapc-chat-buffers
-  ;;  (lambda (XXbuf) ; XX to prevent accidental capturing
-  ;;    (when (with-current-buffer XXbuf
-  ;;            (circe-channel-user-p user))
-  ;;      (funcall fun XXbuf)))))
-  (let ((hash (with-circe-server-buffer
-                circe-server-chat-buffers)))
-    (when hash
-      (maphash (lambda (XXignored XXbuf)
-                 (when (with-current-buffer XXbuf
-                         (circe-channel-user-p XXuser))
-                   (funcall fun XXbuf)))
-               hash))))
-(put 'circe-mapc-user-channels 'lisp-indent-function 1)
+  (let ((result nil))
+   (dolist (buf (circe-chat-buffers))
+     (when (with-current-buffer buf
+             (circe-channel-user-p user))
+       (setq result (cons buf result))))
+   result))
 
 ;;;;;;;;;;;;;;;
 ;;; Queries ;;;
@@ -1625,11 +1607,10 @@ This adheres to `circe-auto-query-p' and `circe-auto-query-max'."
 (defun circe-server-query-count ()
   "Return the number of queries on the current server."
   (let ((num 0))
-    (circe-mapc-chat-buffers
-     (lambda (buf)
-       (with-current-buffer buf
-         (when (eq major-mode 'circe-query-mode)
-           (setq num (+ num 1))))))
+    (dolist (buf (circe-chat-buffers))
+      (with-current-buffer buf
+        (when (eq major-mode 'circe-query-mode)
+          (setq num (+ num 1)))))
     num))
 
 ;;;;;;;;;;;;;;;;
@@ -1650,19 +1631,19 @@ This adheres to `circe-auto-query-p' and `circe-auto-query-max'."
   (interactive "sSay: ")
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
-    (mapc (lambda (line)
-            (circe-display 'circe-format-self-say
-                           :body line
-                           :nick (circe-server-nick))
-            (circe-server-send (format "PRIVMSG %s :%s"
-                                       circe-chat-target
-                                       ;; Some IRC servers give an
-                                       ;; error if there is no text
-                                       ;; after the colon.
-                                       (if (string= line "")
-                                           " "
-                                         line))))
-          (circe-split-line line))))
+    (dolist (line (circe-split-line line))
+      (circe-display 'circe-format-self-say
+                     :body line
+                     :nick (circe-server-nick))
+      (circe-server-send (format "PRIVMSG %s :%s"
+                                 circe-chat-target
+                                 ;; Some IRC servers give an
+                                 ;; error if there is no text
+                                 ;; after the colon.
+                                 (if (string= line "")
+                                     " "
+                                   line)))
+          )))
 
 (defun circe-split-line (longline)
   "Return a list of lines which are not too long for poor IRC.
@@ -1822,24 +1803,22 @@ If ARGUMENT is nil, it is interpreted as no argument."
 (defun circe-command-GAWAY (reason)
   "Set yourself away on all servers."
   (interactive "sReason: ")
-  (mapc (lambda (buf)
-          (with-current-buffer buf
-            (when (and (eq major-mode 'circe-server-mode)
-                       (eq (process-status circe-server-process)
-                           'open))
-              (circe-command-AWAY reason))))
-        (buffer-list)))
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (and (eq major-mode 'circe-server-mode)
+                 (eq (process-status circe-server-process)
+                     'open))
+        (circe-command-AWAY reason)))))
 
 (defun circe-command-GQUIT (reason)
   "Quit all servers."
   (interactive "sReason: ")
-  (mapc (lambda (buf)
-          (with-current-buffer buf
-            (when (and (eq major-mode 'circe-server-mode)
-                       (eq (process-status circe-server-process)
-                           'open))
-              (circe-command-QUIT reason))))
-        (buffer-list)))
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (and (eq major-mode 'circe-server-mode)
+                 (eq (process-status circe-server-process)
+                     'open))
+        (circe-command-QUIT reason)))))
 
 (defun circe-command-INVITE (nick &optional channel)
   "Invite NICK to CHANNEL.
@@ -2029,10 +2008,9 @@ command, and args of the message."
    ;; Quitting
    ((string= command "QUIT")
     (when (circe-server-my-nick-p nick)
-      (circe-mapc-chat-buffers
-       (lambda (buf)
-         (with-current-buffer buf
-           (circe-chat-disconnected))))))
+      (dolist (buf (circe-chat-buffers))
+        (with-current-buffer buf
+          (circe-chat-disconnected)))))
    ;; Create new channel buffers
    ((string= command "JOIN")
     (when (circe-server-my-nick-p nick)
@@ -2234,17 +2212,16 @@ command, and args of the message."
       (circe-server-message
        (format "Nick change: You are now known as %s"
                (car args)))))
-  (circe-mapc-user-channels nick
-    (lambda (buf)
-      (with-current-buffer buf
-        (when (not (circe-joinpart-is-lurker nick))
-          (circe-server-message
-           (format "Nick change: %s (%s@%s) is now known as %s"
-                   nick user host (car args))))
-        (let ((data (gethash nick circe-channel-users nil)))
-          (when data
-            (remhash nick circe-channel-users)
-            (puthash (car args) data circe-channel-users)))))))
+  (dolist (buf (circe-user-channels nick))
+    (with-current-buffer buf
+      (when (not (circe-joinpart-is-lurker nick))
+        (circe-server-message
+         (format "Nick change: %s (%s@%s) is now known as %s"
+                 nick user host (car args))))
+      (let ((data (gethash nick circe-channel-users nil)))
+        (when data
+          (remhash nick circe-channel-users)
+          (puthash (car args) data circe-channel-users))))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick user host command args)
@@ -2407,19 +2384,18 @@ split, and the cadr the time we last heard anything of the split
 of that user. If the NICK isn't split, this returns nil."
   (with-circe-server-buffer
     (catch 'return
-      (mapc (lambda (entry)
-              (let ((table (nth 3 entry)))
-                (when (gethash nick table)
-                  (let ((name (nth 0 entry))
-                        (time (nth 1 entry)))
-                    (remhash nick table)
-                    (when (= 0 (hash-table-count table))
-                      (setq circe-netsplit-list
-                            (delq entry circe-netsplit-list)))
-                    (setcar (cdr entry)
-                            (float-time))
-                    (throw 'return (list name time))))))
-            circe-netsplit-list)
+      (dolist (entry circe-netsplit-list)
+        (let ((table (nth 3 entry)))
+          (when (gethash nick table)
+            (let ((name (nth 0 entry))
+                  (time (nth 1 entry)))
+              (remhash nick table)
+              (when (= 0 (hash-table-count table))
+                (setq circe-netsplit-list
+                      (delq entry circe-netsplit-list)))
+              (setcar (cdr entry)
+                      (float-time))
+              (throw 'return (list name time))))))
       nil)))
 
 (defun circe-netsplit-quit (reason nick)
@@ -2449,20 +2425,19 @@ or nil when this isn't a split."
   "Show a QUIT message."
   (let ((split (circe-netsplit-quit (car args)
                                     nick)))
-    (circe-mapc-user-channels nick
-      (lambda (buf)
-        (with-current-buffer buf
-          (cond
-           (split
-            (when (< (+ split circe-netsplit-delay)
-                     (float-time))
-              (circe-server-message
-               (format "Netsplit: %s (Use /WL to see who left)"
-                       (car args)))))
-           ((not (circe-joinpart-is-lurker nick))
+    (dolist (buf (circe-user-channels nick))
+      (with-current-buffer buf
+        (cond
+         (split
+          (when (< (+ split circe-netsplit-delay)
+                   (float-time))
             (circe-server-message
-             (format "Quit: %s (%s@%s) - %s"
-                     nick user host (car args))))))))))
+             (format "Netsplit: %s (Use /WL to see who left)"
+                     (car args)))))
+         ((not (circe-joinpart-is-lurker nick))
+          (circe-server-message
+           (format "Quit: %s (%s@%s) - %s"
+                   nick user host (car args)))))))))
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick user host command args)
@@ -2483,13 +2458,12 @@ or nil when this isn't a split."
          (format "Join: %s (%s@%s)" nick user host))))))
   ;; Next, query buffers. We do this even when the message should be
   ;; ignored by a netsplit, since this can't flood.
-  (circe-mapc-user-channels nick
-    (lambda (buf)
-      (with-current-buffer buf
-        (when (eq major-mode 'circe-query-mode)
-          (circe-server-message
-           (format "Join: %s (%s@%s) is now on %s"
-                   nick user host (car args))))))))
+  (dolist (buf (circe-user-channels nick))
+    (with-current-buffer buf
+      (when (eq major-mode 'circe-query-mode)
+        (circe-server-message
+         (format "Join: %s (%s@%s) is now on %s"
+                 nick user host (car args)))))))
 
 (defun circe-command-WL (&optional split)
   "Show the people who left in a netsplit.
@@ -2504,13 +2478,12 @@ number, it shows the missing people due to that split."
         (if (null circe-netsplit-list)
             (circe-server-message "No net split at the moment")
           (let ((n 0))
-            (mapc (lambda (entry)
-                    (circe-server-message (format "(%d) Missing %d people due to %s"
-                                                  n
-                                                  (hash-table-count (nth 3 entry))
-                                                  (car entry)))
-                    (setq n (+ n 1)))
-                  circe-netsplit-list)))
+            (dolist (entry circe-netsplit-list)
+              (circe-server-message (format "(%d) Missing %d people due to %s"
+                                            n
+                                            (hash-table-count (nth 3 entry))
+                                            (car entry)))
+              (setq n (+ n 1)))))
       (let* ((index (if (numberp split)
                         split
                       (string-to-number split)))

@@ -42,11 +42,10 @@
   "Enable the Color Nicks module for Circe.
 This module colors all encountered nicks in a cross-server fashion."
   (interactive)
-  (mapc (lambda (buf)
-          (with-current-buffer buf
-            (when (eq major-mode 'circe-channel-mode)
-              (add-circe-color-nicks))))
-        (buffer-list))
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (eq major-mode 'circe-channel-mode)
+        (add-circe-color-nicks))))
   (add-hook 'circe-channel-mode-hook
             'add-circe-color-nicks))
 
@@ -54,11 +53,10 @@ This module colors all encountered nicks in a cross-server fashion."
   "Disable the Color Nicks module for Circe.
 See `enable-circe-color-nicks'."
   (interactive)
-  (mapc (lambda (buf)
-          (with-current-buffer buf
-            (when (eq major-mode 'circe-channel-mode)
-              (remove-circe-color-nicks))))
-        (buffer-list))
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (eq major-mode 'circe-channel-mode)
+        (remove-circe-color-nicks))))
   (remove-hook 'circe-channel-mode-hook
                'add-circe-color-nicks))
 

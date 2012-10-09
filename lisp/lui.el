@@ -510,21 +510,20 @@ This function will be on `completion-at-point-functions'."
 (defun lui-buttonize ()
   "Buttonize the current message.
 This uses `lui-buttons-list'."
-  (mapc (lambda (entry)
-          (let ((regex (nth 0 entry))
-                (submatch (nth 1 entry))
-                (function (nth 2 entry))
-                (arg-match (nth 3 entry)))
-            (goto-char (point-min))
-            (while (re-search-forward regex nil t)
-              (make-button (match-beginning submatch)
-                           (match-end submatch)
-                           'type 'lui-button
-                           'action 'lui-button-activate
-                           'lui-button-function function
-                           'lui-button-argument
-                           (match-string-no-properties arg-match)))))
-        lui-buttons-list))
+  (dolist (entry lui-buttons-list) 
+    (let ((regex (nth 0 entry))
+          (submatch (nth 1 entry))
+          (function (nth 2 entry))
+          (arg-match (nth 3 entry)))
+      (goto-char (point-min))
+      (while (re-search-forward regex nil t)
+        (make-button (match-beginning submatch)
+                     (match-end submatch)
+                     'type 'lui-button
+                     'action 'lui-button-activate
+                     'lui-button-function function
+                     'lui-button-argument
+                     (match-string-no-properties arg-match))))))
 
 (defun lui-button-activate (button)
   "Activate BUTTON.
@@ -675,9 +674,8 @@ make the whole thing invisible."
                                   (point-max)))))
       (overlay-put o 'lui-fool t)
       (overlay-put o 'lui-fool-overlays os)
-      (mapc (lambda (o)
-              (overlay-put o 'invisible lui-fools-hidden-p))
-            os))))
+      (dolist (o os) 
+        (overlay-put o 'invisible lui-fools-hidden-p)))))
 
 (defun lui-fool-toggle-display ()
   "Display what fools have said."
@@ -688,12 +686,10 @@ make the whole thing invisible."
     (message "Now showing the gibberish of fools"))
   (let ((pos (next-overlay-change (point-min))))
     (while (< pos (point-max))
-      (mapc (lambda (o)
-              (when (overlay-get o 'lui-fool)
-                (mapc (lambda (o)
-                        (overlay-put o 'invisible lui-fools-hidden-p))
-                      (overlay-get o 'lui-fool-overlays))))
-            (overlays-at pos))
+      (dolist (o (overlays-at pos))
+        (when (overlay-get o 'lui-fool)
+          (dolist (o (overlay-get o 'lui-fool-overlays))
+            (overlay-put o 'invisible lui-fools-hidden-p))))
       (setq pos (next-overlay-change pos)))))
 
 
@@ -892,14 +888,13 @@ This uses `end-of-line'."
   (let ((faces nil))
     (while (not (= (point) end))
       (let ((face (get-text-property (point) 'face)))
-        (mapc (lambda (face)
-                (when (and face
-                           (facep face)
-                           (face-differs-from-default-p face))
-                  (add-to-list 'faces face)))
-              (if (consp face)
-                  face
-                (list face)))
+        (dolist (face (if (consp face)
+                          face
+                        (list face)))
+          (when (and face
+                     (facep face)
+                     (face-differs-from-default-p face))
+            (add-to-list 'faces face)))
         (goto-char (next-single-property-change (point) 'face
                                                 nil end))))
     faces))
@@ -940,17 +935,16 @@ This is called automatically when new text is inserted."
                         (if (facep face)
                             `(face ,face)
                           face)))))
-    (mapc (lambda (entry)
-            (goto-char (point-min))
-            (while (re-search-forward (funcall regex entry) nil t)
-              (let* ((exp (funcall submatch entry))
-                     (beg (match-beginning exp))
-                     (end (match-end exp)))
-                (when (not (text-property-any beg end 'lui-highlight-fontified-p t))
-                  (add-text-properties beg end
-                                       (append (funcall properties entry)
-                                               '(lui-highlight-fontified-p t)))))))
-          lui-highlight-keywords)))
+    (dolist (entry lui-highlight-keywords)
+      (goto-char (point-min))
+      (while (re-search-forward (funcall regex entry) nil t)
+        (let* ((exp (funcall submatch entry))
+               (beg (match-beginning exp))
+               (end (match-end exp)))
+          (when (not (text-property-any beg end 'lui-highlight-fontified-p t))
+            (add-text-properties beg end
+                                 (append (funcall properties entry)
+                                         '(lui-highlight-fontified-p t)))))))))
 
 
 ;;;;;;;;;;;;;;;

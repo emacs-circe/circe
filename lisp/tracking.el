@@ -240,16 +240,15 @@ the entry from tracking-ignored-buffers that causes this buffer
 to be ignored."
   (catch 'return
     (let ((buffer-name (buffer-name buffer)))
-      (mapc (lambda (entry)
-              (if (stringp entry)
-                  (and (string-match entry buffer-name)
-                       (throw 'return entry))
-                (when (and (string-match (car entry) buffer-name)
-                           (not (tracking-any-in (or (cdr entry)
-                                                     tracking-faces-priorities)
-                                                 faces)))
-                  (throw 'return entry))))
-            tracking-ignored-buffers))
+      (dolist (entry tracking-ignored-buffers)
+        (if (stringp entry)
+            (and (string-match entry buffer-name)
+                 (throw 'return entry))
+          (when (and (string-match (car entry) buffer-name)
+                     (not (tracking-any-in (or (cdr entry)
+                                               tracking-faces-priorities)
+                                           faces)))
+            (throw 'return entry)))))
     nil))
 
 (defun tracking-status ()
@@ -263,13 +262,12 @@ to be ignored."
   "Remove visible buffers from the tracked buffers.
 This is usually called via `window-configuration-changed-hook'."
   (interactive)
-  (mapc (lambda (buffer-name)
-          (let ((buffer (get-buffer buffer-name)))
-            (when (or (not buffer)
-                      (get-buffer-window buffer
-                                         tracking-frame-behavior))
-              (tracking-remove-buffer buffer))))
-        tracking-buffers)
+  (dolist (buffer-name tracking-buffers)
+    (let ((buffer (get-buffer buffer-name)))
+      (when (or (not buffer)
+                (get-buffer-window buffer
+                                   tracking-frame-behavior))
+        (tracking-remove-buffer buffer))))
   (setq tracking-mode-line-buffers (tracking-status)))
 
 ;;; Helper functions
@@ -310,10 +308,9 @@ This is usually called via `window-configuration-changed-hook'."
 (defun tracking-any-in (lista listb)
   "Return non-nil when any element in LISTA is in LISTB"
   (catch 'return
-    (mapc (lambda (entry)
-            (when (memq entry listb)
-              (throw 'return t)))
-          lista)
+    (dolist (entry lista)
+      (when (memq entry listb)
+        (throw 'return t)))
     nil))
 
 (defun tracking-faces-merge (string faces)
@@ -322,11 +319,10 @@ This returns STRING with the new face."
   (let ((faces (cons (get-text-property 0 'face string)
                      faces)))
     (catch 'return
-      (mapc (lambda (candidate)
-              (when (memq candidate faces)
-                (throw 'return
-                       (propertize string 'face candidate))))
-            tracking-faces-priorities)
+      (dolist (candidate tracking-faces-priorities)
+        (when (memq candidate faces)
+          (throw 'return
+                 (propertize string 'face candidate))))
       string)))
 
 (provide 'tracking)
