@@ -1,8 +1,9 @@
 ;;; circe-lagmon.el --- Lag Monitor for Circe
 
-;; Copyright (C) 2011  John J Foerch <jjfoerch@earthlink.net>
+;; Copyright (C) 2011-2012 Jorgen Schaefer
 
-;; Author: John J Foerch <jjfoerch@earthlink.net>
+;; Author: John J Foerch <jjfoerch@earthlink.net>,
+;;         Jorgen Schaefer
 
 ;; This file is part of Circe.
 
