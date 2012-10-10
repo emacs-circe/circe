@@ -99,10 +99,9 @@ This will call `circe-lagmon-server-check' in every active server
 buffer. You can call it yourself if you like to force an update,
 there is no harm in running it too often, but it really should be
 run sufficiently often with the timer."
-  (dolist (buffer (buffer-list))
+  (dolist (buffer (circe-server-buffers))
     (with-current-buffer buffer
-      (when (and (eq major-mode 'circe-server-mode)
-                 circe-server-registered-p
+      (when (and circe-server-registered-p
                  (not (circe-lagmon-ignored-network-p)))
         (circe-lagmon-server-check)))))
 
@@ -238,12 +237,11 @@ in the mode-line."
                 'circe-lagmon-message-handler)
       (circe-set-display-handler "CTCP-LAGMON"
                                  'circe-lagmon-ctcp-LAGMON-display-handler)
-      (dolist (buffer (buffer-list))
+      (dolist (buffer (circe-server-buffers))
         (with-current-buffer buffer
-          (when (eq major-mode 'circe-server-mode)
-            (setq circe-lagmon-server-lag nil)
-            (when circe-server-registered-p
-              (circe-lagmon-init)))))
+          (setq circe-lagmon-server-lag nil)
+          (when circe-server-registered-p
+            (circe-lagmon-init))))
       (add-hook 'circe-server-connected-hook 'circe-lagmon-init))))
 
 (provide 'circe-lagmon)

@@ -770,12 +770,11 @@ See `circe-server-max-reconnect-attempts'.")
 
 (defun circe-reconnect-all ()
   "Reconnect all Circe connections."
-  (dolist (buf (buffer-list))
+  (dolist (buf (circe-server-buffers))
     (with-current-buffer buf
-      (when (eq major-mode 'circe-server-mode)
-        (if (called-interactively-p)
-            (call-interactively 'circe-reconnect)
-          (circe-reconnect))))))
+      (if (called-interactively-p)
+          (call-interactively 'circe-reconnect)
+        (circe-reconnect)))))
 
 (defun circe-server-filter-function (process string)
   "The process filter for the circe server."
@@ -928,6 +927,15 @@ protection algorithm."
         circe-server-last-active-buffer
       (current-buffer))))
 
+(defun circe-server-buffers ()
+  "Return a list of all server buffers in this Emacs instance."
+  (let ((result nil))
+   (dolist (buf (buffer-list))
+     (with-current-buffer buf
+       (when (eq major-mode 'circe-server-mode)
+         (setq result (cons buf result)))))
+   (nreverse result)))
+
 ;; Yes, this does not work for the RFC 1459 encoding, but that is
 ;; being phased out. Hopefully. And problems should be rare.
 (defun circe-server-my-nick-p (nick)
@@ -1044,9 +1052,9 @@ It is always possible to use the mynick or target formats."
   "Remember the current buffer as the last active buffer.
 This is used by Circe to know where to put spurious messages."
   (with-current-buffer (window-buffer window)
-    (when (or (eq major-mode 'circe-channel-mode)
-              (eq major-mode 'circe-query-mode)
-              (eq major-mode 'circe-server-mode))
+    (when (memq major-mode '(circe-channel-mode
+                             circe-query-mode
+                             circe-server-mode))
       (let ((buf (current-buffer)))
         (with-circe-server-buffer
           (setq circe-server-last-active-buffer buf))))))
@@ -1373,7 +1381,7 @@ regular expression."
     (while (and list
                 (string-match pattern (car list)))
       (setq list (cdr list)))
-    (reverse list)))
+    (nreverse list)))
 
 ;;;;;;;;;;;;;;;;
 ;;; Channels ;;;
@@ -1825,21 +1833,19 @@ If ARGUMENT is nil, it is interpreted as no argument."
 (defun circe-command-GAWAY (reason)
   "Set yourself away on all servers."
   (interactive "sReason: ")
-  (dolist (buf (buffer-list))
+  (dolist (buf (circe-server-buffers))
     (with-current-buffer buf
-      (when (and (eq major-mode 'circe-server-mode)
-                 (eq (process-status circe-server-process)
-                     'open))
+      (when (eq (process-status circe-server-process)
+                'open)
         (circe-command-AWAY reason)))))
 
 (defun circe-command-GQUIT (reason)
   "Quit all servers."
   (interactive "sReason: ")
-  (dolist (buf (buffer-list))
+  (dolist (buf (circe-server-buffers))
     (with-current-buffer buf
-      (when (and (eq major-mode 'circe-server-mode)
-                 (eq (process-status circe-server-process)
-                     'open))
+      (when (eq (process-status circe-server-process)
+                'open)
         (circe-command-QUIT reason)))))
 
 (defun circe-command-INVITE (nick &optional channel)
@@ -2832,7 +2838,7 @@ used."
           (setq result (cons channel result))))
        ((keywordp channel)
         (setq current-type channel))))
-    (reverse result)))
+    (nreverse result)))
 
 (defun circe-auto-join-channels-entry ()
   "Get the entry in `circe-auto-join-channels' for this network."
@@ -2974,7 +2980,7 @@ The list consists of words and spaces."
                               lis))
               (replace-match ""))
           (error "Can't happen"))))
-    (reverse lis)))
+    (nreverse lis)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Nickserv Authentication
