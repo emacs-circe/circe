@@ -146,14 +146,57 @@ See `circe-fool-list'."
   :type 'string
   :group 'circe)
 
-(defcustom circe-networks
-  '(("Freenode" :host "irc.freenode.net" :service 6667 :network "freenode")
-    )
-  "Alist of networks and connection settings.  Connection
-settings are a plist where allowed properties
-are :host, :service, :nick, :pass, :user, :realname, :network, :tls"
+(defcustom circe-network-options nil
+  "Network options.
+
+This alist maps network names to respective options.
+
+Common options:
+
+  :pass - The IRC server password to use for this network.
+  :nick - The nick name to use (defaults to `circe-default-nick')
+  :user - The user name to use (defaults to `circe-default-user')
+  :realname - The real name to use (defaults to `circe-default-realname')
+  :channels - A plist of channels to join
+              (see `circe-server-auto-join-channels').
+  :tls - A boolean indicating as to whether to use TLS or not (defaults to nil)
+
+  :nickserv-nick - The nick to authenticate with to nickserv, if configured.
+                   (defaults to the value of :nick)
+  :nickserv-password - The password to use for nickserv authentication."
   :type '(alist :key-type string :value-type plist)
   :group 'circe)
+
+(defvar circe-networks
+  '(("Freenode" :host "irc.freenode.net"
+     :nickserv-name "^NickServ!NickServ@services\\.$"
+     :nickserv-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
+     :nickserv-identify "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-confirmation "^You are now identified for .*\\.$"
+     :nickserv-regain "PRIVMSG NickServ :GHOST {nick}"
+     :nickserv-regained "has been ghosted\\.$\\|is not online\\.$"
+     )
+    ("Coldfront" :host "irc.coldfront.net"
+     :nickserv-name "^NickServ!services@coldfront\\.net$"
+     :nickserv-challenge "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
+     :nickserv-identify "PRIVMSG NickServ :IDENTIFY {password}"
+     )
+    ("Bitlbee" :host "localhost"
+     :nickserv-name "root!root@*"
+     :nickserv-challenge "use the \x02identify\x02 command to identify yourself"
+     :nickserv-identify "PRIVMSG &bitlbee :identify {password}"
+     :nickserv-confirmation "Password accepted, settings and accounts loaded"
+     )
+    ("OFTC" :host "irc.oftc.net"
+     :nickserv-name "^NickServ!services@services\\.oftc\\.net$"
+     :nickserv-challenge "This nickname is registered and protected."
+     :nickserv-identify "PRIVMSG NickServ :IDENTIFY {password} {nick}"
+     :nickserv-confirmation "^You are successfully identified as .*\\.$"
+     )
+    )
+  "Alist of networks and connection settings.
+
+See the `circe' command for details of this variable.")
 
 (defcustom circe-new-buffer-behavior 'display
   "How new buffers should be treated.
@@ -603,88 +646,130 @@ to reconnect to the server.
             'circe-buffer-killed)
   (run-hooks 'circe-server-mode-hook))
 
-;;;###autoload
-(defun circe-lookup-network (network)
-  "Look up NETWORK in `circe-networks' and return a list of
-values that can be applied to `circe' to connect to that
-network."
-  (let ((def (cdr (assoc-string network circe-networks t))))
-    (append (list (plist-get def :host)
-                  (plist-get def :service))
-            def
-            (list :network network))))
-
-(defun circe-read-host ()
+(defun circe-read-network ()
   "Read a host or network name, using `circe-networks' for
 network name completions."
-  (let* ((default-host (if (null circe-networks)
-                           nil
-                           (caar circe-networks)))
-         (host (completing-read "Host: "
-                                circe-networks
-                                nil nil nil nil
-                                default-host))
-         (hostdef (assoc host circe-networks)))
-    (if hostdef
-        (circe-lookup-network host)
-        (list host
-              (let ((service (read-from-minibuffer "Port: ")))
-                (if (equal service "")
-                    nil
-                    (string-to-number service)))))))
+  (let ((default-network (if (null circe-network-options)
+                             (caar circe-networks)
+                           (caar circe-network-options)))
+        (networks nil))
+    (dolist (network-spec (append circe-network-options
+                                  circe-networks))
+      (add-to-list 'networks (car network-spec)))
+    (completing-read "Network or host: "
+                     (sort networks 'string-lessp)
+                     nil nil nil nil
+                     default-network)))
+
+(defun circe-parse-options (network-or-server options)
+  "Turn the arguments to `circe' into hash mapping variable names to values."
+  (let ((options (append options
+                         (cdr (assoc-string network-or-server
+                                            circe-network-options
+                                            t))
+                         (cdr (assoc-string network-or-server
+                                            circe-networks
+                                            t))))
+        (variables (make-hash-table :test 'eq))
+        (not-in-hash (make-symbol "not-in-hash/uninterned")))
+    (while options
+      (when (not (keywordp (car options)))
+        (error "Bad options to `circe', expected plist with keywords"))
+      (let ((keyword (car options))
+            (value (cadr options))
+            (variable nil))
+        (cond
+         ((eq keyword :host)
+          (setq variable 'circe-server-name))
+         ((memq keyword '(:service :port))
+          (setq variable 'circe-server-service))
+         ((memq keyword '(:tls :use-tls))
+          (setq variable 'circe-server-use-tls))
+         ((eq keyword :channels)
+          (setq variable 'circe-server-auto-join-channels))
+         ((memq keyword '(:pass :nick :user :realname :network))
+          (setq variable (intern (concat "circe-server-"
+                                         (substring (symbol-name keyword)
+                                                    1)))))
+         (t
+          (setq variable (intern (concat "circe-"
+                                         (substring (symbol-name keyword)
+                                                    1))))))
+        (when (eq not-in-hash (gethash variable variables not-in-hash))
+          (puthash variable value variables)))
+      (setq options (cddr options)))
+    ;; Host and network defaults from the main argument
+    (when (not (gethash 'circe-server-network variables))
+      (puthash 'circe-server-network network-or-server variables))
+    (when (not (gethash 'circe-server-name variables))
+      (puthash 'circe-server-name network-or-server variables))
+    ;; Other defaults from global variables
+    (when (not (gethash 'circe-server-nick variables))
+      (puthash 'circe-server-nick circe-default-nick variables))
+    (when (not (gethash 'circe-server-user variables))
+      (puthash 'circe-server-user circe-default-user variables))
+    (when (not (gethash 'circe-server-realname variables))
+      (puthash 'circe-server-realname circe-default-realname variables))
+    ;; Other defaults
+    (when (not (gethash 'circe-nickserv-nick variables))
+      (puthash 'circe-nickserv-nick
+               (gethash 'circe-server-nick variables)
+               variables))
+    variables))
 
 ;;;###autoload
-(defun circe (host &optional service &rest options) 
-  "Connect to the IRC server HOST at SERVICE (a port).
+(defun circe (network-or-server &rest options)
+  "Connect to IRC.
 
-OPTIONS is either a list of arguments in the order of NETWORK,
-PASS, NICK, USER, REALNAME, or a list of keyword arguments with
-values using the following keywords:
+Connect to the given network.
 
-:network is the shorthand used for indicating where we're connected
-to. (defaults to HOST)
-:pass is the password.
-:nick is the nick name to use (defaults to `circe-default-nick')
-:user is the user name to use (defaults to `circe-default-user')
-:realname is the real name to use (defaults to `circe-default-realname')
-:tls is a boolean indicating as to whether to use TLS or not (defaults to nil)"
-  (interactive (circe-read-host))
-  (unless service
-    (setq service 6667))
-  (let* ((buffer-name (format "%s:%s" host service))
-         (server-buffer (generate-new-buffer buffer-name))
-         network pass nick user realname tls)
-    (if (keywordp (car options))
-        (setq network (plist-get options :network)
-              pass (plist-get options :pass)
-              nick (plist-get options :nick)
-              user (plist-get options :user)
-              realname (plist-get options :realname)
-              tls (plist-get options :tls))
-      (setq network (nth 0 options)
-            pass (nth 1 options)
-            nick (nth 2 options)
-            user (nth 3 options)
-            realname (nth 4 options)))
-    (with-current-buffer server-buffer
-      (circe-server-mode)
-      (setq circe-server-name host
-            circe-server-service service
-            circe-server-network (or network
-                                     host)
-            circe-server-nick (or nick
-                                  circe-default-nick)
-            circe-server-user (or user
-                                  circe-default-user)
-            circe-server-realname (or realname
-                                      circe-default-realname)
-            circe-server-pass pass
-            circe-server-use-tls tls)
-      (when tls
-        (require 'tls))
-      (circe-reconnect)
-      (when (interactive-p)
-        (switch-to-buffer server-buffer)))))
+When this function is called, it collects options from the
+OPTIONS argument, the user variable `circe-network-options', and
+the defaults found in `circe-networks', in this order.
+
+If the first argument is not found in any of these variables, the
+argument is assumed to be the host name for the server, and all
+relevant settings must be passed via OPTIONS.
+
+All options are treated as variables by getting the string
+\"circe-\" prepended to their name. This variable is then set
+locally in the server buffer.
+
+See `circe-network-options' for a list of common options."
+  (interactive (list (circe-read-network)))
+  (let ((variables (circe-parse-options network-or-server options))
+        host service)
+    (setq host (gethash 'circe-server-name variables)
+          service (gethash 'circe-server-service variables))
+    (when (not service)
+      (if (called-interactively-p)
+          (let* ((input (read-from-minibuffer "Port: " "6667"))
+                 (port (string-to-number input)))
+            (setq service (if (= port 0)
+                           input
+                         port)))
+        (setq service 6667))
+      (puthash 'circe-server-service service variables))
+    (let* ((buffer-name (format "%s:%s" host service))
+           (server-buffer (generate-new-buffer buffer-name)))
+      (with-current-buffer server-buffer
+        (circe-server-mode)
+        (let ((unknown-variables nil))
+          (maphash (lambda (variable value)
+                     (if (not (boundp variable))
+                         (setq unknown-variables (cons variable
+                                                       unknown-variables))
+                       (set (make-local-variable variable)
+                            value)))
+                   variables)
+          (dolist (var unknown-variables)
+            (circe-server-message (format "Unknown variable %s, re-check your configuration."
+                                          var))))
+        (when circe-server-use-tls
+          (require 'tls))
+        (circe-reconnect)
+        (when (called-interactively-p)
+          (switch-to-buffer server-buffer))))))
 
 (defvar circe-server-buffer nil
   "The buffer of the server associated with the current chat buffer.")
@@ -2745,16 +2830,17 @@ The buffer might be nil if it is not alive."
 
 ;;;;;;;;;;;;;
 ;;; Auto-Join
-(defcustom circe-server-auto-join-channels nil
-  "The default channels to join.
+(defvar circe-server-auto-join-channels nil
+  "The default channels to join on this server.
 
-This is a list of lists, mapping networks to channels to join.
-The list of channels to join contains optional keyword. Best
-explained in an example:
+Don't set this variable by hand, use `circe-network-options'.
 
-\((\"freenode\" \"#emacs\"
-                :after-auth \"#channel\" \"#channel2\"
-  ))
+The value should be a list of channels to join, with optional
+keywords to configure the behavior of the following channels.
+
+Best explained in an example:
+
+\(\"#emacs\" :after-auth \"#channel\" \"#channel2\")
 
 Possible keyword options are:
 
@@ -2767,15 +2853,8 @@ The default is set in `circe-server-auto-join-default-type'.
 
 A keyword in the first position of the channels list overrides
 `circe-server-auto-join-default-type' for re-joining manually
-joined channels.
-
-The car can also be a symbol, which is called as a function and
-should return non-nil if we should join the appropriate
-channels."
-  :type '(repeat (cons (regexp :tag "Server or Network")
-                       (repeat :tag channels
-                               string)))
-  :group 'circe)
+joined channels.")
+(make-variable-buffer-local 'circe-server-auto-join-channels)
 
 (defcustom circe-server-auto-join-default-type :immediate
   "The default auto-join type to use.
@@ -2825,7 +2904,7 @@ front.  If the first item in the channels list is an auto-join
 type keyword, that keyword is also used for manually joined
 channels; otherwise, `circe-server-auto-join-default-type' is
 used."
-  (let* ((all-channels (circe-auto-join-channels-entry))
+  (let* ((all-channels circe-server-auto-join-channels)
          (current-type (if (keywordp (car all-channels))
                            (car all-channels)
                            circe-server-auto-join-default-type))
@@ -2841,16 +2920,6 @@ used."
        ((keywordp channel)
         (setq current-type channel))))
     (nreverse result)))
-
-(defun circe-auto-join-channels-entry ()
-  "Get the entry in `circe-auto-join-channels' for this network."
-  (catch 'return
-    (dolist (entry circe-server-auto-join-channels)
-      (when (if (symbolp (car entry))
-                (funcall (car entry))
-              (string-match (car entry) circe-server-network))
-        (throw 'return (cdr entry))))
-    nil))
 
 (defun circe-auto-join-manually-joined-channels (channels)
   "Return a list of already-joined channels not in CHANNELS."
@@ -3000,126 +3069,84 @@ Only used when auto-regain is enabled. See `circe-auto-regain-p'."
   :type 'hook
   :group 'circe)
 
-(defcustom circe-nickserv-style-list
-  '(("freenode"
-     "NickServ" "NickServ" "^services\\.$"
-     "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
-     "PRIVMSG NickServ :IDENTIFY {nick} {password}"
-     "^You are now identified for .*\\.$"
-     "PRIVMSG NickServ :GHOST {nick}"
-     "has been ghosted\\.$\\|is not online\\.$")
-    ("coldfront"
-     "NickServ" "services" "^coldfront.net$"
-     "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
-     "PRIVMSG NickServ :IDENTIFY {password}"
-     nil
-     nil
-     nil)
-    ("bitlbee"
-     "root" "root" ""
-     "use the \x02identify\x02 command to identify yourself"
-     "PRIVMSG &bitlbee :identify {password}"
-     "Password accepted, settings and accounts loaded"
-     nil
-     nil)
-    ("oftc"
-     "NickServ" "services" "^services\\.oftc\\.net$"
-     "This nickname is registered and protected."
-     "PRIVMSG NickServ :IDENTIFY {password} {nick}"
-     "^You are successfully identified as .*\\.$"
-     nil
-     nil)
-    )
-  "A list of nickserv configurations.
-Each element of this list is a list with the following items:
-
-  NAME      - The name of this nickserv style
-  NICK      - The nick of the nickserv
-  USER      - The user name of the nickserv
-  HOST      - A regexp matching the hostname of the nickserv
-  NOTICE    - A regular expression matching the message from nickserv
-  REPLY     - The message to send to identify with the nickserv
-              Accepts {nick} and {password}
-  CONFIRM   - A regular expression matching a confirmation for authentication
-  REGAIN    - The message to send to regain/ghost your nick
-              Accepts {nick}
-  REGAINED  - A regular expression matching a confirmation for regain
-              This is used to know when we can set our nick to the regained one
-              Leave nil if regaining automatically sets your nick
-
-See also `circe-nickserv-auth-info'."
-  :type '(repeat (list (string :tag "Name")
-                       (string :tag "Nick")
-                       (string :tag "User")
-                       (string :tag "Host")
-                       (regexp :tag "Notice")
-                       (string :tag "Reply")
-                       (choice :tag "Confirm"
-                               (const nil)
-                               (regexp))
-                       (choice :tag "Regain"
-                               (const nil)
-                               (string))
-                       (choice :tag "Regain Confirm"
-                               (const nil)
-                               (regexp))))
-  :group 'circe)
-
-(defcustom circe-nickserv-auth-info nil
-  "A list of nickserv authentication related information.
-Each entry consists of four elements; the network name, the
-nickserv style name, the nick to use for authentication, and the
-password to use for authentication.  When nick is nil,
-circe-default-nick will be used."
-  :type '(repeat (list (string :tag "Network")
-                       (string :tag "Nickserv Style")
-                       (choice :tag "Nick"
-                               (const :tag "Default" nil)
-                               (string))
-                       (string :tag "Password")))
-  :group 'circe)
-
 (defcustom circe-auto-regain-p nil
   "Whether circe should automatically regain your nick."
   :type '(choice (const :tag "On" t)
                  (const :tag "Off" nil))
   :group 'circe)
 
-(defun circe-server-preferred-nick ()
-  "Returns the nick we would like to have rather than the current one, or nil.
-The preferred nick is the one found in `circe-nickserv-auth-info',
-and defaults to `circe-default-nick'."
-  (with-circe-server-buffer
-    (let ((nick (or (nth 2 (assoc circe-server-network
-                                  circe-nickserv-auth-info))
-                    circe-default-nick)))
-      (unless (circe-server-my-nick-p nick)
-        nick))))
+(defvar circe-nickserv-name nil
+  "The regular expression to identify the nickserv on this network.
+
+Matched against nick!user@host.")
+(make-variable-buffer-local 'circe-nickserv-name)
+
+(defvar circe-nickserv-challenge nil
+  "A regular expression matching the nickserv challenge.")
+(make-variable-buffer-local 'circe-nickserv-challenge)
+
+(defvar circe-nickserv-identify nil
+  "The IRC command to send to identify with nickserv.
+
+This must be a full IRC command. It accepts the following
+formatting options:
+
+ {nick} - The nick to identify as
+ {password} - The configured nickserv password")
+(make-variable-buffer-local 'circe-nickserv-identify)
+
+(defvar circe-nickserv-confirmation nil
+  "A regular expression matching a confirmation of authentication")
+(make-variable-buffer-local 'circe-nickserv-confirmation)
+
+(defvar circe-nickserv-regain nil
+  "The IRC command to send to regain/ghost your nick
+
+This must be a full IRC command. It accepts the following
+formatting options:
+
+  {nick} - The nick to ghost")
+(make-variable-buffer-local 'circe-nickserv-regain)
+
+(defvar circe-nickserv-regained nil
+  "A regular expression matching a confirmation for nick regain.
+
+This is used to know when we can set our nick to the regained one
+Leave nil if regaining automatically sets your nick")
+(make-variable-buffer-local 'circe-nickserv-regained)
+
+(defvar circe-nickserv-nick nil
+  "The nick we are registered with for nickserv.
+
+Do not set this variable directly. Use `circe-network-options' or
+pass an argument to the `circe' function for this.")
+(make-variable-buffer-local 'circe-nickserv-nick)
+
+(defvar circe-nickserv-password nil
+  "The password we use for nickserv on this network.
+
+Do not set this variable directly. Use `circe-network-options' or
+pass an argument to the `circe' function for this.")
+(make-variable-buffer-local 'circe-nickserv-password)
+
 
 (defun circe-nickserv-auth ()
   "Authenticate with nickserv."
   (with-circe-server-buffer
-    (let ((authinfo (assoc circe-server-network
-                           circe-nickserv-auth-info)))
-      (when authinfo
-        (let ((ns-style (assoc (nth 1 authinfo) circe-nickserv-style-list))
-              (nick (or (nth 2 authinfo) circe-default-nick))
-              (pass (nth 3 authinfo)))
-          (circe-server-send (lui-format (nth 5 ns-style)
-                                         :nick nick
-                                         :password pass)))))))
+    (when (and circe-nickserv-identify
+               circe-nickserv-nick
+               circe-nickserv-password)
+      (circe-server-send (lui-format circe-nickserv-identify
+                                     :nick circe-nickserv-nick
+                                     :password circe-nickserv-password)))))
 
 (defun circe-nickserv-regain ()
   "Regain/reclaim/ghost your nick if necessary."
   (with-circe-server-buffer
-    (let ((nick (circe-server-preferred-nick)))
-      (when nick
-        (let ((ns-style (assoc circe-server-network
-                               circe-nickserv-style-list)))
-          (when (and ns-style
-                     (nth 7 ns-style))
-            (circe-server-send (lui-format (nth 7 ns-style)
-                                           :nick nick))))))))
+    (when (and circe-nickserv-regain
+               circe-nickserv-nick)
+      (circe-server-send (lui-format circe-nickserv-regain
+                                     :nick circe-nickserv-nick)))))
 
 (defvar circe-auto-regain-awaiting-nick-change nil
   "Set to `t' when circe is awaiting confirmation for a regain request.")
@@ -3130,44 +3157,40 @@ and defaults to `circe-default-nick'."
   "React to messages relevant to nickserv authentication and auto-regain."
   (with-circe-server-buffer
     (cond
-     ((and circe-nickserv-auth-info
+     ((and circe-nickserv-name
            ;; bitlbee uses PRIVMSG
            (member command '("NOTICE" "PRIVMSG")))
-      (let ((ns-style (assoc circe-server-network
-                             circe-nickserv-style-list)))
-        (when (and ns-style
-                   (string= (nth 1 ns-style) nick)
-                   (string= (nth 2 ns-style) user)
-                   (string-match (nth 3 ns-style) host))
-          ;; This is actually from nickserv on this network
-          (cond
-           ;; Nickserv challenge
-           ((string-match (nth 4 ns-style)
-                          (cadr args))
-            (circe-nickserv-auth))
-           ;; Nickserv confirmation
-           ((and (nth 6 ns-style)
-                 (string-match (nth 6 ns-style)
-                               (cadr args)))
-            (run-hooks 'circe-nickserv-authenticated-hook)
-            (when circe-auto-regain-p
-              (if (null (circe-server-preferred-nick))
-                  (run-hooks 'circe-acquired-preferred-nick-hook)
-                (circe-nickserv-regain)
-                (setq circe-auto-regain-awaiting-nick-change t))))
-           ;; Nickserv regain confirmation
-           ((and circe-auto-regain-awaiting-nick-change
-                 (nth 8 ns-style)
-                 (string-match (nth 8 ns-style)
-                               (cadr args)))
-            (circe-command-NICK
-             (or (nth 2 (assoc circe-server-network
-                               circe-nickserv-auth-info))
-                 circe-default-nick)))))))
+      (when (and (string-match circe-nickserv-name
+                               (format "%s!%s@%s" nick user host)))
+        ;; This is indeed sent by the nickserv on this network.
+        (cond
+         ;; Nick challenge
+         ((and circe-nickserv-challenge
+               (string-match circe-nickserv-challenge (cadr args)))
+          (circe-nickserv-auth))
+         ;; Confirmation
+         ((and circe-nickserv-confirmation
+               circe-nickserv-nick
+               (string-match circe-nickserv-confirmation (cadr args)))
+          (run-hooks 'circe-nickserv-authenticated-hook)
+          (when circe-auto-regain-p
+            (if (circe-server-my-nick-p circe-nickserv-nick)
+                (run-hooks 'circe-acquired-preferred-nick-hook)
+              (circe-nickserv-regain)
+              (setq circe-auto-regain-awaiting-nick-change t))))
+         ;; Nick got ghosted
+         ((and circe-auto-regain-awaiting-nick-change
+               circe-nickserv-regained
+               circe-nickserv-nick
+               (string-match circe-nickserv-regained
+                             (cadr args)))
+          (circe-command-NICK circe-nickserv-nick)))))
+     ;; Regain stuff
      ((and circe-auto-regain-awaiting-nick-change
+           circe-nickserv-nick
            (string= command "NICK")
-           (circe-server-my-nick-p nick)
-           (string= (car args) (circe-server-preferred-nick)))
+           (circe-server-my-nick-p circe-nickserv-nick)
+           (string= (car args) circe-nickserv-nick))
       (setq circe-auto-regain-awaiting-nick-change nil)
       (run-hooks 'circe-acquired-preferred-nick-hook)))))
 

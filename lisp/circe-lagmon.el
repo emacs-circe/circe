@@ -72,11 +72,11 @@ of a lag monitor message. A value of nil disables the feature."
   :type 'string
   :group 'circe-lagmon)
 
-(defcustom circe-lagmon-ignored-networks '("bitlbee")
-  "List of regular expressions matching networks in which we do
-not check for lag."
-  :type '(repeat (string :tag "Network"))
-  :group 'circe-lagmon)
+(defvar circe-lagmon-disabled nil
+  "A boolean value if lagmon should be disabled on this network.
+
+Don't set this by hand, use `circe-network-options'.")
+(make-variable-buffer-local 'circe-lagmon-disabled)
 
 
 ;;; Internal variables
@@ -101,8 +101,9 @@ there is no harm in running it too often, but it really should be
 run sufficiently often with the timer."
   (dolist (buffer (circe-server-buffers))
     (with-current-buffer buffer
-      (when (and circe-server-registered-p
-                 (not (circe-lagmon-ignored-network-p)))
+      (when (and (eq major-mode 'circe-server-mode)
+                 circe-server-registered-p
+                 (not circe-lagmon-disabled))
         (circe-lagmon-server-check)))))
 
 (defun circe-lagmon-server-check ()
@@ -178,7 +179,7 @@ of its chat buffers."
 (defun circe-lagmon-format-mode-line-entry ()
   "Format the mode-line entry for displaying the lag."
   (cond
-   ((circe-lagmon-ignored-network-p)
+   (circe-lagmon-disabled
     nil)
    ((eq major-mode 'circe-server-mode)
     (if circe-lagmon-server-lag
@@ -190,19 +191,6 @@ of its chat buffers."
           (format circe-lagmon-mode-line-format-string
                   circe-lagmon-server-lag)
         circe-lagmon-mode-line-unknown-lag-string)))))
-
-(defun circe-lagmon-ignored-network-p ()
-  "Check if the current buffer is a server buffer that should be
-ignored according to `circe-lagmon-ignored-networks'"
-  (when (or (eq major-mode 'circe-server-mode)
-            circe-server-buffer)
-    (catch 'return
-      (with-circe-server-buffer
-        (dolist (pattern circe-lagmon-ignored-networks)
-          (when (or (not circe-server-network)
-                    (string-match pattern circe-server-network))
-            (throw 'return t))))
-      nil)))
 
 (defun circe-lagmon-init ()
   "Initialize the values of the lag monitor for one server, and
