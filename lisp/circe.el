@@ -2735,6 +2735,10 @@ Possible keyword options are:
 
 The default is set in `circe-server-auto-join-default-type'.
 
+A keyword in the first position of the channels list overrides
+`circe-server-auto-join-default-type' for re-joining manually
+joined channels.
+
 The car can also be a symbol, which is called as a function and
 should return non-nil if we should join the appropriate
 channels."
@@ -2786,11 +2790,16 @@ See `circe-server-auto-join-channels' for details on TYPE."
   "Return a list of channels as configured for auto-join type TYPE.
 
 See `circe-server-auto-join-channels' for details. Channels
-joined manually so far and not in that list are added to the
-front."
-  (let ((all-channels (circe-auto-join-channels-entry))
-        (current-type circe-server-auto-join-default-type)
-        (result nil))
+joined manually which are not in that list are added to the
+front.  If the first item in the channels list is an auto-join
+type keyword, that keyword is also used for manually joined
+channels; otherwise, `circe-server-auto-join-default-type' is
+used."
+  (let* ((all-channels (circe-auto-join-channels-entry))
+         (current-type (if (keywordp (car all-channels))
+                           (car all-channels)
+                           circe-server-auto-join-default-type))
+         (result nil))
     (setq all-channels (append (circe-auto-join-manually-joined-channels
                                 all-channels)
                                all-channels))
