@@ -221,6 +221,17 @@ are displayed as if `circe-auto-query-p' was nil."
   :type 'integer
   :group 'circe)
 
+(defcustom circe-use-cycle-completion t
+  "Whether Circe should use cycle completion.
+
+If this is not nil, Circe will set `completion-cycle-threshold'
+to `t' locally in Circe buffers, enabling cycle completion for
+nicks no matter what completion style you use in the rest of
+Emacs. If you set this to nil, Circe will not touch your default
+completion style."
+  :type 'boolean
+  :group 'circe)
+
 (defcustom circe-reduce-joinpart-spam nil
   "If enabled, Circe will stop showing JOIN, PART, QUIT and NICK
 messages for users on channels that have not spoken yet. When
@@ -639,9 +650,14 @@ to reconnect to the server.
   (setq circe-server-last-active-buffer (current-buffer))
   (add-hook 'completion-at-point-functions 'circe-completion-at-point
             nil t)
+  (when circe-use-cycle-completion
+    (set (make-local-variable 'completion-cycle-threshold)
+         t))
   ;; Tab completion should be case-insensitive
   (set (make-local-variable 'completion-ignore-case)
        t)
+  (goto-char (point-max))
+  (setq circe-server-last-active-buffer (current-buffer))
   (add-hook 'kill-buffer-hook
             'circe-buffer-killed)
   (run-hooks 'circe-server-mode-hook))
@@ -1408,6 +1424,9 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
        circe-track-faces-priorities)
   (add-hook 'completion-at-point-functions 'circe-completion-at-point
             nil t)
+  (when circe-use-cycle-completion
+    (set (make-local-variable 'completion-cycle-threshold)
+         t))
   ;; Tab completion should be case-insensitive
   (set (make-local-variable 'completion-ignore-case)
        t)
