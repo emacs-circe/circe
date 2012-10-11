@@ -170,28 +170,28 @@ Common options:
 (defvar circe-networks
   '(("Freenode" :host "irc.freenode.net"
      :nickserv-name "^NickServ!NickServ@services\\.$"
-     :nickserv-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
-     :nickserv-identify "PRIVMSG NickServ :IDENTIFY {nick} {password}"
-     :nickserv-confirmation "^You are now identified for .*\\.$"
-     :nickserv-regain "PRIVMSG NickServ :GHOST {nick}"
-     :nickserv-regained "has been ghosted\\.$\\|is not online\\.$"
+     :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "^You are now identified for .*\\.$"
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick}"
+     :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
     ("Coldfront" :host "irc.coldfront.net"
      :nickserv-name "^NickServ!services@coldfront\\.net$"
-     :nickserv-challenge "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
-     :nickserv-identify "PRIVMSG NickServ :IDENTIFY {password}"
+     :nickserv-identify-challenge "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
      )
     ("Bitlbee" :host "localhost"
      :nickserv-name "root!root@*"
-     :nickserv-challenge "use the \x02identify\x02 command to identify yourself"
-     :nickserv-identify "PRIVMSG &bitlbee :identify {password}"
-     :nickserv-confirmation "Password accepted, settings and accounts loaded"
+     :nickserv-identify-challenge "use the \x02identify\x02 command to identify yourself"
+     :nickserv-identify-command "PRIVMSG &bitlbee :identify {password}"
+     :nickserv-identify-confirmation "Password accepted, settings and accounts loaded"
      )
     ("OFTC" :host "irc.oftc.net"
      :nickserv-name "^NickServ!services@services\\.oftc\\.net$"
-     :nickserv-challenge "This nickname is registered and protected."
-     :nickserv-identify "PRIVMSG NickServ :IDENTIFY {password} {nick}"
-     :nickserv-confirmation "^You are successfully identified as .*\\.$"
+     :nickserv-identify-challenge "This nickname is registered and protected."
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password} {nick}"
+     :nickserv-identify-confirmation "^You are successfully identified as .*\\.$"
      )
     )
   "Alist of networks and connection settings.
@@ -3081,11 +3081,11 @@ Only used when auto-regain is enabled. See `circe-auto-regain-p'."
 Matched against nick!user@host.")
 (make-variable-buffer-local 'circe-nickserv-name)
 
-(defvar circe-nickserv-challenge nil
-  "A regular expression matching the nickserv challenge.")
-(make-variable-buffer-local 'circe-nickserv-challenge)
+(defvar circe-nickserv-identify-challenge nil
+  "A regular expression matching the nickserv challenge to identify.")
+(make-variable-buffer-local 'circe-nickserv-identify-challenge)
 
-(defvar circe-nickserv-identify nil
+(defvar circe-nickserv-identify-command nil
   "The IRC command to send to identify with nickserv.
 
 This must be a full IRC command. It accepts the following
@@ -3093,27 +3093,27 @@ formatting options:
 
  {nick} - The nick to identify as
  {password} - The configured nickserv password")
-(make-variable-buffer-local 'circe-nickserv-identify)
+(make-variable-buffer-local 'circe-nickserv-identify-command)
 
-(defvar circe-nickserv-confirmation nil
+(defvar circe-nickserv-identify-confirmation nil
   "A regular expression matching a confirmation of authentication")
-(make-variable-buffer-local 'circe-nickserv-confirmation)
+(make-variable-buffer-local 'circe-nickserv-identify-confirmation)
 
-(defvar circe-nickserv-regain nil
+(defvar circe-nickserv-ghost-command nil
   "The IRC command to send to regain/ghost your nick
 
 This must be a full IRC command. It accepts the following
 formatting options:
 
   {nick} - The nick to ghost")
-(make-variable-buffer-local 'circe-nickserv-regain)
+(make-variable-buffer-local 'circe-nickserv-ghost-command)
 
-(defvar circe-nickserv-regained nil
-  "A regular expression matching a confirmation for nick regain.
+(defvar circe-nickserv-ghost-confirmation nil
+  "A regular expression matching a confirmation for the GHOST command.
 
 This is used to know when we can set our nick to the regained one
 Leave nil if regaining automatically sets your nick")
-(make-variable-buffer-local 'circe-nickserv-regained)
+(make-variable-buffer-local 'circe-nickserv-ghost-confirmation)
 
 (defvar circe-nickserv-nick nil
   "The nick we are registered with for nickserv.
@@ -3130,22 +3130,22 @@ pass an argument to the `circe' function for this.")
 (make-variable-buffer-local 'circe-nickserv-password)
 
 
-(defun circe-nickserv-auth ()
+(defun circe-nickserv-identify ()
   "Authenticate with nickserv."
   (with-circe-server-buffer
-    (when (and circe-nickserv-identify
+    (when (and circe-nickserv-identify-command
                circe-nickserv-nick
                circe-nickserv-password)
-      (circe-server-send (lui-format circe-nickserv-identify
+      (circe-server-send (lui-format circe-nickserv-identify-command
                                      :nick circe-nickserv-nick
                                      :password circe-nickserv-password)))))
 
-(defun circe-nickserv-regain ()
+(defun circe-nickserv-ghost ()
   "Regain/reclaim/ghost your nick if necessary."
   (with-circe-server-buffer
-    (when (and circe-nickserv-regain
+    (when (and circe-nickserv-ghost-command
                circe-nickserv-nick)
-      (circe-server-send (lui-format circe-nickserv-regain
+      (circe-server-send (lui-format circe-nickserv-ghost-command
                                      :nick circe-nickserv-nick)))))
 
 (defvar circe-auto-regain-awaiting-nick-change nil
@@ -3164,25 +3164,25 @@ pass an argument to the `circe' function for this.")
                                (format "%s!%s@%s" nick user host)))
         ;; This is indeed sent by the nickserv on this network.
         (cond
-         ;; Nick challenge
-         ((and circe-nickserv-challenge
-               (string-match circe-nickserv-challenge (cadr args)))
-          (circe-nickserv-auth))
+         ;; Identify challenge
+         ((and circe-nickserv-identify-challenge
+               (string-match circe-nickserv-identify-challenge (cadr args)))
+          (circe-nickserv-identify))
          ;; Confirmation
-         ((and circe-nickserv-confirmation
+         ((and circe-nickserv-identify-confirmation
                circe-nickserv-nick
-               (string-match circe-nickserv-confirmation (cadr args)))
+               (string-match circe-nickserv-identify-confirmation (cadr args)))
           (run-hooks 'circe-nickserv-authenticated-hook)
           (when circe-auto-regain-p
             (if (circe-server-my-nick-p circe-nickserv-nick)
                 (run-hooks 'circe-acquired-preferred-nick-hook)
-              (circe-nickserv-regain)
+              (circe-nickserv-ghost)
               (setq circe-auto-regain-awaiting-nick-change t))))
          ;; Nick got ghosted
          ((and circe-auto-regain-awaiting-nick-change
-               circe-nickserv-regained
+               circe-nickserv-ghost-confirmation
                circe-nickserv-nick
-               (string-match circe-nickserv-regained
+               (string-match circe-nickserv-ghost-confirmation
                              (cadr args)))
           (circe-command-NICK circe-nickserv-nick)))))
      ;; Regain stuff
