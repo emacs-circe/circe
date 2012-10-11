@@ -591,8 +591,8 @@ to reconnect to the server.
         mode-name "Circe Server"
         lui-input-function 'circe-chat-input)
   (use-local-map circe-server-mode-map)
-  (set (make-local-variable 'lui-possible-completions-function)
-       'circe-server-completions)
+  (add-hook 'completion-at-point-functions 'circe-completion-at-point
+            nil t)
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
   (setq circe-server-last-active-buffer (current-buffer))
@@ -982,21 +982,6 @@ protection algorithm."
                  :body (propertize message
                                    'face 'circe-server-face)))
 
-(defun circe-server-completions (bolp)
-  "Return a list of possible completions for the current buffer.
-This is used for `lui-possible-completions-function' in server
-buffers."
-  (when circe-server-chat-buffers
-    (let ((targets '()))
-      (maphash (lambda (target ignored)
-                 (setq targets (cons (concat target " ")
-                                     targets)))
-               circe-server-chat-buffers)
-      (if bolp
-          (append (circe-commands-list)
-                  targets)
-        targets))))
-
 (defun circe-display (format &rest keywords)
   "Display FORMAT formatted with KEYWORDS in the current Circe buffer.
 See `lui-format' for a description of the format.
@@ -1204,6 +1189,15 @@ initialize a new buffer if none exists."
                hash))
     result))
 
+(defun circe-channel-buffers ()
+  "Return a list of all channel buffers of the current server."
+  (let ((buffers nil))
+    (dolist (buf (circe-chat-buffers))
+      (with-current-buffer buf
+        (when (eq major-mode 'circe-channel-mode)
+          (setq buffers (cons buf buffers)))))
+    buffers))
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ignore Handling ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -1410,8 +1404,6 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
   (setq major-mode 'circe-channel-mode
         mode-name "Circe Channel")
   (use-local-map circe-channel-mode-map)
-  (set (make-local-variable 'lui-possible-completions-function)
-       'circe-channel-completions)
   (run-hooks 'circe-channel-mode-hook))
 
 (defun circe-channel-killed ()
@@ -1439,23 +1431,6 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
   "The list of nick prefixes this server knows about.
 From 005 RPL_ISUPPORT.")
 (make-variable-buffer-local 'circe-channel-nick-prefixes)
-
-(defun circe-channel-completions (bolp)
-  "Return a list of possible completions for the current buffer.
-This is used for `lui-possible-completions-function' in channel
-buffers."
-  (when circe-channel-users
-    (let ((nicks '()))
-      (maphash (lambda (nick ignored)
-                 (setq nicks (cons (concat nick (if bolp
-                                                    circe-completion-suffix
-                                                  " "))
-                                   nicks)))
-               circe-channel-users)
-      (if bolp
-          (append (circe-commands-list)
-                  nicks)
-        nicks))))
 
 (defun circe-channel-message-handler (nick user host command args)
   "Update the users of a channel as appropriate."
@@ -1577,8 +1552,6 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
   (circe-chat-mode target server-buffer)
   (setq major-mode 'circe-query-mode
         mode-name "Circe Query")
-  (set (make-local-variable 'lui-possible-completions-function)
-       'circe-query-completions)
   (use-local-map circe-channel-mode-map)
   (run-hooks 'circe-query-mode-hook))
 
@@ -1586,14 +1559,6 @@ SERVER-BUFFER is the server-buffer of this chat buffer.
   "Called when the query buffer got killed."
   (when (buffer-live-p circe-server-buffer)
     (circe-server-remove-chat-buffer circe-chat-target)))
-
-(defun circe-query-completions (bolp)
-  "Return a list of possible completions in a query.
-That is, commands, our nick, and the other nick. This is used for
-`lui-possible-completions-function' in query buffers."
-  (append (list (circe-server-nick)
-                circe-chat-target)
-          (circe-commands-list)))
 
 (defun circe-server-auto-query-buffer (who)
   "Return a buffer for a query with `WHO'.
@@ -1612,6 +1577,63 @@ This adheres to `circe-auto-query-p' and `circe-auto-query-max'."
         (when (eq major-mode 'circe-query-mode)
           (setq num (+ num 1)))))
     num))
+
+;;;;;;;;;;;;;;;;;;
+;;; Completion ;;;
+;;;;;;;;;;;;;;;;;;
+
+(defun circe-completion-at-point ()
+  "Return a list of possible completions for the current buffer.
+This is used in `completion-at-point-functions'."
+  (let* ((end (point))
+         (start (save-excursion
+                  (when (or (looking-back circe-completion-suffix)
+                            (looking-back " "))
+                    (goto-char (match-beginning 0)))
+                  (if (re-search-backward "\\s-" lui-input-marker t)
+                      (1+ (point))
+                    lui-input-marker)))
+         (prefix (buffer-substring-no-properties start end))
+         collection
+         props)
+    (dolist (entry (circe-possible-completions
+                    (if (= start lui-input-marker)
+                        circe-completion-suffix
+                      " ")))
+      (when (string-prefix-p prefix entry t)
+        (setq collection (cons entry collection))))
+    (setq collection (nreverse collection))
+    (list start end collection)))
+
+(defun circe-possible-completions (nick-suffix)
+  (let ((completions (append (circe-commands-list)
+                             (mapcar (lambda (buf)
+                                       (with-current-buffer buf
+                                         circe-chat-target))
+                                     (circe-channel-buffers)))))
+   (cond
+    ;; In a server buffer, complete all nicks in all channels
+    ((eq major-mode 'circe-server-mode)
+     (dolist (buf (circe-channel-buffers))
+       (with-current-buffer buf
+         (maphash (lambda (nick options)
+                    (setq completions (cons (concat nick nick-suffix)
+                                            completions)))
+                  circe-channel-users))))
+    ;; In a channel buffer, only complete nicks in this channel
+    ((eq major-mode 'circe-channel-mode)
+     (maphash (lambda (nick options)
+                (setq completions (cons (concat nick nick-suffix)
+                                        completions)))
+              circe-channel-users))
+    ;; In a query buffer, only complete this query partner
+    ((eq major-mode 'circe-query-mode)
+     (setq completions (cons (concat circe-chat-target nick-suffix)
+                             completions)))
+    ;; Else, we're doing something wrong
+    (t
+     (error "`circe-possible-completions' called outside of Circe")))
+   completions))
 
 ;;;;;;;;;;;;;;;;
 ;;; Commands ;;;

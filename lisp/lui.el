@@ -37,7 +37,6 @@
 ;; lui-insert
 ;; lui-input-function
 ;; lui-completion-function
-;; lui-possible-completions-function
 ;; and the 'lui-fool text property
 
 ;;; Code:
@@ -312,13 +311,6 @@ This function is called with a single argument, the input
 string.")
 (make-variable-buffer-local 'lui-input-function)
 
-(defvar lui-possible-completions-function nil
-  "A function called to retrieve current completions.
-This receives one argument, which is non-nil when the completion
-happens at the beginning of a line.
-
-It is often a good idea to make this variable buffer-local.")
-
 (defvar lui-completion-function 'completion-at-point
   "A function called to actually do completion.")
 
@@ -390,7 +382,7 @@ Those should define derived modes of this, so this function
 should never be called directly.
 
 It can be customized for an application by specifying a
-`lui-input-function', and possibly `lui-possible-completions-function'."
+`lui-input-function'."
   (kill-all-local-variables)
   (setq major-mode 'lui-mode
         mode-name "LUI")
@@ -418,9 +410,6 @@ It can be customized for an application by specifying a
   (when lui-flyspell-p
     (require 'flyspell)
     (lui-flyspell-change-dictionary))
-  (add-hook 'completion-at-point-functions
-            'lui-completion-at-point
-            nil t)
   (run-hooks 'lui-mode-hook))
 
 (defun lui-scroll-to-bottom (window display-start)
@@ -477,28 +466,6 @@ If point is not in the input area, self-insert."
     ))
 
 
-;;;;;;;;;;;;;;;;;;
-;;; Completion ;;;
-;;;;;;;;;;;;;;;;;;
-
-(defun lui-completion-at-point ()
-  "Lui implementation of the completion method.
-
-This function will be on `completion-at-point-functions'."
-  (when lui-possible-completions-function
-    (let ((end (point))
-          (begin (save-excursion (if (not (re-search-backward "\\s-"
-                                                              lui-input-marker
-                                                              t))
-                                     lui-input-marker
-                                   (forward-char)
-                                   (point)))))
-      (list begin end
-            (funcall lui-possible-completions-function
-                     (= begin
-                        lui-input-marker))))))
-
-
 ;;;;;;;;;;;;;;;
 ;;; Buttons ;;;
 ;;;;;;;;;;;;;;;
@@ -538,7 +505,7 @@ property with the argument stored in `lui-button-argument'."
 
 (defun lui-next-button-or-complete ()
   "Go to the next button, or complete at point.
-When point is in the input line, `lui-completion-function'.
+When point is in the input line, call `lui-completion-function'.
 Otherwise, we move to the next button."
   (interactive)
   (if (>= (point)
