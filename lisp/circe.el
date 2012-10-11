@@ -1689,6 +1689,32 @@ received."
    ((eq major-mode 'circe-query-mode)
     (circe-case-fold-string= user circe-chat-target))))
 
+(defun circe-channel-user-info (nick option &optional default)
+  "Return option OPTION for the nick NICK in the current channel.
+
+Return DEFAULT if no option is set or the nick is not known."
+  (if (not circe-channel-users)
+      default
+    (let ((table (gethash nick circe-channel-users nil)))
+      (if (not table)
+          default
+        (gethash option table default)))))
+
+(defun circe-channel-user-set-info (nick option value)
+  "Set option OPTION to VALUE for this NICK in the current channel"
+  (when circe-channel-users
+    (let ((table (gethash nick circe-channel-users nil)))
+      (when table
+        (puthash option value table)))))
+
+(defun circe-channel-nicks ()
+  "Return a list of nicks in the current channel."
+  (let ((nicks nil))
+    (maphash (lambda (nick options)
+               (setq nicks (cons nick nicks)))
+             circe-channel-users)
+    nicks))
+
 (defun circe-channel-parse-names (name-string)
   "Parse the NAMES reply in NAME-STRING.
 This uses `circe-channel-nick-prefixes'."
@@ -1764,8 +1790,11 @@ This adheres to `circe-auto-query-p' and `circe-auto-query-max'."
 (defun circe-completion-at-point ()
   "Return a list of possible completions for the current buffer.
 This is used in `completion-at-point-functions'."
-  (let* ((end (point))
-         (start (save-excursion
+  (let ((start (make-marker))
+        (end (make-marker)))
+    (set-marker end (point))
+    (set-marker start
+                (save-excursion
                   (when (or (looking-back circe-completion-suffix)
                             (looking-back " "))
                     (goto-char (match-beginning 0)))
@@ -1776,52 +1805,127 @@ This is used in `completion-at-point-functions'."
                     (1+ (point)))
                    (t
                     lui-input-marker))))
-         (prefix (buffer-substring-no-properties start end))
-         collection
-         props)
-    (dolist (entry (circe-possible-completions
-                    (if (= start lui-input-marker)
-                        circe-completion-suffix
-                      " ")))
-      (when (string-prefix-p prefix entry t)
-        (setq collection (cons entry collection))))
-    (setq collection (nreverse collection))
-    (list start end collection)))
+    (list start end 'circe-completion-table)))
 
-(defun circe-possible-completions (nick-suffix)
-  "Return possible completions for the current Circe buffer.
+(defun circe-completion-table (string pred action)
+  "Completion table to use for Circe buffers.
 
-Depending on the current mode, this will return a list of nicks,
-commands and possibly channels. Nicks will have NICK-SUFFIX
-appended to them."
-  (let ((completions (append (circe-commands-list)
-                             (mapcar (lambda (buf)
-                                       (with-current-buffer buf
-                                         circe-chat-target))
-                                     (circe-channel-buffers)))))
-   (cond
-    ;; In a server buffer, complete all nicks in all channels
-    ((eq major-mode 'circe-server-mode)
-     (dolist (buf (circe-channel-buffers))
-       (with-current-buffer buf
-         (maphash (lambda (nick options)
-                    (setq completions (cons (concat nick nick-suffix)
-                                            completions)))
-                  circe-channel-users))))
-    ;; In a channel buffer, only complete nicks in this channel
-    ((eq major-mode 'circe-channel-mode)
-     (maphash (lambda (nick options)
-                (setq completions (cons (concat nick nick-suffix)
-                                        completions)))
-              circe-channel-users))
-    ;; In a query buffer, only complete this query partner
-    ((eq major-mode 'circe-query-mode)
-     (setq completions (cons (concat circe-chat-target nick-suffix)
-                             completions)))
-    ;; Else, we're doing something wrong
-    (t
-     (error "`circe-possible-completions' called outside of Circe")))
-   completions))
+See `minibuffer-completion-table' for details."
+  (cond
+   ;; Best completion of STRING
+   ((eq action nil)
+    (try-completion string
+                    (circe-completion-candidates
+                     (if (= (field-beginning) lui-input-marker)
+                         circe-completion-suffix
+                       " "))
+                    pred))
+   ;; A list of possible completions of STRING
+   ((eq action t)
+    (all-completions string
+                     (circe-completion-candidates
+                      (if (= (field-beginning) lui-input-marker)
+                          circe-completion-suffix
+                        " "))
+                     pred))
+   ;; t iff STRING is a valid completion as it stands
+   ((eq action 'lambda)
+    (test-completion string
+                     (circe-completion-candidates
+                      (if (= (field-beginning) lui-input-marker)
+                          circe-completion-suffix
+                        " "))
+                     pred))
+   ;; Boundaries
+   ((eq (car-safe action) 'boundaries)
+    `(boundaries 0 . ,(length (cdr action))))
+   ;; Metadata
+   ((eq action 'metadata)
+    '(metadata (cycle-sort-function . circe-completion-sort)))))
+
+(defun circe-completion-clean-nick (string)
+  (with-temp-buffer
+    (insert string)
+    (goto-char (point-max))
+    (when (or (looking-back circe-completion-suffix)
+              (looking-back " "))
+      (replace-match ""))
+    (buffer-string)))
+
+(defun circe-completion-sort (collection)
+  "Sort the COLLECTION by channel activity for nicks."
+  (let* ((decorated (mapcar (lambda (entry)
+                              (list (circe-channel-user-info
+                                     (circe-completion-clean-nick entry)
+                                     'last-active)
+                                    (length entry)
+                                    entry))
+                            collection))
+         (sorted (sort decorated
+                       (lambda (a b)
+                         (cond
+                          ((and (car a)
+                                (car b))
+                           (> (car a)
+                              (car b)))
+                          ((and (not (car a))
+                                (not (car b)))
+                           (< (cadr a)
+                              (cadr b)))
+                          ((car a)
+                           t)
+                          (t
+                           nil))))))
+    (mapcar (lambda (entry)
+              (nth 2 entry))
+            sorted)))
+
+
+;; If we switch Circe to lexical scoping, we can replace this with
+;; something more sane.
+(defvar circe-completion-old-completion-all-sorted-completions nil
+  "Variable to know if we can return a cached result.")
+(make-variable-buffer-local
+ 'circe-completion-old-completion-all-sorted-completions)
+(defvar circe-completion-cache nil
+  "The results we can cache.")
+(make-variable-buffer-local 'circe-completion-cache)
+
+(defun circe-completion-candidates (nick-suffix)
+  (if (and circe-completion-old-completion-all-sorted-completions
+           (eq completion-all-sorted-completions
+               circe-completion-old-completion-all-sorted-completions))
+      circe-completion-cache      
+    (let ((completions (append (circe-commands-list)
+                               (mapcar (lambda (buf)
+                                         (with-current-buffer buf
+                                           circe-chat-target))
+                                       (circe-channel-buffers)))))
+      (cond
+       ;; In a server buffer, complete all nicks in all channels
+       ((eq major-mode 'circe-server-mode)
+        (dolist (buf (circe-channel-buffers))
+          (with-current-buffer buf
+            (dolist (nick (circe-channel-nicks))
+              (setq completions (cons (concat nick nick-suffix)
+                                      completions))))))
+       ;; In a channel buffer, only complete nicks in this channel
+       ((eq major-mode 'circe-channel-mode)
+        (setq completions (append (mapcar (lambda (nick)
+                                            (concat nick nick-suffix))
+                                          (circe-channel-nicks))
+                                  completions)))
+       ;; In a query buffer, only complete this query partner
+       ((eq major-mode 'circe-query-mode)
+        (setq completions (cons (concat circe-chat-target nick-suffix)
+                                completions)))
+       ;; Else, we're doing something wrong
+       (t
+        (error "`circe-possible-completions' called outside of Circe")))
+      (setq circe-completion-old-completion-all-sorted-completions
+            completion-all-sorted-completions
+            circe-completion-cache completions)
+      completions)))
 
 ;;;;;;;;;;;;;;;;
 ;;; Commands ;;;
@@ -2136,7 +2240,6 @@ This uses `circe-display-table'."
 NICK, USER and HOST specify the originator of COMMAND with ARGS
 as arguments."
   (let ((display (circe-display-handler command))
-        ;; Dynamic scoping
         (*circe-fool-p* (circe-fool-p nick user host command args)))
     (if display
         (funcall display nick user host command args)
@@ -2615,32 +2718,27 @@ as arguments."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun circe-joinpart-is-lurker (nick)
-  "Return a true value if this NICK has been inactive so far."
-  (when (and circe-reduce-joinpart-spam
-             circe-channel-users)
-    (let ((data (gethash nick circe-channel-users nil)))
-      (when data
-        (gethash 'joinpart-is-lurker data t)))))
+  "Return a true value if this nick has been inactive so far."
+  (when circe-reduce-joinpart-spam
+    (circe-channel-user-info nick 'joinpart-is-lurker t)))
 
 (defun circe-joinpart-mark-as-active (nick &optional no-notify)
   "Mark NICK as active now.
 
 If NO-NOTIFY is true, don't notify the user of this."
-  (when circe-channel-users
-    (let ((data (gethash nick circe-channel-users nil)))
-      (when data
-        (let ((joined (gethash 'joined data nil))
-              (was-lurker (gethash 'joinpart-is-lurker data t)))
-          (puthash 'joinpart-is-lurker nil data)
-          (when (and (not no-notify)
-                     joined
-                     was-lurker
-                     circe-reduce-joinpart-spam)
-            (circe-display 'circe-format-server-joinpart-activity
-                           :nick nick
-                           :joindelta (circe-duration-string
-                                       (- (float-time)
-                                          joined)))))))))
+  (let ((joined (circe-channel-user-info nick 'joined))
+        (was-lurker (circe-channel-user-info nick 'joinpart-is-lurker t)))
+    (circe-channel-user-set-info nick 'last-active (float-time))
+    (circe-channel-user-set-info nick 'joinpart-is-lurker nil)
+    (when (and (not no-notify)
+               joined
+               was-lurker
+               circe-reduce-joinpart-spam)
+      (circe-display 'circe-format-server-joinpart-activity
+                     :nick nick
+                     :joindelta (circe-duration-string 
+                                 (- (float-time)
+                                    joined))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Netsplit Handling ;;;
