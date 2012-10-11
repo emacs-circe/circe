@@ -3105,7 +3105,8 @@ formatting options:
 This must be a full IRC command. It accepts the following
 formatting options:
 
-  {nick} - The nick to ghost")
+  {nick} - The nick to ghost
+  {password} - The configured nickserv password")
 (make-variable-buffer-local 'circe-nickserv-ghost-command)
 
 (defvar circe-nickserv-ghost-confirmation nil
@@ -3146,7 +3147,8 @@ pass an argument to the `circe' function for this.")
     (when (and circe-nickserv-ghost-command
                circe-nickserv-nick)
       (circe-server-send (lui-format circe-nickserv-ghost-command
-                                     :nick circe-nickserv-nick)))))
+                                     :nick circe-nickserv-nick
+                                     :password circe-nickserv-password)))))
 
 (defvar circe-auto-regain-awaiting-nick-change nil
   "Set to `t' when circe is awaiting confirmation for a regain request.")
