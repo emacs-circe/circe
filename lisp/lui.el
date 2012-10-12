@@ -625,7 +625,7 @@ make the whole thing invisible."
                            'lui-fool t)
     (add-text-properties (point-min)
                          (point-max)
-                         '(invisibiel lui-fool))))
+                         '(invisible lui-fool))))
 
 (defun lui-fools-hidden-p ()
   "Return whether fools are currently hidden."
