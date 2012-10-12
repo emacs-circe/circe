@@ -1657,7 +1657,8 @@ received."
     (with-circe-chat-buffer (nth 2 args)
       (when (not circe-channel-receiving-names-p)
         (setq circe-channel-users nil
-              circe-channel-receiving-names-p t))
+              circe-channel-receiving-names-p t)
+        (lui-flyspell-clear-words))
       (dolist (nick (circe-channel-parse-names (nth 3 args)))
         (when (or (not circe-channel-users)
                   (not (gethash nick circe-channel-users nil)))
@@ -1674,6 +1675,7 @@ received."
 
 (defun circe-channel-add-user (user)
   "Add USER as a channel user."
+  (lui-flyspell-accept-word user)
   (when (not circe-channel-users)
     (setq circe-channel-users (circe-case-fold-table)))
   (let ((data (make-hash-table)))
@@ -1682,8 +1684,19 @@ received."
 
 (defun circe-channel-remove-user (user)
   "Remove USER as a channel user."
+  (lui-flyspell-remove-word user)
   (when circe-channel-users
     (remhash user circe-channel-users)))
+
+(defun circe-channel-rename-user (old new)
+  "Rename user from OLD to NEW."
+  (lui-flyspell-remove-word old)
+  (lui-flyspell-accept-word new)
+  (when circe-channel-users
+    (let ((data (gethash old circe-channel-users nil)))
+      (when data
+        (remhash old circe-channel-users)
+        (puthash new data circe-channel-users)))))
 
 (defun circe-channel-user-p (user)
   "Return non-nil when USER is a channel user."
@@ -1762,6 +1775,7 @@ SERVER-BUFFER is the server buffer of this chat buffer.
   (setq major-mode 'circe-query-mode
         mode-name "Circe Query")
   (use-local-map circe-channel-mode-map)
+  (lui-flyspell-accept-word target)
   (run-hooks 'circe-query-mode-hook))
 
 (defun circe-query-killed ()
@@ -2599,10 +2613,7 @@ as arguments."
         (circe-server-message
          (format "Nick change: %s (%s@%s) is now known as %s"
                  nick user host (car args))))
-      (let ((data (gethash nick circe-channel-users nil)))
-        (when data
-          (remhash nick circe-channel-users)
-          (puthash (car args) data circe-channel-users))))))
+      (circe-channel-rename-user nick (car args)))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick user host command args)
