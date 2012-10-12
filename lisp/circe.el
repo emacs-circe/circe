@@ -668,7 +668,8 @@ network name completions."
   (let ((default-network (if (null circe-network-options)
                              (caar circe-networks)
                            (caar circe-network-options)))
-        (networks nil))
+        (networks nil)
+        (completion-ignore-case t))
     (dolist (network-spec (append circe-network-options
                                   circe-networks))
       (add-to-list 'networks (car network-spec)))
