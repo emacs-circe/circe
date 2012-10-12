@@ -3209,7 +3209,7 @@ pass an argument to the `circe' function for this.")
      ((and circe-auto-regain-awaiting-nick-change
            circe-nickserv-nick
            (string= command "NICK")
-           (circe-server-my-nick-p circe-nickserv-nick)
+           (circe-server-my-nick-p nick)
            (string= (car args) circe-nickserv-nick))
       (setq circe-auto-regain-awaiting-nick-change nil)
       (run-hooks 'circe-acquired-preferred-nick-hook)))))
