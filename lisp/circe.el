@@ -870,23 +870,27 @@ See `circe-server-max-reconnect-attempts'.")
             circe-server-flood-queue nil)
       (cond
         (circe-server-use-tls
-         (let ((start (point)))
-          (setq circe-server-process
-                (open-tls-stream circe-server-name
-                                 (current-buffer)
-                                 circe-server-name
-                                 circe-server-service))
-          ;; `open-tls-stream' spams the buffer with some crap. Clear
-          ;; it.
-          (delete-region start (point)))
+         ;; `open-tls-stream' is using gnutls/openssl to connect via
+         ;; SSL. This requires some different handling than the normal
+         ;; network process. The main annoyance is that the process
+         ;; spams its associated buffer with status output. We ask it
+         ;; to use a temporary buffer so those status messages go to
+         ;; the temporary buffer instead of the server buffer, and
+         ;; only connect the process to our buffer later.
+         (setq circe-server-process
+               (open-tls-stream circe-server-name
+                                nil ;; Use temp buffer
+                                circe-server-name
+                                circe-server-service))
          (when circe-server-process
-           (set-process-query-on-exit-flag circe-server-process nil)
            (set-process-filter circe-server-process
                                #'circe-server-filter-function)
            (set-process-sentinel circe-server-process
                                  #'circe-server-sentinel)
            (set-process-coding-system circe-server-process
                                       'raw-text-dos 'raw-text-dos)
+           (set-process-query-on-exit-flag circe-server-process nil)
+           (set-process-buffer circe-server-process (current-buffer))
            (circe-server-sentinel circe-server-process "open")))
         (t
          (setq circe-server-process
