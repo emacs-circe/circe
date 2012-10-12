@@ -637,6 +637,8 @@ make the whole thing invisible."
 (defun lui-fool-toggle-display ()
   "Display what fools have said."
   (interactive)
+  (when (eq buffer-invisibility-spec t)
+    (add-to-invisibility-spec 'lui-fool))
   (cond
    ((lui-fools-hidden-p)
     (message "Now showing the gibberish of fools")
