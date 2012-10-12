@@ -192,7 +192,7 @@ Common options:
      :nickserv-identify-command "PRIVMSG &bitlbee :identify {password}"
      :nickserv-identify-confirmation "Password accepted, settings and accounts loaded"
      )
-    ("OFTC" :host "irc.oftc.net" :port 6667
+    ("OFTC" :host "irc.oftc.net" :port (6667 . 6697)
      :nickserv-mask "^NickServ!services@services\\.oftc\\.net$"
      :nickserv-identify-challenge "This nickname is registered and protected."
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password} {nick}"
