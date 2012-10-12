@@ -925,7 +925,10 @@ See `circe-server-max-reconnect-attempts'.")
                                   circe-server-user
                                   circe-server-realname)))
       (t
-       (circe-server-message (format "Disconnected (%s)" event))
+       (circe-server-message (format "Disconnected (%s)"
+                                     ;; Events end in a newline. No
+                                     ;; idea why.
+                                     (substring event 0 -1)))
        (dolist (buf (circe-chat-buffers))
          (with-current-buffer buf
            (circe-chat-disconnected)))
