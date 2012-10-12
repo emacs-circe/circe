@@ -226,14 +226,6 @@ necessary whitespace."
   :type 'boolean
   :group 'lui)
 
-(defcustom lui-time-stamp-use-overlays-p t
-  "Non-nil if Lui should use overlays for the time stamp.
-If it doesn't use overlays, time stamps are copied with the usual
-kill commands. Overlays make time stamps not show up in copied
-text."
-  :type 'boolean
-  :group 'lui)
-
 (defcustom lui-read-only-output-p t
   "Non-nil if Lui should make the output read-only.
 Switching this off makes copying (by killing) easier for some."
@@ -401,11 +393,12 @@ It can be customized for an application by specifying a
   (when (fboundp 'make-local-hook)
     ;; needed for xemacs, as it does not treat the LOCAL argument to
     ;; `add-hook' the same as GNU Emacs. It's obsolete in GNU Emacs
-    ;; sind 21.1.
+    ;; since 21.1.
     (make-local-hook 'change-major-mode-hook))
   (add-hook 'change-major-mode-hook
             'lui-change-major-mode
             nil t)
+  (lui-time-stamp-enable-filtering)
   (tracking-mode 1)
   (when lui-flyspell-p
     (require 'flyspell)
@@ -623,10 +616,6 @@ Otherwise, we move to the next button."
 ;;; Fools ;;;
 ;;;;;;;;;;;;;
 
-(defvar lui-fools-hidden-p t
-  "Whether fools are currently hidden.")
-(make-variable-buffer-local 'lui-fools-hidden-p)
-
 (defun lui-fools ()
   "Propertize the current narrowing according to foolhardiness.
 That is, if any part of it has the text property 'lui-fool set,
@@ -634,30 +623,27 @@ make the whole thing invisible."
   (when (text-property-any (point-min)
                            (point-max)
                            'lui-fool t)
-    (let* ((o (make-overlay (point-min)
-                            (point-max)))
-           (os (cons o
-                     (overlays-in (point-min)
-                                  (point-max)))))
-      (overlay-put o 'lui-fool t)
-      (overlay-put o 'lui-fool-overlays os)
-      (dolist (o os) 
-        (overlay-put o 'invisible lui-fools-hidden-p)))))
+    (add-text-properties (point-min)
+                         (point-max)
+                         '(invisibiel lui-fool))))
+
+(defun lui-fools-hidden-p ()
+  "Return whether fools are currently hidden."
+  (if (or (eq t buffer-invisibility-spec)
+          (memq 'lui-fool buffer-invisibility-spec))
+      t
+    nil))
 
 (defun lui-fool-toggle-display ()
   "Display what fools have said."
   (interactive)
-  (setq lui-fools-hidden-p (not lui-fools-hidden-p))
-  (if lui-fools-hidden-p
-      (message "Now hiding fools again *phew*")
-    (message "Now showing the gibberish of fools"))
-  (let ((pos (next-overlay-change (point-min))))
-    (while (< pos (point-max))
-      (dolist (o (overlays-at pos))
-        (when (overlay-get o 'lui-fool)
-          (dolist (o (overlay-get o 'lui-fool-overlays))
-            (overlay-put o 'invisible lui-fools-hidden-p))))
-      (setq pos (next-overlay-change pos)))))
+  (cond
+   ((lui-fools-hidden-p)
+    (message "Now showing the gibberish of fools")
+    (remove-from-invisibility-spec 'lui-fool))
+   (t
+    (message "Now hiding fools again *phew*")
+    (add-to-invisibility-spec 'lui-fool))))
 
 
 ;;;;;;;;;;;;;;;;
@@ -978,7 +964,7 @@ function."
   "Add a time stamp to the current buffer."
   (let ((ts (format-time-string lui-time-stamp-format)))
     (cond
-     ;; Timestamps right
+     ;; Time stamps right
      ((or (numberp lui-time-stamp-position)
           (eq lui-time-stamp-position 'right))
       (when (or (not lui-time-stamp-only-when-changed-p)
@@ -995,59 +981,81 @@ function."
                (indent (if (> col curcol)
                            (- col curcol)
                          1))
-               (ts-string (concat (make-string indent ? )
-                                  (propertize
-                                   ts
-                                   'face 'lui-time-stamp-face))))
-          (if lui-time-stamp-use-overlays-p
-              (let ((ov (make-overlay (point) (point))))
-                (overlay-put ov 'field 'lui-time-stamp)
-                (overlay-put ov 'after-string ts-string))
-            ;; No overlays
-            (insert ts-string)))))
-     ;; Timestamps left
+               (ts-string (propertize
+                           (concat (make-string indent ?\s)
+                                   (propertize
+                                    ts
+                                    'face 'lui-time-stamp-face))
+                           'lui-time-stamp t))
+               (start (point)))
+          (insert ts-string)
+          (add-text-properties start (1+ (point)) '(intangible t)))))
+     ;; Time stamps left
      ((eq lui-time-stamp-position 'left)
-      (let ((indent-string (make-string (length ts) ? )))
+      (let ((indent-string (propertize (make-string (length ts) ?\s)
+                                       'lui-time-stamp t)))
         (goto-char (point-min))
         (cond
          ;; Time stamp
          ((or (not lui-time-stamp-only-when-changed-p)
               (not lui-time-stamp-last)
               (not (string= ts lui-time-stamp-last)))
-          (if lui-time-stamp-use-overlays-p
-              (let ((ov (make-overlay (point) (point))))
-                (overlay-put ov 'field 'lui-time-stamp)
-                (overlay-put ov 'before-string
-                             (propertize ts 'face 'lui-time-stamp-face)))
-            (insert (propertize ts 'face 'lui-time-stamp-face))))
+          (insert (propertize ts
+                              'face 'lui-time-stamp-face
+                              'lui-time-stamp t)))
          ;; Just indentation
          (t
-          (if lui-time-stamp-use-overlays-p
-              (let ((ov (make-overlay (point) (point))))
-                (overlay-put ov 'field 'lui-time-stamp-indentation)
-                (overlay-put ov 'before-string indent-string))
-            (insert indent-string))))
+          (insert indent-string)))
         (forward-line 1)
         (while (< (point) (point-max))
-          (if lui-time-stamp-use-overlays-p
-              (let ((ov (make-overlay (point) (point))))
-                (overlay-put ov 'field 'lui-time-stamp-indentation)
-                (overlay-put ov 'before-string indent-string))
-            (insert indent-string))
+          (insert indent-string)
           (forward-line 1))))
+     ;; Time stamps in margin
      ((or (eq lui-time-stamp-position 'right-margin)
           (eq lui-time-stamp-position 'left-margin))
       (when (or (not lui-time-stamp-only-when-changed-p)
                 (not lui-time-stamp-last)
                 (not (string= ts lui-time-stamp-last)))
-        (let ((ts (propertize ts 'face 'lui-time-stamp-face)))
-          (let ((ov (make-overlay (point-min) (point-max)))
-                (time-stamp
-                 (propertize
-                  " "
-                  'display `((margin ,lui-time-stamp-position) ,ts))))
-            (overlay-put ov 'before-string time-stamp))))))
+        (goto-char (point-min))
+        (goto-char (point-at-eol))
+        (let* ((ts (propertize ts 'face 'lui-time-stamp-face))
+               (ts-margin (propertize
+                           " "
+                           'display `((margin ,lui-time-stamp-position)
+                                      ,ts)
+                           'lui-time-stamp t)))
+          (insert ts-margin)))))
     (setq lui-time-stamp-last ts)))
+
+(defun lui-time-stamp-enable-filtering ()
+  (if (boundp 'filter-buffer-substring-functions)
+      (set (make-local-variable 'filter-buffer-substring-functions)
+           '(lui-filter-buffer-time-stamps))
+    ;; Emacs 23
+    (set (make-local-variable 'buffer-substring-filters)
+         '(lui-time-stamp-buffer-substring))))
+
+(defun lui-filter-buffer-time-stamps (fun beg end delete)
+  (let ((string (funcall fun beg end delete))
+        (inhibit-point-motion-hooks t)
+        (inhibit-read-only t))
+    (with-temp-buffer
+      (insert string)
+      (let ((start (text-property-any (point-min)
+                                      (point-max)
+                                      'lui-time-stamp t)))
+        (while start
+          (let ((end (next-single-property-change start 'lui-time-stamp
+                                                  nil (point-max))))
+            (delete-region start end)
+            (setq start (text-property-any (point-min) (point-max)
+                                           'lui-time-stamp t))))
+        (buffer-string)))))
+
+(defun lui-time-stamp-buffer-substring (buffer-string)
+  (lui-filter-buffer-time-stamps (lambda (beg end delete)
+                                  buffer-string)
+                                nil nil nil))
 
 
 ;;;;;;;;;;;;;;;;;;
@@ -1063,7 +1071,6 @@ function."
                   lui-max-buffer-size))
     (forward-line 0)
     (let ((inhibit-read-only t))
-      (remove-overlays (point-min) (point))
       (delete-region (point-min) (point)))))
 
 
