@@ -1703,9 +1703,13 @@ This is used in `completion-at-point-functions'."
                   (when (or (looking-back circe-completion-suffix)
                             (looking-back " "))
                     (goto-char (match-beginning 0)))
-                  (if (re-search-backward "\\s-" lui-input-marker t)
-                      (1+ (point))
-                    lui-input-marker)))
+                  (cond
+                   ((<= (point) lui-input-marker)
+                    lui-input-marker)
+                   ((re-search-backward "\\s-" lui-input-marker t)
+                    (1+ (point)))
+                   (t
+                    lui-input-marker))))
          (prefix (buffer-substring-no-properties start end))
          collection
          props)
