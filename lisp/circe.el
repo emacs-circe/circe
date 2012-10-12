@@ -870,12 +870,17 @@ See `circe-server-max-reconnect-attempts'.")
             circe-server-flood-queue nil)
       (cond
         (circe-server-use-tls
-         (setq circe-server-process
-               (open-tls-stream circe-server-name
-                                (current-buffer)
-                                circe-server-name
-                                circe-server-service))
+         (let ((start (point)))
+          (setq circe-server-process
+                (open-tls-stream circe-server-name
+                                 (current-buffer)
+                                 circe-server-name
+                                 circe-server-service))
+          ;; `open-tls-stream' spams the buffer with some crap. Clear
+          ;; it.
+          (delete-region start (point)))
          (when circe-server-process
+           (set-process-query-on-exit-flag circe-server-process nil)
            (set-process-filter circe-server-process
                                #'circe-server-filter-function)
            (set-process-sentinel circe-server-process
@@ -940,27 +945,28 @@ output we received from there."
 
 PROCESS is the process we are watching, and EVENT is the event we
 saw."
-  (with-current-buffer (process-buffer process)
-    (cond
-      ((string-match "^open" event)
-       (when circe-server-pass
-         (circe-server-send (format "PASS %s" circe-server-pass)))
-       (circe-server-send (format "NICK %s" circe-server-nick))
-       (circe-server-send (format "USER %s 8 * :%s"
-                                  circe-server-user
-                                  circe-server-realname)))
-      (t
-       (circe-server-message (format "Disconnected (%s)"
-                                     ;; Events end in a newline. No
-                                     ;; idea why.
-                                     (substring event 0 -1)))
-       (dolist (buf (circe-chat-buffers))
-         (with-current-buffer buf
-           (circe-chat-disconnected)))
-       (when (and (not (string-match "^deleted" event)) ; Buffer kill
-                  (not circe-server-quitting-p))
-         (circe-reconnect))
-       (setq circe-server-quitting-p nil)))))
+  (when (buffer-live-p (process-buffer process))
+    (with-current-buffer (process-buffer process)
+      (cond
+       ((string-match "^open" event)
+        (when circe-server-pass
+          (circe-server-send (format "PASS %s" circe-server-pass)))
+        (circe-server-send (format "NICK %s" circe-server-nick))
+        (circe-server-send (format "USER %s 8 * :%s"
+                                   circe-server-user
+                                   circe-server-realname)))
+       (t
+        (circe-server-message (format "Disconnected (%s)"
+                                      ;; Events end in a newline. No
+                                      ;; idea why.
+                                      (substring event 0 -1)))
+        (dolist (buf (circe-chat-buffers))
+          (with-current-buffer buf
+            (circe-chat-disconnected)))
+        (when (and (not (string-match "^deleted" event)) ; Buffer kill
+                   (not circe-server-quitting-p))
+          (circe-reconnect))
+        (setq circe-server-quitting-p nil))))))
 
 (defvar circe-server-flood-last-message 0
   "When we sent the last message.
