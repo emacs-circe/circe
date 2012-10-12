@@ -470,7 +470,7 @@ If point is not in the input area, self-insert."
 (defun lui-buttonize ()
   "Buttonize the current message.
 This uses `lui-buttons-list'."
-  (dolist (entry lui-buttons-list) 
+  (dolist (entry lui-buttons-list)
     (let ((regex (nth 0 entry))
           (submatch (nth 1 entry))
           (function (nth 2 entry))

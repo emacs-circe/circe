@@ -168,7 +168,7 @@ Common options:
   :group 'circe)
 
 (defvar circe-networks
-  '(("Freenode" :host "irc.freenode.net"
+  '(("Freenode" :host "irc.freenode.net" :port 6667
      :nickserv-mask "^NickServ!NickServ@services\\.$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
@@ -176,7 +176,7 @@ Common options:
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
-    ("Coldfront" :host "irc.coldfront.net"
+    ("Coldfront" :host "irc.coldfront.net" :port 6667
      :nickserv-mask "^NickServ!services@coldfront\\.net$"
      :nickserv-identify-challenge "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
@@ -187,7 +187,7 @@ Common options:
      :nickserv-identify-command "PRIVMSG &bitlbee :identify {password}"
      :nickserv-identify-confirmation "Password accepted, settings and accounts loaded"
      )
-    ("OFTC" :host "irc.oftc.net"
+    ("OFTC" :host "irc.oftc.net" :port 6667
      :nickserv-mask "^NickServ!services@services\\.oftc\\.net$"
      :nickserv-identify-challenge "This nickname is registered and protected."
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password} {nick}"
@@ -763,8 +763,8 @@ See `circe-network-options' for a list of common options."
           (let* ((input (read-from-minibuffer "Port: " "6667"))
                  (port (string-to-number input)))
             (setq service (if (= port 0)
-                           input
-                         port)))
+                              input
+                            port)))
         (setq service 6667))
       (puthash 'circe-server-service service variables))
     (let* ((buffer-name (format "%s:%s" host service))
@@ -2477,7 +2477,7 @@ command, and args of the message."
 If NO-NOTIFY is true, don't notify the user of this."
   (when circe-channel-users
     (let ((data (gethash nick circe-channel-users nil)))
-      (when data 
+      (when data
         (let ((joined (gethash 'joined data nil))
               (was-lurker (gethash 'joinpart-is-lurker data t)))
           (puthash 'joinpart-is-lurker nil data)
@@ -2487,7 +2487,7 @@ If NO-NOTIFY is true, don't notify the user of this."
                      circe-reduce-joinpart-spam)
             (circe-display 'circe-format-server-joinpart-activity
                            :nick nick
-                           :joindelta (circe-duration-string 
+                           :joindelta (circe-duration-string
                                        (- (float-time)
                                           joined)))))))))
 
