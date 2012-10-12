@@ -591,11 +591,11 @@ to reconnect to the server.
         mode-name "Circe Server"
         lui-input-function 'circe-chat-input)
   (use-local-map circe-server-mode-map)
-  (add-hook 'completion-at-point-functions 'circe-completion-at-point
-            nil t)
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
   (setq circe-server-last-active-buffer (current-buffer))
+  (add-hook 'completion-at-point-functions 'circe-completion-at-point
+            nil t)
   ;; Tab completion should be case-insensitive
   (set (make-local-variable 'completion-ignore-case)
        t)
@@ -1322,6 +1322,8 @@ SERVER-BUFFER is the server-buffer of this chat buffer."
         circe-server-buffer server-buffer)
   (set (make-local-variable 'tracking-faces-priorities)
        circe-track-faces-priorities)
+  (add-hook 'completion-at-point-functions 'circe-completion-at-point
+            nil t)
   ;; Tab completion should be case-insensitive
   (set (make-local-variable 'completion-ignore-case)
        t)
