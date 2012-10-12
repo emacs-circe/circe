@@ -704,7 +704,8 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
   (lui-save-undo-list
    (save-excursion
      (save-restriction
-       (let ((inhibit-read-only t))
+       (let ((inhibit-read-only t)
+             (inhibit-point-motion-hooks t))
          (widen)
          (goto-char lui-output-marker)
          (let ((beg (point))
