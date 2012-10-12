@@ -416,20 +416,12 @@ is ignored."
              (window-live-p window)
              lui-scroll-to-bottom-p)
     (let ((resize-mini-windows nil))
-      ;; This is to prevent an XEmacs byte compilation warning
-      ;; "variable bound but not referred to". XEmacs is trying to be
-      ;; too intelligent.
-      (when (featurep 'xemacs)
-        (declare (special resize-mini-windows)))
-      (save-selected-window
-        (select-window window)
-        (save-restriction
-          (widen)
-          (when (>= (point) lui-input-marker)
-            (save-excursion
-              (goto-char (point-max))
-              (recenter -1)
-              (sit-for 0))))))))
+      (with-selected-window window
+        (when (equal (point-max)
+                     (window-end nil t))
+          (save-excursion
+            (goto-char (point-max))
+            (recenter -1)))))))
 
 (defun lui-change-major-mode ()
   "Assure that the user really wants to change the major mode.
