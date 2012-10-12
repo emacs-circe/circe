@@ -168,7 +168,7 @@ Common options:
   :group 'circe)
 
 (defvar circe-networks
-  '(("Freenode" :host "irc.freenode.net" :port 6667
+  '(("Freenode" :host "irc.freenode.net" :port (6667 . 6697)
      :nickserv-mask "^NickServ!NickServ@services\\.$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
@@ -727,7 +727,15 @@ network name completions."
       (puthash 'circe-server-user circe-default-user variables))
     (when (not (gethash 'circe-server-realname variables))
       (puthash 'circe-server-realname circe-default-realname variables))
-    ;; Other defaults
+    ;; Default values that depend on other variables
+    (let ((service (gethash 'circe-server-service variables))
+          (use-tls (gethash 'circe-server-use-tls variables)))
+      (when (consp service)
+        (puthash 'circe-server-service
+                 (if use-tls
+                     (cdr service)
+                   (car service))
+                 variables)))
     (when (not (gethash 'circe-nickserv-nick variables))
       (puthash 'circe-nickserv-nick
                (gethash 'circe-server-nick variables)
