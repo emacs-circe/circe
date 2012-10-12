@@ -70,20 +70,21 @@
 
 (defcustom lui-flyspell-p nil
   "Non-nil if Lui should spell-check your input.
-See `flyspell-mode' for more information."
+See the function `flyspell-mode' for more information."
   :type 'boolean
   :group 'lui)
 
 (defcustom lui-flyspell-alist nil
   "Alist of buffer dictionaries.
+
 This is a list of mappings from buffers to dictionaries to use
-for `flyspell-mode'. The appropriate dictionary is automatically
-used when Lui is activated in a buffer with a matching buffer
-name.
+for the function `flyspell-mode'. The appropriate dictionary is
+automatically used when Lui is activated in a buffer with a
+matching buffer name.
 
 The entries are of the form (REGEXP DICTIONARY), where REGEXP
 must match a buffer name, and DICTIONARY specifies an existing
-dictionary for `flyspell-mode'. See
+dictionary for the function `flyspell-mode'. See
 `ispell-local-dictionary-alist' and `ispell-dictionary-alist' for
 a valid list of dictionaries."
   :type 'string
@@ -204,10 +205,10 @@ This can be one of the following values:
       At the left side of the output. The output is thereby moved
       to the right.
   'right-margin
-      In the right margin.  You will need to set right-margin-width
+      In the right margin.  You will need to set `right-margin-width'
       in all circe buffers.
   'left-margin
-      In the left margin.  You will need to set left-margin-width
+      In the left margin.  You will need to set `left-margin-width'
       in all circe buffers.
   nil
       Do not add any time stamp."
@@ -220,7 +221,7 @@ This can be one of the following values:
   :group 'lui)
 
 (defcustom lui-time-stamp-only-when-changed-p t
-  "Non-nil if Lui should only add a time-stamp when the time changes.
+  "Non-nil if Lui should only add a time stamp when the time changes.
 If `lui-time-stamp-position' is 'left, this will still add the
 necessary whitespace."
   :type 'boolean
@@ -347,6 +348,7 @@ Use `lui-insert' instead of accessing this marker directly.")
 ;;;;;;;;;;;;;;
 
 (defmacro lui-save-undo-list (&rest body)
+  "Run BODY without modifying the undo list."
   (let ((old-marker-sym (make-symbol "old-marker")))
     `(let ((,old-marker-sym (marker-position lui-input-marker))
            (val nil))
@@ -406,7 +408,10 @@ It can be customized for an application by specifying a
   (run-hooks 'lui-mode-hook))
 
 (defun lui-scroll-to-bottom (window display-start)
-  "Scroll the input line to the bottom of the window."
+  "Scroll the input line to the bottom of the WINDOW.
+
+DISPLAY-START is passed by the hook `window-scroll-functions' and
+is ignored."
   (when (and window
              (window-live-p window)
              lui-scroll-to-bottom-p)
@@ -430,7 +435,7 @@ It can be customized for an application by specifying a
   "Assure that the user really wants to change the major mode.
 This is a good value for a buffer-local `change-major-mode-hook'."
   (when (not (y-or-n-p "Really change major mode in a Lui buffer? "))
-    (error "User disallowed mode change.")))
+    (error "User disallowed mode change")))
 
 
 ;;;;;;;;;;;;;
@@ -700,7 +705,10 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
 ;;;;;;;;;;;;;;
 
 (defun lui-insert (str &optional not-tracked-p)
-  "Insert STR into the current Lui buffer."
+  "Insert STR into the current Lui buffer.
+
+If NOT-TRACKED-P is given, this insertion won't trigger tracking
+of the buffer."
   (lui-save-undo-list
    (save-excursion
      (save-restriction
@@ -741,9 +749,10 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
                                   faces))))))))
 
 (defun lui-adjust-undo-list (list old-begin shift)
-  "Adjust undo positions in LIST by SHIFT.
+  "Adjust undo positions in list.
 LIST is in the format of `buffer-undo-list'.
-Only positions after OLD-BEGIN are affected."
+Only positions after OLD-BEGIN are affected.
+The positions are adjusted by SHIFT positions."
   ;; This is necessary because the undo-list keeps exact buffer
   ;; positions.
   ;; Thanks to ERC for the idea of the code.
@@ -833,13 +842,15 @@ unexpecting user.")
 
 (defun lui-prompt-end-of-line (&optional N)
   "Move past the prompt, and then to the end of the line.
-This uses `end-of-line'."
+This uses `end-of-line'.
+
+The argument N is ignored."
   (interactive "p")
   (goto-char lui-input-marker)
   (call-interactively 'end-of-line))
 
 (defun lui-faces-in-region (beg end)
-  "Returns a face that describes the region between BEG and END."
+  "Return a face that describes the region between BEG and END."
   (goto-char beg)
   (let ((faces nil))
     (while (not (= (point) end))
@@ -862,7 +873,8 @@ This uses `end-of-line'."
 ;;;;;;;;;;;;;;;;;;;;
 
 (defun lui-highlight-keywords ()
-  "Highlight the entries in `lui-highlight-keywords' in buffer.
+  "Highlight the entries in the variable `lui-highlight-keywords'.
+
 This is called automatically when new text is inserted."
   (let ((regex (lambda (entry)
                  (if (stringp entry)
@@ -1031,6 +1043,7 @@ function."
     (setq lui-time-stamp-last ts)))
 
 (defun lui-time-stamp-enable-filtering ()
+  "Enable filtering of timestamps from copied text."
   (if (boundp 'filter-buffer-substring-functions)
       (set (make-local-variable 'filter-buffer-substring-functions)
            '(lui-filter-buffer-time-stamps))
@@ -1039,6 +1052,11 @@ function."
          '(lui-time-stamp-buffer-substring))))
 
 (defun lui-filter-buffer-time-stamps (fun beg end delete)
+  "Filter text from copied strings.
+
+This is meant for the variable `filter-buffer-substring-functions',
+which see for an explanation of the argument FUN, BEG, END and
+DELETE."
   (let ((string (funcall fun beg end delete))
         (inhibit-point-motion-hooks t)
         (inhibit-read-only t))
@@ -1056,6 +1074,10 @@ function."
         (buffer-string)))))
 
 (defun lui-time-stamp-buffer-substring (buffer-string)
+  "Filter text from copied strings.
+
+This is meant for the variable `buffer-substring-filters',
+which see for an explanation of the argument BUFFER-STRING."
   (lui-filter-buffer-time-stamps (lambda (beg end delete)
                                   buffer-string)
                                 nil nil nil))

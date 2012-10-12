@@ -159,7 +159,12 @@ Common options:
   :realname - The real name to use (defaults to `circe-default-realname')
   :channels - A plist of channels to join
               (see `circe-server-auto-join-channels').
-  :tls - A boolean indicating as to whether to use TLS or not (defaults to nil)
+
+  :host - The host name of the server to connect to.
+  :service - The service name or port for the server.
+  :tls - A boolean indicating as to whether to use TLS or
+         not (defaults to nil). If you set this, you'll likely
+         have to set :service as well.
 
   :nickserv-nick - The nick to authenticate with to nickserv, if configured.
                    (defaults to the value of :nick)
@@ -225,7 +230,7 @@ are displayed as if `circe-auto-query-p' was nil."
   "Whether Circe should use cycle completion.
 
 If this is not nil, Circe will set `completion-cycle-threshold'
-to `t' locally in Circe buffers, enabling cycle completion for
+to t locally in Circe buffers, enabling cycle completion for
 nicks no matter what completion style you use in the rest of
 Emacs. If you set this to nil, Circe will not touch your default
 completion style."
@@ -233,9 +238,11 @@ completion style."
   :group 'circe)
 
 (defcustom circe-reduce-joinpart-spam nil
-  "If enabled, Circe will stop showing JOIN, PART, QUIT and NICK
-messages for users on channels that have not spoken yet. When
-they speak for the first time, Circe displays their join time."
+  "If enabled, Circe will stop showing some messages.
+
+This means that JOIN, PART, QUIT and NICK messages are not shown
+for users on channels that have not spoken yet. When they speak
+for the first time, Circe displays their join time."
   :type 'boolean
   :group 'circe)
 
@@ -585,8 +592,9 @@ This is required for reconnecting.")
 (make-variable-buffer-local 'circe-server-chat-buffers)
 
 (defvar circe-server-filter-data nil
-  "The data that arrived from the server
-but has not been processed yet.")
+  "Cache for the data from the server.
+
+This contains only data that has not been processed yet.")
 (make-variable-buffer-local 'circe-server-filter-data)
 
 (defvar circe-server-processing-p nil
@@ -600,8 +608,9 @@ These in turn, though, do start flyspell. This involves starting
 an external process, in which case Emacs will wait - and when it
 waits, it does accept other stuff from, say, network exceptions.
 So, if someone sends you two messages quickly after each other,
-ispell is started for the first, but might take long enough for
-the second message to be processed first. Nice, isn't it.")
+the word checker is started for the first, but might take long
+enough for the second message to be processed first. Nice, isn't
+it.")
 (make-variable-buffer-local 'circe-server-processing-p)
 
 (defvar circe-display-table nil
@@ -663,8 +672,10 @@ to reconnect to the server.
   (run-hooks 'circe-server-mode-hook))
 
 (defun circe-read-network ()
-  "Read a host or network name, using `circe-networks' for
-network name completions."
+  "Read a host or network name with completion.
+
+This uses `circe-networks' and `circe-network-options' for
+network names."
   (let ((default-network (if (null circe-network-options)
                              (caar circe-networks)
                            (caar circe-network-options)))
@@ -679,7 +690,14 @@ network name completions."
                      default-network)))
 
 (defun circe-parse-options (network-or-server options)
-  "Turn the arguments to `circe' into hash mapping variable names to values."
+  "Turn the arguments to `circe' into hash mapping variable names to values.
+
+NETWORK-OR-SERVER is a string selection a network name. If it's
+not found as a network name, it's assumed to be the name of a
+server.
+
+OPTIONS is a property list with keyword options. See
+`circe-network-options' for a list and further explanation."
   (let ((options (append options
                          (cdr (assoc-string network-or-server
                                             circe-network-options
@@ -746,17 +764,17 @@ network name completions."
 (defun circe (network-or-server &rest options)
   "Connect to IRC.
 
-Connect to the given network.
+Connect to the given network specified by NETWORK-OR-SERVER.
 
 When this function is called, it collects options from the
 OPTIONS argument, the user variable `circe-network-options', and
 the defaults found in `circe-networks', in this order.
 
-If the first argument is not found in any of these variables, the
+If NETWORK-OR-SERVER is not found in any of these variables, the
 argument is assumed to be the host name for the server, and all
 relevant settings must be passed via OPTIONS.
 
-All options are treated as variables by getting the string
+All OPTIONS are treated as variables by getting the string
 \"circe-\" prepended to their name. This variable is then set
 locally in the server buffer.
 
@@ -808,7 +826,7 @@ See `circe-network-options' for a list of common options."
                       (circe-server-buffer
                        circe-server-buffer)
                       (t
-                       (error "`with-circe-server-buffer' outside of an circe buffer.")))))
+                       (error "`with-circe-server-buffer' outside of an circe buffer")))))
        (when (and ,server ;; Might be dead!
                   (bufferp ,server)
                   (buffer-live-p ,server))
@@ -817,7 +835,8 @@ See `circe-network-options' for a list of common options."
 (put 'with-circe-server-buffer 'lisp-indent-function 0)
 
 (defmacro with-circe-chat-buffer (name &rest body)
-  "Run BODY with the current buffer the chat buffer of NAME.
+  "Switch to the chat buffer NAME and run BODY there.
+
 If no such buffer exists, do nothing."
   (let ((buf (make-symbol "buf")))
     `(let ((,buf (circe-server-get-chat-buffer ,name)))
@@ -886,7 +905,10 @@ See `circe-server-max-reconnect-attempts'.")
         (circe-reconnect)))))
 
 (defun circe-server-filter-function (process string)
-  "The process filter for the circe server."
+  "The process filter for the circe server.
+
+PROCESS is the process which we are filtering, and STRING is the
+output we received from there."
   (with-current-buffer (process-buffer process)
     ;; If you think this is written in a weird way - please refer to the
     ;; docstring of `circe-server-processing-p'
@@ -914,7 +936,10 @@ See `circe-server-max-reconnect-attempts'.")
             (circe-server-handler line)))))))
 
 (defun circe-server-sentinel (process event)
-  "The process sentinel for the server."
+  "The process sentinel for the server.
+
+PROCESS is the process we are watching, and EVENT is the event we
+saw."
   (with-current-buffer (process-buffer process)
     (cond
       ((string-match "^open" event)
@@ -978,7 +1003,7 @@ protection algorithm."
         (circe-server-send-queue (current-buffer))))))
 
 (defun circe-server-send-queue (buffer)
-  "Send messages in `circe-server-flood-queue'.
+  "Send messages in `circe-server-flood-queue' of BUFFER.
 See `circe-server-flood-margin' for an explanation of the flood
 protection algorithm."
   (with-current-buffer buffer
@@ -1223,9 +1248,11 @@ This is used by Circe to know where to put spurious messages."
                              '(face circe-highlight-nick-face)))))))
 
 (defun circe-highlight-extend-properties (from to prop val properties)
-  "Extend property PROP with value VAL with PROPERTIES between FROM and TO.
-Between FROM and TO, on every region of text which has the
-property PROP set to VAL, add PROPERTIES."
+  "Extend property values.
+
+In the text between FROM and TO, find any text that has property
+PROP set to VAL, and extend the properties of that range of text
+with all properties in PROPERTIES."
   (let ((beg (text-property-any from to prop val)))
     (while beg
       (let ((end (next-single-property-change beg prop)))
@@ -1239,7 +1266,7 @@ property PROP set to VAL, add PROPERTIES."
 ;; Case-insensitive hash table
 ;; This does not work for the RFC 1459 encoding.
 (defun circe-case-fold-string= (a b)
-  "Compare two strings case-insensitively."
+  "Compare the two strings A and B case-insensitively."
   (eq t
       (compare-strings a nil nil b nil nil t)))
 
@@ -1258,7 +1285,7 @@ property PROP set to VAL, add PROPERTIES."
 ;; Manager interface
 
 (defun circe-server-add-chat-buffer (target buf)
-  "Add BUF as a chat buffer for TARGET."
+  "For target TARGET, add BUF as a chat buffer."
   (let ((name (if (bufferp buf)
                   buf
                 (get-buffer buf))))
@@ -1323,6 +1350,13 @@ initialize a new buffer if none exists."
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun circe-ignore-matches-p (nick user host command args alist)
+  "Check if a given command does match an ignore pattern.
+
+A pattern matches if it either matches the user NICK!USER@HOST,
+or if, if COMMAND is a PRIVMSG, if it matches the first word in
+the argument text in ARGS.
+
+ALIST should be the list of regular expressions."
   (let ((string (concat nick "!" user "@" host))
         (target (when (and (string= command "PRIVMSG")
                            (not (circe-server-my-nick-p (car args)))
@@ -1339,7 +1373,11 @@ initialize a new buffer if none exists."
 
 (defun circe-ignored-p (nick user host command args)
   "True iff this user or message is being ignored.
-See `circe-ignore-functions' and `circe-ignore-list'."
+
+See `circe-ignore-functions' and `circe-ignore-list'.
+
+NICK, USER and HOST should be the sender of a the command
+COMMAND, which had the arguments ARGS."
   (or (run-hook-with-args-until-success circe-ignore-functions
                                         nick user host
                                         command args)
@@ -1348,7 +1386,11 @@ See `circe-ignore-functions' and `circe-ignore-list'."
 
 (defun circe-fool-p (nick user host command args)
   "True iff this user or message is a fool.
-See `circe-fool-list'."
+
+See `circe-fool-list'.
+
+NICK, USER and HOST should be the sender of a the command
+COMMAND, which had the arguments ARGS."
   (circe-ignore-matches-p nick user host command args
                           circe-fool-list))
 
@@ -1369,7 +1411,7 @@ See `circe-fool-list'."
         (circe-server-message (format "- %s" regex)))))))
 
 (defun circe-command-UNIGNORE (line)
-  "Remove an entry from `circe-ignore-list'."
+  "Remove the entry LINE from `circe-ignore-list'."
   (with-current-buffer (circe-server-last-active-buffer)
     (cond
      ((string-match "\\S-+" line)
@@ -1398,7 +1440,7 @@ See `circe-fool-list'."
         (circe-server-message (format "- %s" regex)))))))
 
 (defun circe-command-UNFOOL (line)
-  "Remove an entry from `circe-fool-list'."
+  "Remove the entry LINE from `circe-fool-list'."
   (with-current-buffer (circe-server-last-active-buffer)
     (cond
      ((string-match "\\S-+" line)
@@ -1423,7 +1465,7 @@ See `circe-fool-list'."
 This is the common mode used for both queries and channels.
 It should not be used directly.
 TARGET is the default target to send data to.
-SERVER-BUFFER is the server-buffer of this chat buffer."
+SERVER-BUFFER is the server buffer of this chat buffer."
   (lui-mode)
   (make-local-variable 'lui-pre-output-hook)
   (add-hook 'lui-pre-output-hook 'circe-highlight-nick)
@@ -1522,7 +1564,7 @@ regular expression."
 This mode represents a channel you are talking in.
 
 TARGET is the default target to send data to.
-SERVER-BUFFER is the server-buffer of this chat buffer.
+SERVER-BUFFER is the server buffer of this chat buffer.
 
 \\{circe-channel-mode-map}"
   (circe-chat-mode target server-buffer)
@@ -1558,7 +1600,13 @@ From 005 RPL_ISUPPORT.")
 (make-variable-buffer-local 'circe-channel-nick-prefixes)
 
 (defun circe-channel-message-handler (nick user host command args)
-  "Update the users of a channel as appropriate."
+  "Update the users of a channel as appropriate.
+
+This handles nick changes and channel joins and departures, and
+updates the variable `circe-channel-users' accordingly.
+
+NICK, USER, HOST, COMMAND and ARGS should be the command
+received."
   (cond
    ((string= command "NICK")
     (dolist (buf (circe-chat-buffers))
@@ -1671,7 +1719,7 @@ This uses `circe-channel-nick-prefixes'."
 This mode represents a query you are talking in.
 
 TARGET is the default target to send data to.
-SERVER-BUFFER is the server-buffer of this chat buffer.
+SERVER-BUFFER is the server buffer of this chat buffer.
 
 \\{circe-query-mode-map}"
   (circe-chat-mode target server-buffer)
@@ -1735,6 +1783,11 @@ This is used in `completion-at-point-functions'."
     (list start end collection)))
 
 (defun circe-possible-completions (nick-suffix)
+  "Return possible completions for the current Circe buffer.
+
+Depending on the current mode, this will return a list of nicks,
+commands and possibly channels. Nicks will have NICK-SUFFIX
+appended to them."
   (let ((completions (append (circe-commands-list)
                              (mapcar (lambda (buf)
                                        (with-current-buffer buf
@@ -1797,8 +1850,10 @@ This is used in `completion-at-point-functions'."
           )))
 
 (defun circe-split-line (longline)
-  "Return a list of lines which are not too long for poor IRC.
-The length is specified in `circe-split-line-length'."
+  "Splits LONGLINE into smaller components.
+
+IRC silently truncates long lines. This splits a long line into
+parts that each are not longer than `circe-split-line-length'."
   (if (< (length longline)
          circe-split-line-length)
       (list longline)
@@ -1810,7 +1865,7 @@ The length is specified in `circe-split-line-length'."
       (split-string (buffer-string) "\n"))))
 
 (defun circe-command-ME (line)
-  "Make LINE as an action"
+  "Send LINE to IRC as an action."
   (interactive "sAction: ")
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
@@ -1822,8 +1877,11 @@ The length is specified in `circe-split-line-length'."
 
 (defun circe-command-MSG (who &optional what)
   "Send a message.
-If WHAT is given, WHO is the nick. Else, WHO contains both the
-nick and the message."
+
+Send WHO a message containing WHAT.
+
+If WHAT is not given, WHO should contain both the nick and the
+message separated by a space."
   (when (not what)
     (if (string-match "^\\([^ ]*\\) \\(.*\\)" who)
         (setq what (match-string 2 who)
@@ -1879,7 +1937,9 @@ nick and the message."
   (circe-server-send (format "WHOWAS %s" whom)))
 
 (defun circe-command-WHOAMI (&optional ignored)
-  "Request WHOIS information about yourself."
+  "Request WHOIS information about yourself.
+
+Arguments are IGNORED."
   (interactive "sWhois: ")
   (circe-server-send (format "WHOIS %s" (circe-server-nick))))
 
@@ -1915,7 +1975,7 @@ nick and the message."
                                   line))))
 
 (defun circe-command-CTCP (who &optional command argument)
-  "Send a CTCP message COMMAND to WHO, with ARGUMENT.
+  "Send a CTCP message to WHO containing COMMAND with ARGUMENT.
 If COMMAND is not given, WHO is parsed to contain all of who,
 command and argument.
 If ARGUMENT is nil, it is interpreted as no argument."
@@ -1935,24 +1995,26 @@ If ARGUMENT is nil, it is interpreted as no argument."
                                  (concat " " argument))))))
 
 (defun circe-command-AWAY (reason)
-  "Set yourself away."
+  "Set yourself away with REASON."
   (interactive "sReason: ")
   (circe-server-send (format "AWAY :%s" reason)))
 
 (defun circe-command-BACK (&optional ignored)
-  "Mark yourself not away anymore."
+  "Mark yourself not away anymore.
+
+Arguments are IGNORED."
   (interactive)
   (circe-server-send "AWAY"))
 
 (defun circe-command-QUIT (reason)
-  "Quit the current server."
+  "Quit the current server giving REASON."
   (interactive "sReason: ")
   (with-circe-server-buffer
     (setq circe-server-quitting-p t)
     (circe-server-send (format "QUIT :%s" reason))))
 
 (defun circe-command-GAWAY (reason)
-  "Set yourself away on all servers."
+  "Set yourself away on all servers with reason REASON."
   (interactive "sReason: ")
   (dolist (buf (circe-server-buffers))
     (with-current-buffer buf
@@ -1961,7 +2023,7 @@ If ARGUMENT is nil, it is interpreted as no argument."
         (circe-command-AWAY reason)))))
 
 (defun circe-command-GQUIT (reason)
-  "Quit all servers."
+  "Quit all servers with reason REASON."
   (interactive "sReason: ")
   (dolist (buf (circe-server-buffers))
     (with-current-buffer buf
@@ -1987,7 +2049,9 @@ consisting of two words, the nick and the channel."
                                channel))))
 
 (defun circe-command-SV (&optional ignored)
-  "Tell the current channel about your client and Emacs version."
+  "Tell the current channel about your client and Emacs version.
+
+Arguments are IGNORED."
   (interactive)
   (circe-command-SAY (format (concat "I'm using Circe version %s "
                                      "with %s %s (of %s)")
@@ -2004,7 +2068,7 @@ consisting of two words, the nick and the channel."
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun circe-set-display-handler (command function)
-  "Store FUNCTION as the display function for COMMAND.
+  "Set the display handler for COMMAND to FUNCTION.
 This uses `circe-display-table'."
   (when (not circe-display-table)
     (setq circe-display-table (make-hash-table :test 'equal)))
@@ -2061,7 +2125,10 @@ This uses `circe-display-table'."
 (defvar *circe-fool-p* nil
   "Internal use. Set this to nil. Do not change it. Go away.")
 (defun circe-server-display (nick user host command args)
-  "Display the message."
+  "Display an IRC message.
+
+NICK, USER and HOST specify the originator of COMMAND with ARGS
+as arguments."
   (let ((display (circe-display-handler command))
         ;; Dynamic scoping
         (*circe-fool-p* (circe-fool-p nick user host command args)))
@@ -2081,11 +2148,17 @@ This uses `circe-display-table'."
                                 args
                                 " "))))))))
 
-(defun circe-server-ctcp-handler (nick user host requestp ctcp target text)
-  "Handle a CTCP message."
-  (let ((command (concat "CTCP-" ctcp (if requestp
-                                          ""
-                                        "-REPLY")))
+(defun circe-server-ctcp-handler (nick user host requestp
+                                       ctcp-command target text)
+  "Handle a CTCP message.
+
+NICK, USER and HOST are the originators of the message. If
+REQUESTP is set, this is a CTCP request, otherwise it is a reply.
+CTCP-COMMAND specifies the command name which was sent to TARGET,
+passing TEXT as arguments."
+  (let ((command (concat "CTCP-" ctcp-command (if requestp
+                                                  ""
+                                                "-REPLY")))
         (args (list target text)))
     (run-hook-with-args 'circe-receive-message-functions
                         nick user host command args)
@@ -2097,18 +2170,20 @@ This uses `circe-display-table'."
            (requestp
             (circe-server-message
              (format "Unknown CTCP request %s from %s (%s@%s): %s"
-                     ctcp
+                     ctcp-command
                      nick user host
                      text)))
            ((circe-server-my-nick-p target)
-            (circe-server-message (format "CTCP %s reply from %s (%s@%s): %s"
-                                          ctcp nick user host text)))
+            (circe-server-message
+             (format "CTCP %s reply from %s (%s@%s): %s"
+                     ctcp-command nick user host text)))
            (t
-            (circe-server-message (format "CTCP %s reply from %s (%s@%s) to %s: %s"
-                                          ctcp nick user host target text)))))))))
+            (circe-server-message
+             (format "CTCP %s reply from %s (%s@%s) to %s: %s"
+                     ctcp-command nick user host target text)))))))))
 
 (defun circe-server-parse-line (line)
-  "Parse an IRC line.
+  "Parse LINE as a line sent by the IRC server.
 This returns a vector with five elements: The nick, user, host,
 command, and args of the message."
   (let ((nick nil)
@@ -2144,7 +2219,12 @@ command, and args of the message."
     (vector nick user host command args)))
 
 (defun circe-server-internal-handler (nick user host command args)
-  "Handle this message for internal bookkeeping."
+  "Handle this message for internal bookkeeping.
+
+This does mandatory client-side bookkeeping of the server state.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (cond
    ;; Stay connected. Priority reply.
    ((string= command "PING")
@@ -2188,7 +2268,10 @@ command, and args of the message."
 
 (circe-set-display-handler "CTCP-ACTION" 'circe-ctcp-display-ACTION)
 (defun circe-ctcp-display-ACTION (nick user host command args)
-  "Show an ACTION."
+  "Show an ACTION.
+
+NICK, USER and HOST are the originators, COMMAND the command and
+ARGS the arguments to the command."
   (let ((*circe-fool-p* (circe-fool-p nick user host command args)))
     (if (circe-server-my-nick-p (car args)) ; Query
         (let ((buf (circe-server-auto-query-buffer nick)))
@@ -2210,7 +2293,10 @@ command, and args of the message."
 
 (add-hook 'circe-receive-message-functions 'circe-ctcp-VERSION-handler)
 (defun circe-ctcp-VERSION-handler (nick user host command args)
-  "Handle a CTCP VERSION request."
+  "Handle a CTCP VERSION request.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (when (string= command "CTCP-VERSION")
     (circe-server-send
      (format "NOTICE %s :\C-aVERSION Circe: Client for IRC in Emacs, version %s\C-a"
@@ -2218,7 +2304,10 @@ command, and args of the message."
 
 (circe-set-display-handler "CTCP-VERSION" 'circe-ctcp-display-VERSION)
 (defun circe-ctcp-display-VERSION (nick user host command args)
-  "Show a CTCP VERSION."
+  "Show a CTCP VERSION.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (with-current-buffer (circe-server-last-active-buffer)
     (if (circe-server-my-nick-p (car args))
         (circe-server-message (format "CTCP VERSION request from %s (%s@%s)"
@@ -2229,14 +2318,20 @@ command, and args of the message."
 
 (add-hook 'circe-receive-message-functions 'circe-ctcp-PING-handler)
 (defun circe-ctcp-PING-handler (nick user host command args)
-  "Handle a CTCP PING request."
+  "Handle a CTCP PING request.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (when (string= command "CTCP-PING")
     (circe-server-send (format "NOTICE %s :\C-aPING %s\C-a"
                                nick (cadr args)))))
 
 (circe-set-display-handler "CTCP-PING" 'circe-ctcp-display-PING)
 (defun circe-ctcp-display-PING (nick user host command args)
-  "Show a CTCP PING request."
+  "Show a CTCP PING request.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (with-current-buffer (circe-server-last-active-buffer)
     (circe-server-message (format "CTCP PING request%s from %s (%s@%s): %s%s"
                                   (if (circe-server-my-nick-p (car args))
@@ -2254,7 +2349,10 @@ command, and args of the message."
 
 (circe-set-display-handler "CTCP-PING-REPLY" 'circe-ctcp-display-PING-reply)
 (defun circe-ctcp-display-PING-reply (nick user host command args)
-  "Show a CTCP PING reply."
+  "Show a CTCP PING reply.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (with-current-buffer (circe-server-last-active-buffer)
     (let ((ping-time (string-to-number (cadr args))))
       (if ping-time
@@ -2271,7 +2369,10 @@ command, and args of the message."
 
 (add-hook 'circe-receive-message-functions 'circe-ctcp-TIME-handler)
 (defun circe-ctcp-TIME-handler (nick user host command args)
-  "Handle a CTCP TIME request."
+  "Handle a CTCP TIME request.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (when (string= command "CTCP-TIME")
     (circe-server-send
      (format "NOTICE %s :\C-aTIME %s\C-a"
@@ -2289,7 +2390,10 @@ command, and args of the message."
 
 (circe-set-display-handler "CTCP-TIME" 'circe-ctcp-display-TIME)
 (defun circe-ctcp-display-TIME (nick user host command args)
-  "Show a CTCP TIME request."
+  "Show a CTCP TIME request.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (with-current-buffer (circe-server-last-active-buffer)
     (circe-server-message (format "CTCP TIME request%s from %s (%s@%s)"
                                   (if (circe-server-my-nick-p (car args))
@@ -2304,17 +2408,26 @@ command, and args of the message."
 
 (circe-set-display-handler "PING" 'circe-display-PING)
 (defun circe-display-PING (nick user host command args)
-  "(Don't) Show a PING message."
+  "(Don't) Show a PING message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   t)
 
 (circe-set-display-handler "PONG" 'circe-display-PONG)
 (defun circe-display-PONG (nick user host command args)
-  "(Don't) show a PONG message."
+  "(Don't) show a PONG message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   t)
 
 (circe-set-display-handler "PRIVMSG" 'circe-display-PRIVMSG)
 (defun circe-display-PRIVMSG (nick user host command args)
-  "Show a PRIVMSG message."
+  "Show a PRIVMSG message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (cond
    ((circe-server-my-nick-p (car args)) ; Query
     (let ((buf (circe-server-auto-query-buffer nick)))
@@ -2337,7 +2450,10 @@ command, and args of the message."
 
 (circe-set-display-handler "NOTICE" 'circe-display-NOTICE)
 (defun circe-display-NOTICE (nick user host command args)
-  "Show a NOTICE message."
+  "Show a NOTICE message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (let ((queryp (circe-server-my-nick-p (car args))))
     (if nick
         (with-current-buffer (or (circe-server-get-chat-buffer (if queryp
@@ -2355,7 +2471,10 @@ command, and args of the message."
 
 (circe-set-display-handler "NICK" 'circe-display-NICK)
 (defun circe-display-NICK (nick user host command args)
-  "Show a NICK message."
+  "Show a NICK message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (when (circe-server-my-nick-p nick)
     (with-circe-server-buffer
       (circe-server-message
@@ -2374,7 +2493,10 @@ command, and args of the message."
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick user host command args)
-  "Show a MODE message."
+  "Show a MODE message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (when (or circe-show-server-modes-p
             user) ; If this is set, it is not a server mode
     (with-current-buffer (or (circe-server-get-chat-buffer (car args))
@@ -2393,7 +2515,10 @@ command, and args of the message."
 
 (circe-set-display-handler "PART" 'circe-display-PART)
 (defun circe-display-PART (nick user host command args)
-  "Show a PART message."
+  "Show a PART message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (let ((buf (circe-server-get-chat-buffer (car args))))
     (when buf
       (with-current-buffer buf
@@ -2434,7 +2559,10 @@ command, and args of the message."
 
 (circe-set-display-handler "329" 'circe-display-329)
 (defun circe-display-329 (nick user host command args)
-  "Show a 329 numeric (topic set on...)"
+  "Show a 329 numeric (topic set on...).
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (with-current-buffer (circe-server-get-chat-buffer (cadr args))
     (let ((time (string-to-number (nth 2 args))))
       (circe-server-message
@@ -2445,7 +2573,10 @@ command, and args of the message."
 
 (circe-set-display-handler "333" 'circe-display-333)
 (defun circe-display-333 (nick user host command args)
-  "Show a 333 numeric (topic set by...)"
+  "Show a 333 numeric (topic set by...).
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (with-current-buffer (circe-server-get-chat-buffer (cadr args))
     (let ((time (string-to-number (nth 3 args))))
       (circe-server-message
@@ -2457,7 +2588,10 @@ command, and args of the message."
 
 (circe-set-display-handler "317" 'circe-display-317)
 (defun circe-display-317 (nick user host command args)
-  "Show a 317 numeric (idle since)"
+  "Show a 317 numeric (idle since).
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (with-current-buffer (circe-server-last-active-buffer)
     (let ((idle (string-to-number (nth 2 args)))
           (time (string-to-number (nth 3 args))))
@@ -2475,7 +2609,7 @@ command, and args of the message."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun circe-joinpart-is-lurker (nick)
-  "Return a true value if this nick has been inactive so far."
+  "Return a true value if this NICK has been inactive so far."
   (when (and circe-reduce-joinpart-spam
              circe-channel-users)
     (let ((data (gethash nick circe-channel-users nil)))
@@ -2548,7 +2682,7 @@ of that user. If the NICK isn't split, this returns nil."
       nil)))
 
 (defun circe-netsplit-quit (reason nick)
-  "Add NICK as splitted when REASON indicates a netsplit.
+  "If REASON indicates a netsplit, mark NICK as splitted.
 This either returns the time when last we heard about this split,
 or nil when this isn't a split."
   (when (circe-netsplit-reason-p reason)
@@ -2571,7 +2705,10 @@ or nil when this isn't a split."
 
 (circe-set-display-handler "QUIT" 'circe-display-QUIT)
 (defun circe-display-QUIT (nick user host command args)
-  "Show a QUIT message."
+  "Show a QUIT message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (let ((split (circe-netsplit-quit (car args)
                                     nick)))
     (dolist (buf (circe-user-channels nick))
@@ -2590,7 +2727,10 @@ or nil when this isn't a split."
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick user host command args)
-  "Show a JOIN message."
+  "Show a JOIN message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   ;; First, channel buffers for this user.
   (let ((split (circe-netsplit-join nick)))
     (with-current-buffer (circe-server-get-chat-buffer (car args)
@@ -2617,7 +2757,7 @@ or nil when this isn't a split."
 (defun circe-command-WL (&optional split)
   "Show the people who left in a netsplit.
 Without any arguments, shows shows the current netsplits and how
-many people are missing. With an argument, which must be a
+many people are missing. With an argument SPLIT, which must be a
 number, it shows the missing people due to that split."
   (let ((circe-netsplit-list (with-circe-server-buffer
                                circe-netsplit-list)))
@@ -2803,7 +2943,10 @@ arguments to the IRC message."
   :group 'circe)
 
 (defun circe-server-default-display-command (nick user host command args)
-  "Show a default message according to `circe-format-strings'."
+  "Show a default message according to `circe-format-strings'.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (let ((spec (assoc command circe-format-strings)))
     (when spec
       (let* ((target+name (circe-display-target spec nick user host
@@ -2839,7 +2982,12 @@ arguments to the IRC message."
 
 (defun circe-display-target (spec nick user host command args)
   "Return the target buffer and name.
-The buffer might be nil if it is not alive."
+The buffer might be nil if it is not alive.
+
+See `circe-format-strings' for a documentation of SPEC.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (cond
    ((eq (nth 1 spec) 'nick)
     (cons (circe-server-get-chat-buffer nick)
@@ -3002,7 +3150,9 @@ used."
     (circe-server-message "No channel given, and no default target."))))
 
 (defun circe-command-CHTOPIC (&optional ignored)
-  "Insert the topic of the current channel."
+  "Insert the topic of the current channel.
+
+Arguments are IGNORED."
   (interactive)
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
@@ -3011,7 +3161,10 @@ used."
 
 (add-hook 'circe-receive-message-functions 'circe-topic-handler)
 (defun circe-topic-handler (nick user host command args)
-  "Manage the topic."
+  "Manage the topic.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (cond
    ((string= command "TOPIC")
     (with-circe-chat-buffer (car args)
@@ -3027,6 +3180,10 @@ used."
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
 (defun circe-display-topic (nick user host command args)
+  "Show a TOPIC message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (with-circe-chat-buffer (car args)
     (let ((old circe-channel-topic-old)
           (new (cadr args)))
@@ -3130,11 +3287,11 @@ formatting options:
 (make-variable-buffer-local 'circe-nickserv-identify-command)
 
 (defvar circe-nickserv-identify-confirmation nil
-  "A regular expression matching a confirmation of authentication")
+  "A regular expression matching a confirmation of authentication.")
 (make-variable-buffer-local 'circe-nickserv-identify-confirmation)
 
 (defvar circe-nickserv-ghost-command nil
-  "The IRC command to send to regain/ghost your nick
+  "The IRC command to send to regain/ghost your nick.
 
 This must be a full IRC command. It accepts the following
 formatting options:
@@ -3185,12 +3342,15 @@ pass an argument to the `circe' function for this.")
                                      :password circe-nickserv-password)))))
 
 (defvar circe-auto-regain-awaiting-nick-change nil
-  "Set to `t' when circe is awaiting confirmation for a regain request.")
+  "Set to t when circe is awaiting confirmation for a regain request.")
 (make-variable-buffer-local 'circe-auto-regain-awaiting-nick-change)
 
 (add-hook 'circe-receive-message-functions 'circe-nickserv-handler)
 (defun circe-nickserv-handler (nick user host command args)
-  "React to messages relevant to nickserv authentication and auto-regain."
+  "React to messages relevant to nickserv authentication and auto-regain.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
   (with-circe-server-buffer
     (cond
      ((and circe-nickserv-mask
