@@ -169,7 +169,7 @@ Common options:
 
 (defvar circe-networks
   '(("Freenode" :host "irc.freenode.net"
-     :nickserv-name "^NickServ!NickServ@services\\.$"
+     :nickserv-mask "^NickServ!NickServ@services\\.$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
      :nickserv-identify-confirmation "^You are now identified for .*\\.$"
@@ -177,18 +177,18 @@ Common options:
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
     ("Coldfront" :host "irc.coldfront.net"
-     :nickserv-name "^NickServ!services@coldfront\\.net$"
+     :nickserv-mask "^NickServ!services@coldfront\\.net$"
      :nickserv-identify-challenge "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
      )
     ("Bitlbee" :host "localhost"
-     :nickserv-name "root!root@*"
+     :nickserv-mask "root!root@*"
      :nickserv-identify-challenge "use the \x02identify\x02 command to identify yourself"
      :nickserv-identify-command "PRIVMSG &bitlbee :identify {password}"
      :nickserv-identify-confirmation "Password accepted, settings and accounts loaded"
      )
     ("OFTC" :host "irc.oftc.net"
-     :nickserv-name "^NickServ!services@services\\.oftc\\.net$"
+     :nickserv-mask "^NickServ!services@services\\.oftc\\.net$"
      :nickserv-identify-challenge "This nickname is registered and protected."
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password} {nick}"
      :nickserv-identify-confirmation "^You are successfully identified as .*\\.$"
@@ -768,8 +768,7 @@ See `circe-network-options' for a list of common options."
         (when circe-server-use-tls
           (require 'tls))
         (circe-reconnect)
-        (when (called-interactively-p)
-          (switch-to-buffer server-buffer))))))
+        (switch-to-buffer server-buffer)))))
 
 (defvar circe-server-buffer nil
   "The buffer of the server associated with the current chat buffer.")
@@ -3075,11 +3074,11 @@ Only used when auto-regain is enabled. See `circe-auto-regain-p'."
                  (const :tag "Off" nil))
   :group 'circe)
 
-(defvar circe-nickserv-name nil
+(defvar circe-nickserv-mask nil
   "The regular expression to identify the nickserv on this network.
 
 Matched against nick!user@host.")
-(make-variable-buffer-local 'circe-nickserv-name)
+(make-variable-buffer-local 'circe-nickserv-mask)
 
 (defvar circe-nickserv-identify-challenge nil
   "A regular expression matching the nickserv challenge to identify.")
@@ -3159,10 +3158,10 @@ pass an argument to the `circe' function for this.")
   "React to messages relevant to nickserv authentication and auto-regain."
   (with-circe-server-buffer
     (cond
-     ((and circe-nickserv-name
+     ((and circe-nickserv-mask
            ;; bitlbee uses PRIVMSG
            (member command '("NOTICE" "PRIVMSG")))
-      (when (and (string-match circe-nickserv-name
+      (when (and (string-match circe-nickserv-mask
                                (format "%s!%s@%s" nick user host)))
         ;; This is indeed sent by the nickserv on this network.
         (cond
