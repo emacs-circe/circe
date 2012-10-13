@@ -96,8 +96,10 @@ file name for lui applications.")
 (defun enable-lui-logging ()
   "Enable lui logging."
   (interactive)
-  (add-hook 'lui-pre-output-hook 'lui-logging)
-  (add-hook 'kill-buffer-hook 'disable-lui-logging)
+  (add-hook 'lui-pre-output-hook 'lui-logging
+            nil t)
+  (add-hook 'kill-buffer-hook 'disable-lui-logging
+            nil t)
   (lui-logging-make-directory)
   (when (lui-logging-delayed)
     (setq lui-logging-timer
