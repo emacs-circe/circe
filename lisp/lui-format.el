@@ -24,6 +24,8 @@
 ;; An improved formatting function using named parameters.
 ;;
 ;; See the docstring of `lui-format' for more details.
+;;
+;; Most of the design is borrowed from Python's string.format.
 
 ;;; Code:
 
