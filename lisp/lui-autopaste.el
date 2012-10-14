@@ -50,6 +50,7 @@ and is expected to return an URL to view the contents."
   :type '(choice (const :tag "bpaste.net" lui-autopaste-service-bpaste))
   :group 'lui-autopaste)
 
+;;;###autoload
 (defun enable-lui-autopaste ()
   "Enable the lui autopaste feature.
 
@@ -60,6 +61,7 @@ replace it with the resulting URL."
   (interactive)
   (add-hook 'lui-pre-input-hook 'lui-autopaste))
 
+;;;###autoload
 (defun disable-lui-autopaste ()
   "Disable the lui autopaste feature."
   (interactive)
