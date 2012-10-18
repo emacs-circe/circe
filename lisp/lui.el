@@ -386,7 +386,7 @@ It can be customized for an application by specifying a
         lui-output-marker (make-marker)
         lui-input-ring (make-ring lui-input-ring-size)
         lui-input-ring-index nil
-        flyspell-generic-check-word-p 'lui-flyspell-verify)
+        flyspell-generic-check-word-p 'lui-flyspell-check-word-p)
   (set-marker lui-input-marker (point-max))
   (set-marker lui-output-marker (point-max))
   (add-hook 'window-scroll-functions
@@ -685,11 +685,11 @@ If it is \"\", disable flyspell."
          (setq lis (cdr lis))))
     result))
 
-(defun lui-flyspell-verify ()
+(defun lui-flyspell-check-word-p ()
   "Return non-nil when flyspell should verify at this position.
 This is the value of Lui for `flyspell-generic-check-word-p'."
-  (> (point)
-     lui-input-marker))
+  (>= (point)
+      lui-input-marker))
 
 
 ;;;;;;;;;;;;;;

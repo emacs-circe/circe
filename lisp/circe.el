@@ -627,6 +627,17 @@ server. See `circe-command-QUIT'.")
 This is either a channel or a nick name.")
 (make-variable-buffer-local 'circe-chat-target)
 
+(defvar circe-nick-syntax-table
+  (let ((table (make-syntax-table text-mode-syntax-table))
+        (special (string-to-list "[]\`_^{}|-"))
+        (digits (string-to-list "0123456789")))
+    (dolist (char special)
+      (modify-syntax-entry char "w" table))
+    table)
+  "Syntax table to treat nicks as words.
+This is not entirely accurate, as exact chars constituting a nick
+can vary between networks.")
+
 ;;;;;;;;;;;;;;;;;;;
 ;;; Server Mode ;;;
 ;;;;;;;;;;;;;;;;;;;
@@ -1494,6 +1505,7 @@ SERVER-BUFFER is the server buffer of this chat buffer."
   ;; Tab completion should be case-insensitive
   (set (make-local-variable 'completion-ignore-case)
        t)
+  (setq flyspell-generic-check-word-p 'circe-flyspell-check-word-p)
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
   (let ((network (with-circe-server-buffer
@@ -1551,6 +1563,33 @@ regular expression."
                 (string-match pattern (car list)))
       (setq list (cdr list)))
     (nreverse list)))
+
+(defun circe-flyspell-check-word-p ()
+  "Return a true value if flyspell check the word before point.
+
+This is a suitable value for `flyspell-generic-check-word-p'. It
+will also call `lui-flyspell-check-word-p'."
+  (cond
+   ((not (lui-flyspell-check-word-p))
+    nil)
+   ((let ((nick (circe-nick-before-point)))
+      (or (equal circe-chat-target nick)
+          (and circe-channel-users
+               (gethash nick circe-channel-users nil))))
+    nil)
+   (t
+    t)))
+
+(defun circe-nick-before-point ()
+  "Return the IRC nick before point"
+  (with-syntax-table circe-nick-syntax-table
+    (let (beg end)
+      (save-excursion
+        (forward-word -1)
+        (setq beg (point))
+        (forward-word 1)
+        (setq end (point)))
+      (buffer-substring beg end))))
 
 ;;;;;;;;;;;;;;;;
 ;;; Channels ;;;
@@ -1899,7 +1938,7 @@ See `minibuffer-completion-table' for details."
   (if (and circe-completion-old-completion-all-sorted-completions
            (eq completion-all-sorted-completions
                circe-completion-old-completion-all-sorted-completions))
-      circe-completion-cache      
+      circe-completion-cache
     (let ((completions (append (circe-commands-list)
                                (mapcar (lambda (buf)
                                          (with-current-buffer buf
@@ -2740,7 +2779,7 @@ If NO-NOTIFY is true, don't notify the user of this."
                circe-reduce-joinpart-spam)
       (circe-display 'circe-format-server-joinpart-activity
                      :nick nick
-                     :joindelta (circe-duration-string 
+                     :joindelta (circe-duration-string
                                  (- (float-time)
                                     joined))))))
 
