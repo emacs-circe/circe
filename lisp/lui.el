@@ -691,32 +691,6 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
   (> (point)
      lui-input-marker))
 
-(defun lui-flyspell-split (word)
-  "Split WORD into a list of words"
-  (let ((splits nil))
-    (with-temp-buffer
-      (insert word)
-      (goto-char (point-min))
-      (while (re-search-forward "\\w+" nil t)
-        (setq splits (cons (match-string 0)
-                           splits))))
-    (nreverse splits)))
-
-(defun lui-flyspell-clear-words ()
-  "Clear all locally accepted words in the current buffer."
-  (setq ispell-buffer-session-localwords nil))
-
-(defun lui-flyspell-accept-word (word)
-  "Accept WORD as correctly spelled in the current buffer."
-  (dolist (split (lui-flyspell-split word))
-    (add-to-list 'ispell-buffer-session-localwords split)))
-
-(defun lui-flyspell-remove-word (word)
-  "Stop accepting WORD as correctly spelled in the current buffer."
-  (dolist (split (lui-flyspell-split word))
-    (setq ispell-buffer-session-localwords
-          (delete split ispell-buffer-session-localwords))))
-
 
 ;;;;;;;;;;;;;;
 ;;; Output ;;;
