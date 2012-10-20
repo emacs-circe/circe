@@ -30,7 +30,7 @@ elisp_version () {
 }
 
 elisp_defvar_version () {
-    sed -ne 's/(defvar circe-version "\(.*\)"/\1/p' "$1"
+    sed -ne 's/(defvar [^ ]*-version "\(.*\)"/\1/p' "$1"
 }
 
 generate_elpa_readme () {
@@ -44,6 +44,42 @@ generate_elpa_readme () {
     > "$README"
 }
 
+package_short_description () {
+    sed -ne '1s/.*--- //p' "$1"
+}
+
+generate_pkg_file () {
+    local PACKAGE="$1"
+    local VERSION="$2"
+    local DESC="$3"
+    local DEPENDS="$4"
+    local PKGFILE="$5"
+
+    (echo "(define-package \"$PACKAGE\" \"$VERSION\" \"$DESC\" $DEPENDS)"
+     echo ";; no-byte-compile: t"
+    ) > "$PKGFILE"
+}
+
+make_elpa_package () {
+    local PACKAGE="$1"
+    local VERSION="$2"
+    local DEPENDS="$3"
+    echo -n "Creating $PACKAGE-$VERSION.tar for elpa ... "
+    DEST="$(pwd)/release/$PACKAGE-$VERSION/"
+    mkdir -p "$DEST"
+    cp -r LICENSE "lisp/$PACKAGE"* "$DEST"
+    DESC="$(package_short_description lisp/$PACKAGE.el)"
+    generate_elpa_readme "$DEST/$PACKAGE.el" "$DEST/README"
+    generate_autoloads "$PACKAGE" "$DEST" 2>/dev/null
+    generate_pkg_file "$PACKAGE" "$VERSION" "$DESC" "$DEPENDS" \
+        "$DEST/$PACKAGE-pkg.el"
+    tar -C release/ -c "$PACKAGE-$VERSION" \
+    > "release/$PACKAGE-$VERSION.tar"
+    rm -rf "$DEST"
+    echo "ok."
+}
+
+
 if [ "$1" = "release" ]
 then
     CIRCE_VERSION=$(elisp_version lisp/circe.el)
@@ -51,12 +87,22 @@ then
     TRACKING_VERSION=$(elisp_version lisp/tracking.el)
     LCS_VERSION=$(elisp_version lisp/lcs.el)
 
-    CIRCE_DEFVAR_VERSION=$(elisp_defvar_version lisp/circe.el)
+    CIRCE_DEFVAR_VERSION="$(elisp_defvar_version lisp/circe.el)"
     if [ "$CIRCE_VERSION" != "$CIRCE_DEFVAR_VERSION" ]
     then
         echo "Version mismatch!"
         echo "circe.el's Version: header says this is version \"$CIRCE_VERSION\""
         echo "circe.el's circe-version says this is \"$CIRCE_DEFVAR_VERSION\""
+        echo "This should match."
+        exit 1
+    fi
+
+    LUI_DEFVAR_VERSION="$(elisp_devar_version lisp/lui.el)"
+    if [ "$LUI_VERSION" != "$LUI_DEFVAR_VERSION" ]
+    then
+        echo "Version mismatch!"
+        echo "lui.el's Version: header says this is version \"$LUI_VERSION\""
+        echo "lui.el's lui-version says this is \"$LUI_DEFVAR_VERSION\""
         echo "This should match."
         exit 1
     fi
@@ -102,30 +148,12 @@ then
     echo "ok."
 
     # Circe for elpa
-    echo -n "Creating circe-$CIRCE_VERSION.tar for elpa ... "
-    DEST="$(pwd)/release/circe-$CIRCE_VERSION/"
-    mkdir -p "$DEST"
-    cp -r LICENSE lisp/* "$DEST"
-    generate_elpa_readme "$DEST/circe.el" "$DEST/README"
-    generate_autoloads "circe" "$DEST" 2>/dev/null
-    compile_elisp "$DEST" 2>/dev/null
-    tar -C release/ -c "circe-$CIRCE_VERSION" \
-    > "release/circe-$CIRCE_VERSION.tar"
-    rm -rf "$DEST"
-    echo "ok."
+    make_elpa_package "circe" "$CIRCE_VERSION" \
+        "'(\"lui\" \"lcs\")"
 
     # Lui for elpa
-    echo -n "Creating lui-$LUI_VERSION.tar for elpa ... "
-    DEST="$(pwd)/release/lui-$LUI_VERSION/"
-    mkdir -p "$DEST"
-    cp -r LICENSE lisp/* "$DEST"
-    generate_elpa_readme "$DEST/lui.el" "$DEST/README"
-    generate_autoloads "lui" "$DEST" 2>/dev/null
-    compile_elisp "$DEST" 2>/dev/null
-    tar -C release/ -c "lui-$CIRCE_VERSION" \
-    > "release/lui-$CIRCE_VERSION.tar"
-    rm -rf "$DEST"
-    echo "ok."
+    make_elpa_package "lui" "$LUI_VERSION" \
+        "'(\"tracking\")"
 
     # tracking for elpa
     echo -n "Creating tracking.el for elpa ... "
