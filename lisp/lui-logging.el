@@ -1,8 +1,9 @@
 ;;; lui-logging.el --- Logging support for lui
 
-;; Copyright (C) 2006  Jorgen Schaefer
+;; Copyright (C) 2006  Jorgen Schaefer,
+;;               2012  Anthony Martinez
 
-;; Author: Jorgen Schaefer <forcer@forcix.cx>
+;; Author: Anthony Martinez <pi+circe@pihost.us>
 
 ;; This file is part of Lui.
 
@@ -84,24 +85,27 @@ a queue.")
 (defvar lui-logging-timer nil
   "The timer used to flush lui-logged buffers")
 
-(defun lui-logging-delayed ()
+(defun lui-logging-delayed-p ()
   (> lui-logging-flush-delay 0))
 
 (defun enable-lui-logging ()
-  "Enable lui logging."
+  "Enable lui logging for this buffer. Also create the log
+file's directory, should it not exist."
   (interactive)
   (lui-logging-make-directory)
   (add-hook 'lui-pre-output-hook 'lui-logging
             nil t))
 
 (defun disable-lui-logging ()
-  "Disable lui logging."
+  "Disable lui logging for this buffer, and flush any pending
+logs to disk."
   (interactive)
   (remove-hook 'lui-pre-output-hook 'lui-logging t)
   (lui-logging-flush))
 
 (defun lui-logging-make-directory ()
-  "Create the log directory belonging to the current buffer's log filename"
+  "Create the log directory belonging to the current buffer's log
+filename."
   (let* ((file (lui-logging-file-name))
          (dir (file-name-directory file)))
     (when (not (file-directory-p dir))
@@ -125,21 +129,24 @@ a queue.")
   (setq lui-logging-timer nil))
 
 (defun lui-logging-write-to-log (file-name content)
-  "Actually perform the write to the logfile"
+  "Actually perform a write to the logfile."
   (write-region content nil file-name t 'nomessage))
 
 (defun lui-logging-flush-file (file-name queue)
+  "Consume the logging queue and write the content to the log
+file."
   (let ((content (apply #'concat (nreverse queue))))
     (lui-logging-write-to-log file-name content)))
 
 (defun lui-logging-format-string (text)
+  "Generate a string to be either directly written or enqueued."
   (substring-no-properties
    (lui-format
     (format-time-string lui-logging-format)
     :text text)))
 
 (defun lui-logging-enqueue (file-name text)
-  "Given a filename, push text onto the queue, and tickle the
+  "Given a filename, push text onto its queue, and tickle the
 timer, if necessary."
   (push text (gethash file-name lui-pending-logs))
   (when (null lui-logging-timer)
@@ -153,7 +160,7 @@ to the output queue. Otherwise, write directly to the logfile.
 This should be added to `lui-pre-output-hook' by way of
 `enable-lui-logging'."
   (let ((text (lui-logging-format-string (buffer-string))))
-    (if (lui-logging-delayed)
+    (if (lui-logging-delayed-p)
         (lui-logging-enqueue (lui-logging-file-name) text)
       (lui-logging-write-to-log (lui-logging-file-name) text))))
 
