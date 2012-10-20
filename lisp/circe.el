@@ -895,7 +895,14 @@ See `circe-server-max-reconnect-attempts'.")
                                 nil ;; Use temp buffer
                                 circe-server-name
                                 circe-server-service))
-         (when circe-server-process
+         (if (not circe-server-process)
+             ;; Connection error. We call the sentinel as if we got an
+             ;; error, but pass the buffer as we have no process. We
+             ;; also claim the error was connection refused. Oh, and
+             ;; we do this using a timer so we don't use up stack
+             ;; frames, as the sentinel calls `circe-reconnect'.
+             (run-at-time 0 nil 'circe-server-sentinel
+                          (current-buffer) "failed with code 111\n")
            (set-process-filter circe-server-process
                                #'circe-server-filter-function)
            (set-process-sentinel circe-server-process
@@ -961,29 +968,39 @@ output we received from there."
   "The process sentinel for the server.
 
 PROCESS is the process we are watching, and EVENT is the event we
-saw."
-  (when (buffer-live-p (process-buffer process))
-    (with-current-buffer (process-buffer process)
-      (cond
-       ((string-match "^open" event)
-        (when circe-server-pass
-          (circe-server-send (format "PASS %s" circe-server-pass)))
-        (circe-server-send (format "NICK %s" circe-server-nick))
-        (circe-server-send (format "USER %s 8 * :%s"
-                                   circe-server-user
-                                   circe-server-realname)))
-       (t
-        (circe-server-message (format "Disconnected (%s)"
-                                      ;; Events end in a newline. No
-                                      ;; idea why.
-                                      (substring event 0 -1)))
-        (dolist (buf (circe-chat-buffers))
-          (with-current-buffer buf
-            (circe-chat-disconnected)))
-        (when (and (not (string-match "^deleted" event)) ; Buffer kill
-                   (not circe-server-quitting-p))
-          (circe-reconnect))
-        (setq circe-server-quitting-p nil))))))
+saw.
+
+PROCESS can also be a buffer, in which case we assume that's a
+Circe server buffer in which EVENT happened."
+  (let ((buffer (cond
+                 ((bufferp process)
+                  process)
+                 ((buffer-live-p (process-buffer process))
+                  (process-buffer process))
+                 (t
+                  nil))))
+    (when buffer
+      (with-current-buffer buffer
+        (cond
+         ((string-match "^open" event)
+          (when circe-server-pass
+            (circe-server-send (format "PASS %s" circe-server-pass)))
+          (circe-server-send (format "NICK %s" circe-server-nick))
+          (circe-server-send (format "USER %s 8 * :%s"
+                                     circe-server-user
+                                     circe-server-realname)))
+         (t
+          (circe-server-message (format "Disconnected (%s)"
+                                        ;; Events end in a newline. No
+                                        ;; idea why.
+                                        (substring event 0 -1)))
+          (dolist (buf (circe-chat-buffers))
+            (with-current-buffer buf
+              (circe-chat-disconnected)))
+          (when (and (not (string-match "^deleted" event)) ; Buffer kill
+                     (not circe-server-quitting-p))
+            (circe-reconnect))
+          (setq circe-server-quitting-p nil)))))))
 
 (defvar circe-server-flood-last-message 0
   "When we sent the last message.
