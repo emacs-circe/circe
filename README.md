@@ -18,6 +18,45 @@ Complexity-wise, it is somewhere between rcirc (very minimal) and ERC
 
 ## Installation
 
+### `package.el`
+
+Make sure you have marmalade added to your package sources. To your
+.emacs, add this:
+
+```Lisp
+(require 'package)
+(add-to-list 'package-archives
+    '("marmalade" .
+      "http://marmalade-repo.org/packages/"))
+(package-initialize)
+```
+
+Then, use `package-install` to install Circe:
+
+```
+M-x package-install RET circe RET
+```
+
+After this, `M-x circe` should work.
+
+### Stable Version
+
+Download the latest stable version from
+https://github.com/jorgenschaefer/circe/downloads
+
+Unpack the tar.gz and add the `circe-X.Y/lisp/` directory to your
+`load-path` like so:
+
+```Lisp
+(add-to-list 'load-path "~/.emacs.d/lisp/circe-X.Y/lisp")
+(require 'circe)
+```
+
+The next time you start your Emacs, you should be able to use
+`M-x circe` to connect to IRC.
+
+### Development Version
+
 In a shell:
 
 ```Shell
