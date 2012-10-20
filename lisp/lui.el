@@ -64,10 +64,48 @@
   :prefix "lui-"
   :group 'applications)
 
-(defcustom lui-scroll-to-bottom-p t
-  "Non-nil if Lui should keep the input line at the end of the window."
-  :type 'boolean
+(defcustom lui-scroll-behavior 'post-output
+  "Set the behavior lui should exhibit for scrolling.
+
+The following values are possible. If in doubt, use post-output.
+
+nil
+  Use default Emacs scrolling.
+
+t, post-command
+  Keep the input line at the end of the window if point is
+  after the input mark.
+
+post-output
+  Keep the input line at the end of the window only after output.
+  
+post-scroll
+  Keep the input line at the end of the window on every scroll
+  event. Careful, this might interact badly with other functions
+  on `window-scroll-functions'.
+
+
+It would be entirely sensible for Emacs to provide a setting to
+do this kind of scrolling by default in a buffer. It seems rather
+intuitive and sensible. But as noted on emacs-devel:
+
+  [T]hose who know the code know that it's going to be a pain to
+  implement, especially if you want acceptable performance. IOW,
+  patches welcome
+
+The full discussion can be found here:
+
+https://lists.gnu.org/archive/html/emacs-devel/2012-10/msg00652.html
+
+These settings are all hacks that try to give the user the choice
+between most correct behavior (post-scroll) and most compliant
+behavior (post-output)."
+  :type '(choice (const :tag "Post Command" t)
+                 (const :tag "Post Output" post-output)
+                 (const :tag "Post Scroll" post-scroll)
+                 (const :tag "Use default scrolling" nil))
   :group 'lui)
+(defvaralias 'lui-scroll-to-bottom-p 'lui-scroll-behavior)
 
 (defcustom lui-flyspell-p nil
   "Non-nil if Lui should spell-check your input.
@@ -390,9 +428,8 @@ It can be customized for an application by specifying a
         flyspell-generic-check-word-p 'lui-flyspell-check-word-p)
   (set-marker lui-input-marker (point-max))
   (set-marker lui-output-marker (point-max))
-  (add-hook 'window-scroll-functions
-            'lui-scroll-to-bottom
-            nil t)
+  (add-hook 'window-scroll-functions 'lui-scroll-window nil t)
+  (add-hook 'post-command-hook 'lui-scroll-post-command)
   (when (fboundp 'make-local-hook)
     ;; needed for xemacs, as it does not treat the LOCAL argument to
     ;; `add-hook' the same as GNU Emacs. It's obsolete in GNU Emacs
@@ -408,14 +445,22 @@ It can be customized for an application by specifying a
     (lui-flyspell-change-dictionary))
   (run-hooks 'lui-mode-hook))
 
-(defun lui-scroll-to-bottom (window display-start)
+(defun lui-change-major-mode ()
+  "Assure that the user really wants to change the major mode.
+This is a good value for a buffer-local `change-major-mode-hook'."
+  (when (not (y-or-n-p "Really change major mode in a Lui buffer? "))
+    (error "User disallowed mode change")))
+
+(defun lui-scroll-window (window display-start)
   "Scroll the input line to the bottom of the WINDOW.
 
 DISPLAY-START is passed by the hook `window-scroll-functions' and
-is ignored."
-  (when (and window
-             (window-live-p window)
-             lui-scroll-to-bottom-p)
+is ignored.
+
+See `lui-scroll-behavior' for how to customize this."
+  (when (and (eq lui-scroll-behavior 'post-scroll)
+             window
+             (window-live-p window))
     (let ((resize-mini-windows nil))
       (with-selected-window window
         (when (equal (point-max)
@@ -424,11 +469,40 @@ is ignored."
             (goto-char (point-max))
             (recenter -1)))))))
 
-(defun lui-change-major-mode ()
-  "Assure that the user really wants to change the major mode.
-This is a good value for a buffer-local `change-major-mode-hook'."
-  (when (not (y-or-n-p "Really change major mode in a Lui buffer? "))
-    (error "User disallowed mode change")))
+(defun lui-scroll-post-command ()
+  "Scroll the input line to the bottom of the window.
+
+This is called from `post-command-hook'.
+
+See `lui-scroll-behavior' for how to customize this."
+  (when (and lui-input-marker
+             (or (eq lui-scroll-behavior t)
+                 (eq lui-scroll-behavior 'post-command)))
+    ;; Code from ERC's erc-goodies.el. I think this was originally
+    ;; mine anyhow, not sure though.
+    (let ((resize-mini-windows nil))
+      (save-restriction
+        (widen)
+        (when (>= (point) lui-input-marker)
+          (save-excursion
+            (goto-char (point-max))
+            (recenter -1)))))))
+
+(defun lui-scroll-post-output ()
+  "Scroll the input line to the bottom of the window.
+
+This is called when lui output happens.
+
+See `lui-scroll-behavior' for how to customize this."
+  (when (eq lui-scroll-behavior 'post-output)
+    (let ((resize-mini-windows nil))
+      (dolist (window (get-buffer-window-list (current-buffer) nil t))
+        (with-selected-window window
+          (when (>= (point-max)
+                    (window-end nil t))
+            (save-excursion
+              (goto-char (point-max))
+              (recenter -1))))))))
 
 
 ;;;;;;;;;;;;;
@@ -739,7 +813,8 @@ of the buffer."
            (when (and (not not-tracked-p)
                       (not foolish))
              (tracking-add-buffer (current-buffer)
-                                  faces))))))))
+                                  faces)))
+         (lui-scroll-post-output))))))
 
 (defun lui-adjust-undo-list (list old-begin shift)
   "Adjust undo positions in list.
