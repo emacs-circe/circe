@@ -1399,7 +1399,7 @@ See `circe-ignore-functions' and `circe-ignore-list'.
 
 NICK, USER and HOST should be the sender of a the command
 COMMAND, which had the arguments ARGS."
-  (or (run-hook-with-args-until-success circe-ignore-functions
+  (or (run-hook-with-args-until-success 'circe-ignore-functions
                                         nick user host
                                         command args)
       (circe-ignore-matches-p nick user host command args
