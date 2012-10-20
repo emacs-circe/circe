@@ -2638,10 +2638,11 @@ as arguments."
         (circe-server-message
          (format "Nick change: %s (%s@%s) is now known as %s"
                  nick user host (car args))))
-      (let ((data (gethash nick circe-channel-users nil)))
-        (when data
-          (remhash nick circe-channel-users)
-          (puthash (car args) data circe-channel-users))))))
+      (when circe-channel-users
+        (let ((data (gethash nick circe-channel-users nil)))
+          (when data
+            (remhash nick circe-channel-users)
+            (puthash (car args) data circe-channel-users)))))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick user host command args)
