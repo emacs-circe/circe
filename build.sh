@@ -79,13 +79,41 @@ make_elpa_package () {
     echo "ok."
 }
 
+make_main_release () {
+    local VERSION="$1"
+    # Main release
+    echo -n "Creating circe-$VERSION.tar.gz ... "
+    DEST="$(pwd)/release/circe-$VERSION/"
+    mkdir -p "$DEST"
+    cp -r LICENSE README.md lisp/ "$DEST"
+    generate_autoloads "circe" "$DEST/lisp/" 2>/dev/null
+    compile_elisp "$DEST/lisp" 2>/dev/null
+    tar -C release/ -c "circe-$VERSION" \
+    | gzip -9 > "release/circe-$VERSION.tar.gz"
+    rm -rf "$DEST"
+    echo "ok."
+}
+
+files_changed () {
+    local START="$1"
+    local PATTERN="$2"
+    git diff --name-only "$START" | grep -q "$PATTERN"
+}
+
 
 if [ "$1" = "release" ]
 then
-    CIRCE_VERSION=$(elisp_version lisp/circe.el)
-    LUI_VERSION=$(elisp_version lisp/lui.el)
-    TRACKING_VERSION=$(elisp_version lisp/tracking.el)
-    LCS_VERSION=$(elisp_version lisp/lcs.el)
+    if ! git diff-index HEAD --quiet --
+    then
+        echo "This repository is dirty. Please clean up for a release."
+        exit 1
+    fi
+
+    LAST_RELEASE="$(git describe --tags HEAD --abbrev=0)"
+    CIRCE_VERSION="$(elisp_version lisp/circe.el)"
+    LUI_VERSION="$(elisp_version lisp/lui.el)"
+    TRACKING_VERSION="$(elisp_version lisp/tracking.el)"
+    LCS_VERSION="$(elisp_version lisp/lcs.el)"
 
     CIRCE_DEFVAR_VERSION="$(elisp_defvar_version lisp/circe.el)"
     if [ "$CIRCE_VERSION" != "$CIRCE_DEFVAR_VERSION" ]
@@ -97,19 +125,13 @@ then
         exit 1
     fi
 
-    LUI_DEFVAR_VERSION="$(elisp_devar_version lisp/lui.el)"
+    LUI_DEFVAR_VERSION="$(elisp_defvar_version lisp/lui.el)"
     if [ "$LUI_VERSION" != "$LUI_DEFVAR_VERSION" ]
     then
         echo "Version mismatch!"
         echo "lui.el's Version: header says this is version \"$LUI_VERSION\""
         echo "lui.el's lui-version says this is \"$LUI_DEFVAR_VERSION\""
         echo "This should match."
-        exit 1
-    fi
-
-    if ! git diff-index HEAD --quiet --
-    then
-        echo "This repository is dirty. Please clean up for a release."
         exit 1
     fi
 
@@ -120,66 +142,78 @@ then
     echo "  tracking $TRACKING_VERSION"
     echo "  lcs $LCS_VERSION"
     echo
-    echo -n "Tag this as v$CIRCE_VERSION? [y/n] "
+    echo "The last release was tagged as $LAST_RELEASE"
+    echo
+    echo -n "Tag the current repository as v$CIRCE_VERSION? [y/n] "
     read correct
     if [ "$correct" != "y" ]
     then
-        echo "Aborting"
+        echo "Aborting."
         exit 1
     fi
 
     echo
-    echo -n "Running git tag v$CIRCE_VERSION ... "
-    git tag "v$CIRCE_VERSION"
+    echo -n "Running git tag -a v$CIRCE_VERSION ... "
+    git tag -a -m "Released version v$CIRCE_VERSION" "v$CIRCE_VERSION" HEAD
     echo "ok."
 
+    rm -rf release
     mkdir -p release
 
-    # Main release
-    echo -n "Creating circe-$CIRCE_VERSION.tar.gz ... "
-    DEST="$(pwd)/release/circe-$CIRCE_VERSION/"
-    mkdir -p "$DEST"
-    cp -r LICENSE README.md lisp/ "$DEST"
-    generate_autoloads "circe" "$DEST/lisp/" 2>/dev/null
-    compile_elisp "$DEST/lisp" 2>/dev/null
-    tar -C release/ -c "circe-$CIRCE_VERSION" \
-    | gzip -9 > "release/circe-$CIRCE_VERSION.tar.gz"
-    rm -rf "$DEST"
-    echo "ok."
+    if files_changed "$LAST_RELEASE" "^lisp/circe"
+    then
+        make_main_release "$CIRCE_VERSION"
+        # Circe for elpa
+        make_elpa_package "circe" "$CIRCE_VERSION" \
+            "'(\"lui\" \"lcs\")"
+    else
+        echo "Circe has not changed since $LAST_RELEASE, skipped"
+    fi
 
-    # Circe for elpa
-    make_elpa_package "circe" "$CIRCE_VERSION" \
-        "'(\"lui\" \"lcs\")"
+    if files_changed "$LAST_RELEASE" "^lisp/lui"
+    then
+        # Lui for elpa
+        make_elpa_package "lui" "$LUI_VERSION" \
+            "'(\"tracking\")"
+    else
+        echo "Lui has not changed since $LAST_RELEASE, skipped"
+    fi
 
-    # Lui for elpa
-    make_elpa_package "lui" "$LUI_VERSION" \
-        "'(\"tracking\")"
+    if files_changed "$LAST_RELEASE" "^lisp/tracking.el"
+    then
+        # tracking for elpa
+        echo -n "Creating tracking.el for elpa ... "
+        cp lisp/tracking.el release/
+        echo "ok."
+    else
+        echo "tracking has not changed since $LAST_RELEASE, skipped"
+    fi
 
-    # tracking for elpa
-    echo -n "Creating tracking.el for elpa ... "
-    cp lisp/tracking.el release/
-    echo "ok."
-
-    # lcs for elpa
-    echo -n "Creating lcs.el for elpa ... "
-    cp lisp/lcs.el release/
-    echo "ok."
+    if files_changed "$LAST_RELEASE" "^lisp/lcs.el"
+    then
+        # lcs for elpa
+        echo -n "Creating lcs.el for elpa ... "
+        cp lisp/lcs.el release/
+        echo "ok."
+    else
+        echo "lcs has not changed since $LAST_RELEASE, skipped"
+    fi
 
     echo
     echo "All done. Now, recheck things and then do this:"
     echo
     echo "- Push the version tag with: git push --tags"
-    echo "- Upload release/circe-$CIRCE_VERSION.tar.gz to"
+    echo "- Upload release/*.tar.gz to"
     echo "  https://github.com/jorgenschaefer/circe/downloads"
-    echo "- Upload the release/*.tar and release/*.el files to"
+    echo "- Upload release/*.tar and release/*.el to"
     echo "  http://marmalade-repo.org/"
 elif [ "$1" = "build" ] || [ "$1" = "" ]
 then
     rm -rf build/
     mkdir -p build/
     cp lisp/*.el build/
-    generate_autoloads $(pwd)/build/
-    compile_elisp $(pwd)/build/
+    generate_autoloads "$(pwd)/build/"
+    compile_elisp "$(pwd)/build/"
     echo
     echo "Compiled files can be found in build/"
 fi
