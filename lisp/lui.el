@@ -2,14 +2,14 @@
 
 ;; Copyright (C) 2005 - 2012  Jorgen Schaefer
 
+;; Version: 1.1
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
+;; URL: https://github.com/jorgenschaefer/circe
 
-;; This file is part of Circe.
-
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License
-;; as published by the Free Software Foundation; either version 2
-;; of the License, or (at your option) any later version.
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
 
 ;; This program is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,16 +17,17 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, write to the Free Software
-;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-;; 02110-1301  USA
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
-;; Lui-mode is a major mode that provides a user interface for
-;; applications. The user interface is quite trivial - consisting of
-;; an input line, a prompt, and some output area - but Lui includes a
-;; lot of options, like time stamps, filling, etc.
+;; Lui is a library for other Emacs Lisp programs and not useful by
+;; itself.
+
+;; This major mode provides a user interface for applications. The
+;; user interface is quite simple, consisting of an input line, a
+;; prompt, and some output area, but Lui includes a lot of common
+;; options, such as time stamps, filling, colorization, etc.
 
 ;; Application programs should create modes derived from lui-mode.
 

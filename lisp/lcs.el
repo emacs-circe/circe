@@ -2,9 +2,12 @@
 
 ;;   Copyright (c) 2002-2003 by Alex Shinn, All rights reserved.
 ;;   Copyright (c) 2002-2003 by Shiro Kawai, All rights reserved.
-;;   Copyright (c) 2006 by Jorgen Schaefer, All rights reserved.
+;;   Copyright (c) 2006, 2012 by Jorgen Schaefer, All rights reserved.
 
-;; This file is part of Circe.
+;; Version: 1.0
+;; Authors: Alex Shinn, Shiro Kawai
+;; Maintainer: Jorgen Schaefer <forcer@forcix.cx>
+;; URL: https://github.com/jorgenschaefer/circe
 
 ;;   Redistribution and use in source and binary forms, with or without
 ;;   modification, are permitted provided that the following conditions
@@ -35,10 +38,16 @@
 
 ;;; Commentary:
 
-;; This code is more or less a literal translation of (part of)
-;; Gauche's util/lcs.scm module to Emacs Lisp. It's useful to get an
-;; unified diff of two lists. See `lcs-unified-diff' for a useful
-;; function to be called.
+;; lcs.el is a library for other Emacs Lisp programs not useful by
+;; itself.
+
+;; This library provides functions to find the Longest Common Sequence
+;; (LCS) of two sequences. This is used to create a unified diff of to
+;; two lists. See `lcs-unified-diff' for a useful function to be
+;; called.
+
+;; The code is more or less a literal translation of (part of)
+;; Gauche's util/lcs.scm module to Emacs Lisp.
 
 ;;; Code:
 

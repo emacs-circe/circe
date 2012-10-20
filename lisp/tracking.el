@@ -1,15 +1,15 @@
 ;;; tracking.el --- Buffer modification tracking
 
-;; Copyright (C) 2006  Jorgen Schaefer
+;; Copyright (C) 2006, 2012  Jorgen Schaefer
 
+;; Version: 1.0
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
+;; URL: https://github.com/jorgenschaefer/circe
 
-;; This file is part of Circe.
-
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License
-;; as published by the Free Software Foundation; either version 2
-;; of the License, or (at your option) any later version.
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
 
 ;; This program is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,16 +17,18 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, write to the Free Software
-;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-;; 02110-1301  USA
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
-;; This file provides a way to globally register buffers as being
-;; modified and scheduled for user review. The user can cycle through
-;; the buffers using C-c C-SPC
+;; tracking.el is a library for other Emacs Lisp programs not useful
+;; by itself.
 
+;; The library provides a way to globally register buffers as being
+;; modified and scheduled for user review. The user can cycle through
+;; the buffers using C-c C-SPC. This is especially useful for buffers
+;; that interact with external sources, such as chat clients and
+;; similar programs.
 
 ;;; Code:
 
@@ -120,6 +122,7 @@ new `tracking-start-buffer' is created.")
     map)
   "The keymap used for tracking mode.")
 
+;;;###autoload
 (define-minor-mode tracking-mode
   "Allow cycling through modified buffers.
 This mode in itself does not track buffer modification, but
@@ -162,6 +165,7 @@ line. The user can cycle through them using
     (remove-hook 'window-configuration-change-hook
                  'tracking-remove-visible-buffers))))
 
+;;;###autoload
 (defun tracking-add-buffer (buffer &optional faces)
   "Add BUFFER as being modified with FACES.
 This does check whether BUFFER is currently visible.
@@ -189,6 +193,7 @@ decided according to `tracking-faces-priorities'."
     (sit-for 0) ;; Update mode line
     ))
 
+;;;###autoload
 (defun tracking-remove-buffer (buffer)
   "Remove BUFFER from being tracked."
   (setq tracking-buffers (delete (buffer-name buffer)
@@ -197,6 +202,7 @@ decided according to `tracking-faces-priorities'."
   (sit-for 0) ;; Update mode line
   )
 
+;;;###autoload
 (defun tracking-next-buffer ()
   "Switch to the next active buffer."
   (interactive)
@@ -227,6 +233,7 @@ decided according to `tracking-faces-priorities'."
     (sit-for 0) ;; Update mode line
     )))
 
+;;;###autoload
 (defun tracking-previous-buffer ()
   "Switch to the last active buffer."
   (interactive)
