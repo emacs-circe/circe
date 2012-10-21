@@ -1682,10 +1682,10 @@ state."
   "Non-nil when we're currently receving a NAMES list.")
 (make-variable-buffer-local 'circe-server-receiving-names-p)
 
-(defvar circe-channel-nick-prefixes "@+%&"
+(defvar circe-server-nick-prefixes "@+%&"
   "The list of nick prefixes this server knows about.
 From 005 RPL_ISUPPORT.")
-(make-variable-buffer-local 'circe-channel-nick-prefixes)
+(make-variable-buffer-local 'circe-server-nick-prefixes)
 
 (defun circe-channel-message-handler (nick user host command args)
   "Update the users of a channel as appropriate.
@@ -1730,7 +1730,7 @@ received."
     (catch 'exit
       (dolist (setting (cdr args))
         (when (string-match "PREFIX=([^)]*)\\(.*\\)" setting)
-          (setq circe-channel-nick-prefixes (match-string 1 setting))))))
+          (setq circe-server-nick-prefixes (match-string 1 setting))))))
    ((string= command "353")             ; RPL_NAMREPLY
     (with-circe-chat-buffer (nth 2 args)
       (when (not circe-channel-receiving-names-p)
@@ -1799,10 +1799,12 @@ Return DEFAULT if no option is set or the nick is not known."
 
 (defun circe-channel-parse-names (name-string)
   "Parse the NAMES reply in NAME-STRING.
-This uses `circe-channel-nick-prefixes'."
-  (delete ""
-          (split-string name-string
-                        (format "\\(^\\| \\)[%s]*" circe-channel-nick-prefixes))))
+This uses `circe-server-nick-prefixes'."
+  (with-circe-server-buffer
+    (delete ""
+            (split-string name-string
+                          (format "\\(^\\| \\)[%s]*"
+                                  circe-server-nick-prefixes)))))
 
 (defun circe-user-channels (user)
   "Return a list of channels for USER."
