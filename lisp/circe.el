@@ -1671,8 +1671,8 @@ state."
       (ignore-errors
         (circe-server-send (format "PART %s :%s"
                                    circe-chat-target
-                                   circe-default-part-message)))
-      (circe-server-remove-chat-buffer circe-chat-target))))
+                                   circe-default-part-message))))
+    (circe-server-remove-chat-buffer circe-chat-target)))
 
 (defvar circe-channel-users nil
   "A hash table of channel users.")
