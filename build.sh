@@ -1,6 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
+
+ELPAURL="http://marmalade-repo.org/"
+UPLOADURL="https://github.com/jorgenschaefer/circe/downloads"
 
 if [ ! -f "lisp/circe.el" ]
 then
@@ -31,6 +34,17 @@ elisp_version () {
 
 elisp_defvar_version () {
     sed -ne 's/(defvar [^ ]*-version "\(.*\)"/\1/p' "$1"
+}
+
+# This is more complex than it should be, but files in lisp/ used to
+# be in the main directory.
+elisp_version_in () {
+    local REV="$1"
+    local FILE="$2"
+
+    (git show "$REV":"$FILE" 2>/dev/null \
+     || git show "$REV":"$(echo "$FILE" | sed 's,^lisp/,,')"
+    ) | sed -ne 's/^;; *Version: \([0-9.]*\).*/\1/p'
 }
 
 generate_elpa_readme () {
@@ -110,41 +124,105 @@ then
     fi
 
     LAST_RELEASE="$(git describe --tags HEAD --abbrev=0)"
+    declare -A RELEASE
+    if files_changed "$LAST_RELEASE" "^lisp/circe"
+    then
+        RELEASE["circe"]="yes"
+    fi
+    if files_changed "$LAST_RELEASE" "^lisp/lui"
+    then
+        RELEASE["lui"]=yes
+    fi
+    if files_changed "$LAST_RELEASE" "^lisp/tracking.el"
+    then
+        RELEASE["tracking"]=yes
+    fi
+    if files_changed "$LAST_RELEASE" "^lisp/lcs.el"
+    then
+        RELEASE["lcs"]=yes
+    fi
+
     CIRCE_VERSION="$(elisp_version lisp/circe.el)"
-    LUI_VERSION="$(elisp_version lisp/lui.el)"
-    TRACKING_VERSION="$(elisp_version lisp/tracking.el)"
-    LCS_VERSION="$(elisp_version lisp/lcs.el)"
-
+    THIS_RELEASE="$CIRCE_VERSION"
+    CIRCE_OLD_VERSION="$(elisp_version_in "$LAST_RELEASE" lisp/circe.el)"
     CIRCE_DEFVAR_VERSION="$(elisp_defvar_version lisp/circe.el)"
-    if [ "$CIRCE_VERSION" != "$CIRCE_DEFVAR_VERSION" ]
+
+    if [ "v$THIS_RELEASE" = "$LAST_RELEASE" ]
     then
-        echo "Version mismatch!"
-        echo "circe.el's Version: header says this is version \"$CIRCE_VERSION\""
-        echo "circe.el's circe-version says this is \"$CIRCE_DEFVAR_VERSION\""
-        echo "This should match."
+        echo "Circe's version $THIS_RELEASE hasn't changed since the last release."
+        echo "Please increment Circe's version for a new release."
         exit 1
     fi
+    if [ -n "${RELEASE[circe]}" ]
+    then
+        if [ "$CIRCE_VERSION" != "$CIRCE_DEFVAR_VERSION" ]
+        then
+            echo "Version mismatch!"
+            echo "circe.el's Version: header says this is version \"$CIRCE_VERSION\""
+            echo "circe.el's circe-version says this is \"$CIRCE_DEFVAR_VERSION\""
+            echo "This should match."
+            exit 1
+        fi
 
+        if [ "$CIRCE_VERSION" = "$CIRCE_OLD_VERSION" ]
+        then
+            echo "Circe's version $CIRCE_VERSION has not changed since last release, "
+            echo "but files have. Please increment Circe's version for this release."
+            exit 1
+        fi
+    fi
+
+    LUI_VERSION="$(elisp_version lisp/lui.el)"
+    LUI_OLD_VERSION="$(elisp_version_in "$LAST_RELEASE" lisp/lui.el)"
     LUI_DEFVAR_VERSION="$(elisp_defvar_version lisp/lui.el)"
-    if [ "$LUI_VERSION" != "$LUI_DEFVAR_VERSION" ]
+    if [ -n "${RELEASE[lui]}" ]
+    then 
+        if [ "$LUI_VERSION" != "$LUI_DEFVAR_VERSION" ]
+        then
+            echo "Version mismatch!"
+            echo "lui.el's Version: header says this is version \"$LUI_VERSION\""
+            echo "lui.el's lui-version says this is \"$LUI_DEFVAR_VERSION\""
+            echo "This should match."
+            exit 1
+        fi
+        if [ "$LUI_VERSION" = "$LUI_OLD_VERSION" ]
+        then
+            echo "Lui's version $LUI_VERSION has not changed since last release,"
+            echo "but files have. Please increment Lui's version for this release."
+            exit 1
+        fi
+    fi
+
+    TRACKING_VERSION="$(elisp_version lisp/tracking.el)"
+    TRACKING_OLD_VERSION="$(elisp_version_in "$LAST_RELEASE" lisp/tracking.el)"
+    if [ -n "${RELEASE[tracking]}" ] && [ "$TRACKING_VERSION" = "$TRACKING_OLD_VERSION" ]
     then
-        echo "Version mismatch!"
-        echo "lui.el's Version: header says this is version \"$LUI_VERSION\""
-        echo "lui.el's lui-version says this is \"$LUI_DEFVAR_VERSION\""
-        echo "This should match."
+        echo "tracking.el's version $TRACKING_VERSION has not changed since last release,"
+        echo "but there were changes to the file. Please increment tracking.el's"
+        echo "version for this release."
         exit 1
     fi
 
-    echo "The following versions have been detected:"
+    LCS_VERSION="$(elisp_version lisp/lcs.el)"
+    LCS_OLD_VERSION="$(elisp_version_in "$LAST_RELEASE" lisp/lcs.el)"
+    if [ -n "${RELEASE[lcs]}" ] && [ "$LCS_VERSION" = "$LCS_OLD_VERSION" ]
+    then
+        echo "lcs.el's version $LCS_VERSION has not changed since last release,"
+        echo "but there were changes to the file. Please increment lcs.el's"
+        echo "version for this release."
+        exit 1
+    fi
+
+    echo "The following files will be included in this release:"
     echo
-    echo "  Circe $CIRCE_VERSION"
-    echo "  Lui $LUI_VERSION"
-    echo "  tracking $TRACKING_VERSION"
-    echo "  lcs $LCS_VERSION"
+    [ -n "${RELEASE[circe]}" ]    && echo "  Circe $CIRCE_VERSION"       || :
+    [ -n "${RELEASE[lui]}" ]      && echo "  Lui $LUI_VERSION"           || :
+    [ -n "${RELEASE[tracking]}" ] && echo "  tracking $TRACKING_VERSION" || :
+    [ -n "${RELEASE[lcs]}" ]      && echo "  lcs $LCS_VERSION"           || :
     echo
     echo "The last release was tagged as $LAST_RELEASE"
     echo
-    echo -n "Tag the current repository as v$CIRCE_VERSION? [y/n] "
+    echo -n "Tag the current repository as v$THIS_RELEASE? [y/n] "
     read correct
     if [ "$correct" != "y" ]
     then
@@ -153,60 +231,65 @@ then
     fi
 
     echo
-    echo -n "Running git tag -a v$CIRCE_VERSION ... "
-    git tag -a -m "Released version v$CIRCE_VERSION" "v$CIRCE_VERSION" HEAD
+    echo -n "Running git tag -a v$THIS_RELEASE ... "
+    git tag -a -m "Released version v$THIS_RELEASE" "v$THIS_RELEASE" HEAD
     echo "ok."
 
     rm -rf release
     mkdir -p release
 
-    if files_changed "$LAST_RELEASE" "^lisp/circe"
+    if [ -n "${RELEASE[circe]}" ]
     then
         make_main_release "$CIRCE_VERSION"
         # Circe for elpa
         make_elpa_package "circe" "$CIRCE_VERSION" \
             "'(\"lui\" \"lcs\")"
-    else
-        echo "Circe has not changed since $LAST_RELEASE, skipped"
     fi
 
-    if files_changed "$LAST_RELEASE" "^lisp/lui"
+    if [ -n "${RELEASE[lui]}" ]
     then
-        # Lui for elpa
         make_elpa_package "lui" "$LUI_VERSION" \
             "'(\"tracking\")"
-    else
-        echo "Lui has not changed since $LAST_RELEASE, skipped"
     fi
 
-    if files_changed "$LAST_RELEASE" "^lisp/tracking.el"
+    if [ -n "${RELEASE[tracking]}" ]
     then
-        # tracking for elpa
         echo -n "Creating tracking.el for elpa ... "
         cp lisp/tracking.el release/
         echo "ok."
-    else
-        echo "tracking has not changed since $LAST_RELEASE, skipped"
     fi
 
-    if files_changed "$LAST_RELEASE" "^lisp/lcs.el"
+    if [ -n "${RELEASE[lcs]}" ]
     then
         # lcs for elpa
         echo -n "Creating lcs.el for elpa ... "
         cp lisp/lcs.el release/
         echo "ok."
-    else
-        echo "lcs has not changed since $LAST_RELEASE, skipped"
     fi
 
     echo
-    echo "All done. Now, recheck things and then do this:"
+    echo "All done. Now, do a sanity check and then:"
     echo
     echo "- Push the version tag with: git push --tags"
-    echo "- Upload release/*.tar.gz to"
-    echo "  https://github.com/jorgenschaefer/circe/downloads"
-    echo "- Upload release/*.tar and release/*.el to"
-    echo "  http://marmalade-repo.org/"
+    if [ -n "${RELEASE[circe]}" ]
+    then
+        echo "- Upload release/circe-${CIRCE_VERSION}.tar.gz "
+        echo "  to $UPLOADURL"
+        echo "- Upload release/circe-${CIRCE_VERSION}.tar to $ELPAURL"
+    fi
+    if [ -n "${RELEASE[lui]}" ]
+    then
+        echo "- Upload release/lui-${LUI_VERSION}.tar to $ELPAURL"
+    fi
+    if [ -n "${RELEASE[tracking]}" ]
+    then
+        echo "- Upload release/tracking.el to $ELPAURL"
+    fi
+    if [ -n "${RELEASE[lcs]}" ]
+    then
+        echo "- Upload release/lcs.el to $ELPAURL"
+    fi
+
 elif [ "$1" = "build" ] || [ "$1" = "" ]
 then
     rm -rf build/
