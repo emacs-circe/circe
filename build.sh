@@ -42,8 +42,8 @@ elisp_version_in () {
     local REV="$1"
     local FILE="$2"
 
-    (git show "$REV":"$FILE" 2>/dev/null \
-     || git show "$REV":"$(echo "$FILE" | sed 's,^lisp/,,')"
+    (git show "$REV:$FILE" 2>/dev/null \
+     || git show "$REV:${FILE#lisp/}"
     ) | sed -ne 's/^;; *Version: \([0-9.]*\).*/\1/p'
 }
 
