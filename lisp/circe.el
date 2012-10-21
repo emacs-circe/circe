@@ -1648,8 +1648,9 @@ SERVER-BUFFER is the server buffer of this chat buffer.
     (error "Buffer not killed as per user request"))
   (when (buffer-live-p circe-server-buffer)
     (condition-case nil
-        (circe-server-send (format "PART %s :Channel buffer killed"
-                                   circe-chat-target))
+        (when (circe-channel-user-p (circe-server-nick))
+          (circe-server-send (format "PART %s :Channel buffer killed"
+                                     circe-chat-target)))
       (error
        t))
     (circe-server-remove-chat-buffer circe-chat-target)))
