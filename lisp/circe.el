@@ -205,6 +205,20 @@ Common options:
 
 See the `circe' command for details of this variable.")
 
+(defcustom circe-default-quit-message "Using Circe, the loveliest of all IRC clients"
+  "The default quit message when no other is given.
+
+This is sent when the server buffer is killed or when /QUIT is
+given with no argument."
+  :type 'string
+  :group 'circe)
+
+(defcustom circe-default-part-message "Using Circe, the loveliest of all IRC clients"
+  "How to part when a channel buffer is killed, or when no
+argument is given to /PART."
+  :type 'string
+  :group 'circe)
+
 (defcustom circe-new-buffer-behavior 'display
   "How new buffers should be treated.
 
@@ -1079,17 +1093,18 @@ protection algorithm."
     (circe-server-killed))))
 
 (defun circe-server-killed ()
-  "The server buffer got killed."
+  "Run when the server buffer got killed.
+
+This will IRC, and ask the user whether to kill all of the
+server's chat buffers."
   (when circe-server-killed-confirmation
     (when (not (y-or-n-p
                 (if (eq circe-server-killed-confirmation 'ask-and-kill-all)
                     "Really kill all buffers of this server? (if not, try `circe-reconnect') "
                   "Really kill the IRC connection? (if not, try `circe-reconnect') ")))
       (error "Buffer not killed as per user request")))
-  (condition-case nil
-      (circe-server-send "QUIT :Server buffer killed")
-    (error
-     t))
+  (ignore-errors
+    (circe-server-send (concat "QUIT :" circe-default-quit-message)))
   (when (eq circe-server-killed-confirmation 'ask-and-kill-all)
     (dolist (buf (circe-chat-buffers))
       (let ((circe-channel-killed-confirmation nil))
@@ -1642,18 +1657,22 @@ SERVER-BUFFER is the server buffer of this chat buffer.
   (run-hooks 'circe-channel-mode-hook))
 
 (defun circe-channel-killed ()
-  "Called when the channel buffer got killed."
-  (when (and circe-channel-killed-confirmation
-             (not (y-or-n-p "Really leave this channel? ")))
-    (error "Buffer not killed as per user request"))
+  "Called when the channel buffer got killed.
+
+If we are not on the channel being killed, do nothing. Otherwise,
+if the server is live, and the user wants to kill the buffer,
+send PART to the server and clean up the channel's remaining
+state."
   (when (buffer-live-p circe-server-buffer)
-    (condition-case nil
-        (when (circe-channel-user-p (circe-server-nick))
-          (circe-server-send (format "PART %s :Channel buffer killed"
-                                     circe-chat-target)))
-      (error
-       t))
-    (circe-server-remove-chat-buffer circe-chat-target)))
+    (when (or (not circe-channel-killed-confirmation)
+              (not (y-or-n-p "Really leave this channel? ")))
+      (error "Channel not left."))
+    (when (circe-channel-user-p (circe-server-nick))
+      (ignore-errors
+        (circe-server-send (format "PART %s :%s"
+                                   circe-chat-target
+                                   circe-default-part-message)))
+      (circe-server-remove-chat-buffer circe-chat-target))))
 
 (defvar circe-channel-users nil
   "A hash table of channel users.")
@@ -2097,7 +2116,9 @@ message separated by a space."
       (circe-server-message "No target for current buffer")
     (circe-server-send (format "PART %s :%s"
                                circe-chat-target
-                               reason))))
+                               (if (equal "" reason)
+                                   circe-default-part-message
+                                 reason)))))
 
 (defun circe-command-WHOIS (whom)
   "Request WHOIS information about WHOM."
@@ -2184,7 +2205,9 @@ Arguments are IGNORED."
   (interactive "sReason: ")
   (with-circe-server-buffer
     (setq circe-server-quitting-p t)
-    (circe-server-send (format "QUIT :%s" reason))))
+    (circe-server-send (format "QUIT :%s" (if (equal "" reason)
+                                              circe-default-quit-message
+                                            reason)))))
 
 (defun circe-command-GAWAY (reason)
   "Set yourself away on all servers with reason REASON."
