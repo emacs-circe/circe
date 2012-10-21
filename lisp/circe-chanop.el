@@ -35,6 +35,8 @@
 
 ;;; Code:
 
+(require 'circe)
+
 (defun circe-command-MODE (mode)
   "Set MODE in the current channel."
   (interactive "sMode change: ")

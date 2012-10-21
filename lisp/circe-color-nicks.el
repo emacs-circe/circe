@@ -109,7 +109,8 @@ Similarity is computed with `circe-color-distance'"
   "Hash-map mapping nicks to color names.")
 
 (defcustom circe-color-nicks-everywhere nil
-  "Whether nicks should be colored in message bodies too.")
+  "Whether nicks should be colored in message bodies too."
+  :group 'circe)
 
 (defun circe-color-nicks ()
   "Color nicks on this lui output line."

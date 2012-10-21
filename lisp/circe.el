@@ -812,7 +812,7 @@ See `circe-network-options' for a list of common options."
     (setq host (gethash 'circe-server-name variables)
           service (gethash 'circe-server-service variables))
     (when (not service)
-      (if (called-interactively-p)
+      (if (called-interactively-p 'any)
           (let* ((input (read-from-minibuffer "Port: " "6667"))
                  (port (string-to-number input)))
             (setq service (if (= port 0)
@@ -881,7 +881,7 @@ See `circe-server-max-reconnect-attempts'.")
   "Reconnect the current server."
   (interactive)
   (with-circe-server-buffer
-    (when (or (called-interactively-p) ;; Always reconnect if the user wants it
+    (when (or (called-interactively-p 'any) ;; Always reconnect if the user wants it
               (not circe-server-max-reconnect-attempts)
               (< circe-server-reconnect-attempts
                  circe-server-max-reconnect-attempts))
@@ -897,6 +897,7 @@ See `circe-server-max-reconnect-attempts'.")
             circe-server-flood-queue nil)
       (cond
         (circe-server-use-tls
+         (require 'tls)
          ;; `open-tls-stream' is using gnutls/openssl to connect via
          ;; SSL. This requires some different handling than the normal
          ;; network process. The main annoyance is that the process
@@ -943,7 +944,7 @@ See `circe-server-max-reconnect-attempts'.")
   "Reconnect all Circe connections."
   (dolist (buf (circe-server-buffers))
     (with-current-buffer buf
-      (if (called-interactively-p)
+      (if (called-interactively-p 'any)
           (call-interactively 'circe-reconnect)
         (circe-reconnect)))))
 
@@ -1548,7 +1549,6 @@ SERVER-BUFFER is the server buffer of this chat buffer."
     (make-local-variable 'mode-line-buffer-identification)
     (setq mode-line-buffer-identification
           (list (format "%%b@%-8s" network)))
-
     (setq lui-logging-format-arguments
           `(:target ,target :network ,network)))
   (run-hooks 'circe-chat-mode-hook))
