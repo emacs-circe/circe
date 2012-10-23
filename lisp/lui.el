@@ -461,10 +461,9 @@ See `lui-scroll-behavior' for how to customize this."
   (when (and (eq lui-scroll-behavior 'post-scroll)
              window
              (window-live-p window))
-    (let ((resize-mini-windows nil))
+    (when (pos-visible-in-window-p (point-max) window)
       (with-selected-window window
-        (when (equal (point-max)
-                     (window-end nil t))
+        (let ((resize-mini-windows nil))
           (save-excursion
             (goto-char (point-max))
             (recenter -1)))))))
@@ -497,9 +496,8 @@ See `lui-scroll-behavior' for how to customize this."
   (when (eq lui-scroll-behavior 'post-output)
     (let ((resize-mini-windows nil))
       (dolist (window (get-buffer-window-list (current-buffer) nil t))
-        (with-selected-window window
-          (when (>= (point-max)
-                    (window-end nil t))
+        (when (pos-visible-in-window-p (point-max) window)
+          (with-selected-window window
             (save-excursion
               (goto-char (point-max))
               (recenter -1))))))))
