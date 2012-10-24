@@ -1664,8 +1664,8 @@ if the server is live, and the user wants to kill the buffer,
 send PART to the server and clean up the channel's remaining
 state."
   (when (buffer-live-p circe-server-buffer)
-    (when (or (not circe-channel-killed-confirmation)
-              (not (y-or-n-p "Really leave this channel? ")))
+    (when (and circe-channel-killed-confirmation
+               (not (y-or-n-p "Really leave this channel? ")))
       (error "Channel not left."))
     (when (circe-channel-user-p (circe-server-nick))
       (ignore-errors
