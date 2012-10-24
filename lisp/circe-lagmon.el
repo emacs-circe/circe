@@ -178,19 +178,23 @@ of its chat buffers."
 
 (defun circe-lagmon-format-mode-line-entry ()
   "Format the mode-line entry for displaying the lag."
-  (cond
-   (circe-lagmon-disabled
-    nil)
-   ((eq major-mode 'circe-server-mode)
-    (if circe-lagmon-server-lag
-        (format circe-lagmon-mode-line-format-string circe-lagmon-server-lag)
-      circe-lagmon-mode-line-unknown-lag-string))
-   (circe-server-buffer
-    (with-current-buffer circe-server-buffer
-      (if circe-lagmon-server-lag
+  (let ((buf (cond
+              ((eq major-mode 'circe-server-mode)
+               (current-buffer))
+              (circe-server-buffer
+               circe-server-buffer)
+              (t
+               nil))))
+    (when buf
+      (with-current-buffer buf
+        (cond
+         (circe-lagmon-disabled
+          nil)
+         (circe-lagmon-server-lag
           (format circe-lagmon-mode-line-format-string
-                  circe-lagmon-server-lag)
-        circe-lagmon-mode-line-unknown-lag-string)))))
+                  circe-lagmon-server-lag))
+         (t
+          circe-lagmon-mode-line-unknown-lag-string))))))
 
 (defun circe-lagmon-init ()
   "Initialize the values of the lag monitor for one server, and
