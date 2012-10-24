@@ -189,7 +189,7 @@ Common options:
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
      )
     ("Bitlbee" :host "localhost"
-     :nickserv-mask "root!root@*"
+     :nickserv-mask "root!root@"
      :nickserv-identify-challenge "use the \x02identify\x02 command to identify yourself"
      :nickserv-identify-command "PRIVMSG &bitlbee :identify {password}"
      :nickserv-identify-confirmation "Password accepted, settings and accounts loaded"
