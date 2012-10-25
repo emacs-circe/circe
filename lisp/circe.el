@@ -253,12 +253,12 @@ completion style."
   :type 'boolean
   :group 'circe)
 
-(defcustom circe-reduce-joinpart-spam nil
+(defcustom circe-reduce-lurker-spam nil
   "If enabled, Circe will stop showing some messages.
 
 This means that JOIN, PART, QUIT and NICK messages are not shown
-for users on channels that have not spoken yet. When they speak
-for the first time, Circe displays their join time."
+for users on channels that have not spoken yet (\"lurker\"). When
+they speak for the first time, Circe displays their join time."
   :type 'boolean
   :group 'circe)
 
@@ -463,7 +463,7 @@ strings."
                                       circe-format-server-notice
                                       circe-format-server-numeric
                                       circe-format-server-topic
-                                      circe-format-server-joinpart-activity)
+                                      circe-format-server-lurker-activity)
   "A list of formats that should not trigger tracking."
   :type '(repeat symbol)
   :group 'circe-format)
@@ -545,7 +545,7 @@ strings."
   :type 'string
   :group 'circe-format)
 
-(defcustom circe-format-server-joinpart-activity "*** First activity: {nick} joined {joindelta} ago."
+(defcustom circe-format-server-lurker-activity "*** First activity: {nick} joined {joindelta} ago."
   "The format for a server notice.
 {nick} - The originator.
 {oldnick} - The original nick of the user.
@@ -1743,7 +1743,7 @@ received."
           ;; If we don't mark them active on a NAMES, joining a large
           ;; channel will cause tons of spammage with "first activity"
           ;; messages.
-          (circe-joinpart-mark-as-active nick t)))))
+          (circe-lurker-mark-as-active nick t)))))
    ((string= command "366")             ; RPL_ENDOFNAMES
     (setq circe-channel-receiving-names-p nil))
    ))
@@ -2483,7 +2483,7 @@ ARGS the arguments to the command."
                              :body (cadr args)))))
       (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                          'circe-channel-mode)
-        (circe-joinpart-mark-as-active nick)
+        (circe-lurker-mark-as-active nick)
         (circe-display 'circe-format-action
                        :nick nick
                        :body (cadr args))))))
@@ -2640,7 +2640,7 @@ as arguments."
    (t                                   ; Channel talk
     (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                        'circe-channel-mode)
-      (circe-joinpart-mark-as-active nick)
+      (circe-lurker-mark-as-active nick)
       (circe-display 'circe-format-say
                      :nick nick
                      :body (cadr args))))))
@@ -2658,7 +2658,7 @@ as arguments."
                                                                  (car args)))
                                  (circe-server-last-active-buffer))
           (when (eq major-mode 'circe-channel-mode)
-            (circe-joinpart-mark-as-active nick))
+            (circe-lurker-mark-as-active nick))
           (circe-display 'circe-format-notice
                          :nick nick
                          :body (cadr args)))
@@ -2679,7 +2679,7 @@ as arguments."
                (car args)))))
   (dolist (buf (circe-user-channels nick))
     (with-current-buffer buf
-      (when (not (circe-joinpart-is-lurker nick))
+      (when (not (circe-lurker-p nick))
         (circe-server-message
          (format "Nick change: %s (%s@%s) is now known as %s"
                  nick user host (car args))))
@@ -2720,7 +2720,7 @@ as arguments."
   (let ((buf (circe-server-get-chat-buffer (car args))))
     (when buf
       (with-current-buffer buf
-        (when (not (circe-joinpart-is-lurker nick))
+        (when (not (circe-lurker-p nick))
           (circe-server-message
            (if (null (cdr args))
                (format "Part: %s (%s@%s)" nick user host)
@@ -2806,24 +2806,24 @@ as arguments."
 ;;; Join/Part Spam Protections ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun circe-joinpart-is-lurker (nick)
+(defun circe-lurker-p (nick)
   "Return a true value if this nick has been inactive so far."
-  (when circe-reduce-joinpart-spam
-    (circe-channel-user-info nick 'joinpart-is-lurker t)))
+  (when circe-reduce-lurker-spam
+    (circe-channel-user-info nick 'lurker-p t)))
 
-(defun circe-joinpart-mark-as-active (nick &optional no-notify)
+(defun circe-lurker-mark-as-active (nick &optional no-notify)
   "Mark NICK as active now.
 
 If NO-NOTIFY is true, don't notify the user of this."
   (let ((joined (circe-channel-user-info nick 'joined))
-        (was-lurker (circe-channel-user-info nick 'joinpart-is-lurker t)))
+        (was-lurker (circe-channel-user-info nick 'lurker-p t)))
     (circe-channel-user-set-info nick 'last-active (float-time))
-    (circe-channel-user-set-info nick 'joinpart-is-lurker nil)
+    (circe-channel-user-set-info nick 'lurker-p nil)
     (when (and (not no-notify)
                joined
                was-lurker
-               circe-reduce-joinpart-spam)
-      (circe-display 'circe-format-server-joinpart-activity
+               circe-reduce-lurker-spam)
+      (circe-display 'circe-format-server-lurker-activity
                      :nick nick
                      :joindelta (circe-duration-string
                                  (- (float-time)
@@ -2913,7 +2913,7 @@ as arguments."
             (circe-server-message
              (format "Netsplit: %s (Use /WL to see who left)"
                      (car args)))))
-         ((not (circe-joinpart-is-lurker nick))
+         ((not (circe-lurker-p nick))
           (circe-server-message
            (format "Quit: %s (%s@%s) - %s"
                    nick user host (car args)))))))))
@@ -2935,7 +2935,7 @@ as arguments."
           (circe-server-message
            (format "Netmerge: %s (Use /WL to see who's still missing)"
                    (car split)))))
-       ((not circe-reduce-joinpart-spam)
+       ((not circe-reduce-lurker-spam)
         (circe-server-message
          (format "Join: %s (%s@%s)" nick user host))))))
   ;; Next, query buffers. We do this even when the message should be
