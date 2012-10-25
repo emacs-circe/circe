@@ -1677,9 +1677,9 @@ state."
   "A hash table of channel users.")
 (make-variable-buffer-local 'circe-channel-users)
 
-(defvar circe-channel-receiving-names-p nil
-  "Non-nil when we're currently receving a NAMES list.")
-(make-variable-buffer-local 'circe-server-receiving-names-p)
+(defvar circe-channel-receiving-names nil
+  "A hash when we're currently receving a NAMES list. nil if not.")
+(make-variable-buffer-local 'circe-server-receiving-names)
 
 (defvar circe-server-nick-prefixes "@+%&"
   "The list of nick prefixes this server knows about.
@@ -1732,20 +1732,13 @@ received."
           (setq circe-server-nick-prefixes (match-string 1 setting))))))
    ((string= command "353")             ; RPL_NAMREPLY
     (with-circe-chat-buffer (nth 2 args)
-      (when (not circe-channel-receiving-names-p)
-        (setq circe-channel-users nil
-              circe-channel-receiving-names-p t))
+      (when (not circe-channel-receiving-names)
+        (setq circe-channel-receiving-names (circe-case-fold-table)))
       (dolist (nick (circe-channel-parse-names (nth 3 args)))
-        (when (or (not circe-channel-users)
-                  (not (gethash nick circe-channel-users nil)))
-          (circe-channel-add-user nick)
-          ;; If we don't mark them active on a NAMES, joining a large
-          ;; channel will cause tons of spammage with "first activity"
-          ;; messages.
-          (circe-lurker-mark-as-active nick t)))))
+        (puthash nick t circe-channel-receiving-names))))
    ((string= command "366")             ; RPL_ENDOFNAMES
-    (setq circe-channel-receiving-names-p nil))
-   ))
+    (circe-channel-users-synchronize circe-channel-receiving-names)
+    (setq circe-channel-receiving-names nil))))
 
 ;;; User management
 
@@ -1813,6 +1806,32 @@ This uses `circe-server-nick-prefixes'."
              (circe-channel-user-p user))
        (setq result (cons buf result))))
    result))
+
+(defun circe-channel-users-synchronize (new)
+  "Synchronize the channel user list with a current known state.
+
+NEW is a hash table with currently active nicks in the channel.
+This will ensure they are all in the `circe-channel-users' table,
+and no other nicks are."
+  ;; We are "initializing" if this is a completely new list. If we
+  ;; are, we mark new nicks as non-lurkers to avoid a spammage of
+  ;; "joined 2 seconds ago" for everyone talking the first time in a
+  ;; busy channel.
+  (let ((initializing (if circe-channel-users
+                          nil
+                        (setq circe-channel-users (circe-case-fold-table))
+                        t)))
+    (maphash (lambda (nick ignored)
+               (when (not (gethash nick circe-channel-users))
+                 (circe-channel-add-user nick)
+                 (when initializing
+                   (circe-lurker-mark-as-active nick t))))
+             new)
+    (maphash (lambda (nick ignored)
+               (when (not (gethash nick new))
+                 (circe-channel-remove-user nick)))
+             circe-channel-users)))
+
 
 ;;;;;;;;;;;;;;;
 ;;; Queries ;;;
