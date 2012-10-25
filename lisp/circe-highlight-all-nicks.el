@@ -67,11 +67,13 @@ See `enable-circe-highlight-all-nicks'."
 
 (defun add-circe-highlight-all-nicks ()
   "Add `circe-highlight-all-nicks' to `lui-pre-output-hook'."
-  (add-hook 'lui-pre-output-hook 'circe-highlight-all-nicks))
+  (add-hook 'lui-pre-output-hook 'circe-highlight-all-nicks
+            nil t))
 
 (defun remove-circe-highlight-all-nicks ()
   "Remove `circe-highlight-all-nicks' from `lui-pre-output-hook'."
-  (remove-hook 'lui-pre-output-hook 'circe-highlight-all-nicks))
+  (remove-hook 'lui-pre-output-hook 'circe-highlight-all-nicks
+               t))
 
 (defun circe-highlight-all-nicks ()
   "Highlight all occurances of nicks of the current channel in the message."

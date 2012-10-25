@@ -674,8 +674,8 @@ to reconnect to the server.
 
 \\{circe-server-mode-map}"
   (lui-mode)
-  (make-local-variable 'lui-pre-output-hook)
-  (add-hook 'lui-pre-output-hook 'circe-highlight-nick)
+  (add-hook 'lui-pre-output-hook 'circe-highlight-nick
+            nil t)
   (setq major-mode 'circe-server-mode
         mode-name "Circe Server"
         lui-input-function 'circe-chat-input)
@@ -1522,8 +1522,8 @@ It should not be used directly.
 TARGET is the default target to send data to.
 SERVER-BUFFER is the server buffer of this chat buffer."
   (lui-mode)
-  (make-local-variable 'lui-pre-output-hook)
-  (add-hook 'lui-pre-output-hook 'circe-highlight-nick)
+  (add-hook 'lui-pre-output-hook 'circe-highlight-nick
+            nil t)
   (setq major-mode 'circe-chat-mode
         mode-name "Circe Chat"
         lui-input-function 'circe-chat-input
