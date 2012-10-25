@@ -72,4 +72,4 @@
                              (my-user-defined-hashtable-values hash-table)))
     ad-do-it))
 
-(provide 'circe-xemacs)
+(provide 'circe-fix-xemacs)

@@ -41,18 +41,17 @@
 (defvar circe-version "0.5 devel"
   "Circe version string.")
 
-(require 'lui)
-(require 'lui-format)
 (require 'ring)
 (require 'timer)
+(require 'lui)
+(require 'lui-format)
 (require 'lcs)
 
 ;; Used to be optional. But sorry, we're in the 21st century already.
 (require 'lui-irc-colors)
 (enable-lui-irc-colors)
 
-(when (featurep 'xemacs)
-  (require 'circe-xemacs))
+(require 'circe-fixes)
 
 (defgroup circe nil
   "Yet Another Emacs IRC Client."
