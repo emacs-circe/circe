@@ -7,7 +7,7 @@
 ;; Version: 1.0
 ;; Authors: Alex Shinn, Shiro Kawai
 ;; Maintainer: Jorgen Schaefer <forcer@forcix.cx>
-;; URL: https://github.com/jorgenschaefer/circe
+;; URL: https://github.com/jorgenschaefer/circe/wiki/lcs
 
 ;;   Redistribution and use in source and binary forms, with or without
 ;;   modification, are permitted provided that the following conditions

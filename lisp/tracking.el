@@ -4,7 +4,7 @@
 
 ;; Version: 1.0
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
-;; URL: https://github.com/jorgenschaefer/circe
+;; URL: https://github.com/jorgenschaefer/circe/wiki/Tracking
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
