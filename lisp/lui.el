@@ -715,7 +715,10 @@ make the whole thing invisible."
     (remove-from-invisibility-spec 'lui-fool))
    (t
     (message "Now hiding fools again *phew*")
-    (add-to-invisibility-spec 'lui-fool))))
+    (add-to-invisibility-spec 'lui-fool)))
+  ;; For some reason, after this, the display does not always update
+  ;; (issue #31). Force an update just in case.
+  (redisplay))
 
 
 ;;;;;;;;;;;;;;;;
