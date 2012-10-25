@@ -493,7 +493,8 @@ See `lui-scroll-behavior' for how to customize this."
 This is called when lui output happens.
 
 See `lui-scroll-behavior' for how to customize this."
-  (when (eq lui-scroll-behavior 'post-output)
+  (when (memq lui-scroll-behavior '(post-output
+                                    post-command))
     (let ((resize-mini-windows nil))
       (dolist (window (get-buffer-window-list (current-buffer) nil t))
         (when (pos-visible-in-window-p (point-max) window)
