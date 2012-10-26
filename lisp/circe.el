@@ -3011,6 +3011,10 @@ number, it shows the missing people due to that split."
     ("003" server "{1}")
     ("004" server "{1-}")
     ("005" server "{1-}")
+    ;; IRCnet: * Please wait while we process your connection.
+    ("020" server "{0-}")
+    ;; IRCnet
+    ("042" server "Your unique ID is {1}")
     ("200" active "{1-}")
     ("201" active "{1-}")
     ("203" active "{1-}")
