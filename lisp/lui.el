@@ -461,8 +461,10 @@ See `lui-scroll-behavior' for how to customize this."
   (when (and (eq lui-scroll-behavior 'post-scroll)
              window
              (window-live-p window))
-    (when (pos-visible-in-window-p (point-max) window)
-      (with-selected-window window
+    (with-selected-window window
+      (when (or (>= (point) lui-input-marker)
+                (equal (point-max)
+                       (window-end nil t)))
         (let ((resize-mini-windows nil))
           (save-excursion
             (goto-char (point-max))
@@ -479,13 +481,11 @@ See `lui-scroll-behavior' for how to customize this."
                  (eq lui-scroll-behavior 'post-command)))
     ;; Code from ERC's erc-goodies.el. I think this was originally
     ;; mine anyhow, not sure though.
-    (let ((resize-mini-windows nil))
-      (save-restriction
-        (widen)
-        (when (>= (point) lui-input-marker)
-          (save-excursion
-            (goto-char (point-max))
-            (recenter -1)))))))
+    (save-restriction
+      (when (>= (point) lui-input-marker)
+        (save-excursion
+          (goto-char (point-max))
+          (recenter -1))))))
 
 (defun lui-scroll-post-output ()
   "Scroll the input line to the bottom of the window.
@@ -497,7 +497,9 @@ See `lui-scroll-behavior' for how to customize this."
                                     post-command))
     (let ((resize-mini-windows nil))
       (dolist (window (get-buffer-window-list (current-buffer) nil t))
-        (when (pos-visible-in-window-p (point-max) window)
+        (when (or (>= (point) lui-input-marker)
+                  (equal (point-max)
+                         (window-end window)))
           (with-selected-window window
             (save-excursion
               (goto-char (point-max))
