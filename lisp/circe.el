@@ -1737,8 +1737,9 @@ received."
       (dolist (nick (circe-channel-parse-names (nth 3 args)))
         (puthash nick t circe-channel-receiving-names))))
    ((string= command "366")             ; RPL_ENDOFNAMES
-    (circe-channel-users-synchronize circe-channel-receiving-names)
-    (setq circe-channel-receiving-names nil))))
+    (with-circe-chat-buffer (nth 1 args)
+      (circe-channel-users-synchronize circe-channel-receiving-names)
+      (setq circe-channel-receiving-names nil)))))
 
 ;;; User management
 
