@@ -2827,7 +2827,8 @@ as arguments."
 
 (defun circe-lurker-p (nick)
   "Return a true value if this nick has been inactive so far."
-  (when circe-reduce-lurker-spam
+  (when (and circe-reduce-lurker-spam
+             (not (circe-server-my-nick-p nick)))
     (circe-channel-user-info nick 'lurker-p t)))
 
 (defun circe-lurker-mark-as-active (nick &optional no-notify)
