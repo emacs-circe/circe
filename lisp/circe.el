@@ -594,6 +594,14 @@ This is required for reconnecting.")
   "The process of the server connection.")
 (make-variable-buffer-local 'circe-server-process)
 
+(defvar circe-nowait-on-connect t
+  "Whether to use asynchronous connect.
+
+Use `circe-network-options' to set this, by adding
+:nowait-on-connect nil to your options.
+
+Some users experience problems with this. No idea why.")
+
 (defvar circe-server-registered-p nil
   "Non-nil when we have registered with the server.")
 (make-variable-buffer-local 'circe-server-registered-p)
@@ -933,11 +941,13 @@ See `circe-server-max-reconnect-attempts'.")
                                      :host circe-server-name
                                      :service circe-server-service
                                      :coding 'raw-text-dos
-                                     :nowait t
+                                     :nowait circe-nowait-on-connect
                                      :noquery t
                                      :filter #'circe-server-filter-function
                                      :sentinel #'circe-server-sentinel
-                                     :keepalive t)))))))
+                                     :keepalive t))
+         (when (not circe-nowait-on-connect)
+           (circe-server-sentinel circe-server-process "open")))))))
 
 (defun circe-reconnect-all ()
   "Reconnect all Circe connections."
