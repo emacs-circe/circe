@@ -3119,7 +3119,7 @@ number, it shows the missing people due to that split."
     ("432" active "Erroneous nick name: {1}")
     ("433" active "Nick name in use: {1}")
     ("437" active "Nick/channel is temporarily unavailable: {1}")
-    ("441" 2 "User not not channel: {1}")
+    ("441" 2 "User not on channel: {1}")
     ("442" active "You are not on {1}")
     ("443" 2 "User {1} is already on channel {2}")
     ("467" 1 "{2}")
