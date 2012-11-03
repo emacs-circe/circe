@@ -261,9 +261,7 @@ they speak for the first time, Circe displays their join time."
   :type 'boolean
   :group 'circe)
 
-(defcustom circe-prompt-string (concat (propertize ">"
-                                                   'face 'circe-prompt-face)
-                                       " ")
+(defcustom circe-prompt-string  "> "
   "The string to initialize the prompt with.
 To change the prompt dynamically or just in specific buffers, use
 `lui-set-prompt' in the appropriate hooks."
@@ -688,7 +686,7 @@ to reconnect to the server.
         mode-name "Circe Server"
         lui-input-function 'circe-chat-input)
   (use-local-map circe-server-mode-map)
-  (lui-set-prompt circe-prompt-string)
+  (lui-set-prompt (propertize circe-prompt-string 'face 'circe-prompt-face))
   (goto-char (point-max))
   (setq circe-server-last-active-buffer (current-buffer))
   (add-hook 'completion-at-point-functions 'circe-completion-at-point
@@ -1550,7 +1548,7 @@ SERVER-BUFFER is the server buffer of this chat buffer."
   (set (make-local-variable 'completion-ignore-case)
        t)
   (setq flyspell-generic-check-word-p 'circe-flyspell-check-word-p)
-  (lui-set-prompt circe-prompt-string)
+  (lui-set-prompt (propertize circe-prompt-string 'face 'circe-prompt-face))
   (goto-char (point-max))
   (let ((network (with-circe-server-buffer
                    circe-server-network)))
