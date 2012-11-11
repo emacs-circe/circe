@@ -3182,6 +3182,11 @@ arguments to the IRC message."
                        (string :tag "Format")))
   :group 'circe)
 
+(defun circe-set-message-target (type target)
+  "Set the target of TYPE in `circe-format-strings' to TARGET."
+  (setcar (cdr (assoc type circe-format-strings))
+          target))
+
 (defun circe-server-default-display-command (nick user host command args)
   "Show a default message according to `circe-format-strings'.
 
