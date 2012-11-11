@@ -179,7 +179,7 @@ Common options:
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
      :nickserv-identify-confirmation "^You are now identified for .*\\.$"
-     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick}"
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
     ("Coldfront" :host "irc.coldfront.net" :port 6667
@@ -3255,7 +3255,7 @@ Possible keyword options are:
 :immediate - Immediately after registering on the server
 :after-auth - After nickserv authentication succeeded
 :after-nick - After we regained our preferred nick. See
-              `circe-auto-regain-p'.
+              `circe-nickserv-ghost-style'.
 
 The default is set in `circe-server-auto-join-default-type'.
 
@@ -3272,7 +3272,7 @@ Possible options:
 :immediate - Immediately after registering on the server
 :after-auth - After nickserv authentication succeeded
 :after-nick - After we regained our preferred nick. See
-              `circe-auto-regain-p'.
+              `circe-nickserv-ghost-style'.
 
 See `circe-server-auto-join-channels' for more details."
   :type '(choice (const :tag "Immediately" :immediate)
@@ -3482,13 +3482,18 @@ which can happen multiple times per connection."
 
 (defcustom circe-acquired-preferred-nick-hook nil
   "Hook run after we're sure we have the nick we want.
-Only used when auto-regain is enabled. See `circe-auto-regain-p'."
+Only used when auto-regain is enabled. See
+`circe-nickserv-ghost-style'."
   :type 'hook
   :group 'circe)
 
-(defcustom circe-auto-regain-p nil
-  "Whether circe should automatically regain your nick."
-  :type '(choice (const :tag "On" t)
+(defcustom circe-nickserv-ghost-style nil
+  "Whether and when circe should automatically regain your nick.
+'immediate means to attempt regain immediately upon connect.
+'after-auth means to attempt regain after authenticating with
+nickserv."
+  :type '(choice (const :tag "Immediate" 'immediate)
+                 (const :tag "After Auth" 'after-auth)
                  (const :tag "Off" nil))
   :group 'circe)
 
@@ -3571,6 +3576,14 @@ pass an argument to the `circe' function for this.")
   "Set to t when circe is awaiting confirmation for a regain request.")
 (make-variable-buffer-local 'circe-auto-regain-awaiting-nick-change)
 
+(add-hook 'circe-server-connected-hook 'circe-nickserv-ghost-immediately)
+(defun circe-nickserv-ghost-immediately ()
+  (when (eql 'immediate circe-nickserv-ghost-style)
+    (if (circe-server-my-nick-p circe-nickserv-nick)
+        (run-hooks 'circe-acquired-preferred-nick-hook)
+      (circe-nickserv-ghost)
+      (setq circe-auto-regain-awaiting-nick-change t))))
+
 (add-hook 'circe-receive-message-functions 'circe-nickserv-handler)
 (defun circe-nickserv-handler (nick user host command args)
   "React to messages relevant to nickserv authentication and auto-regain.
@@ -3595,7 +3608,7 @@ as arguments."
                circe-nickserv-nick
                (string-match circe-nickserv-identify-confirmation (cadr args)))
           (run-hooks 'circe-nickserv-authenticated-hook)
-          (when circe-auto-regain-p
+          (when (eq 'after-auth circe-nickserv-ghost-style)
             (if (circe-server-my-nick-p circe-nickserv-nick)
                 (run-hooks 'circe-acquired-preferred-nick-hook)
               (circe-nickserv-ghost)
