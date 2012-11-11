@@ -223,10 +223,20 @@ argument is given to /PART."
 
   'display  - Show them, but don't select them
   'switch   - Switch to that buffer
-  'ignore   - Just open it"
+  'ignore   - Just open it
+
+Also see `circe-new-buffer-behavior-ignore-auto-joins'."
   :type '(choice (const :tag "Display" display)
                  (const :tag "Switch" switch)
                  (const :tag "Ignore" ignore))
+  :group 'circe)
+
+(defcustom circe-new-buffer-behavior-ignore-auto-joins nil
+  "Don't show channel buffers when they were auto-joined.
+
+When t, the value of `circe-new-buffer-behavior' will be ignored
+for auto-joined channel buffers."
+  :type 'boolean
   :group 'circe)
 
 (defcustom circe-auto-query-p t
@@ -1382,6 +1392,10 @@ initialize a new buffer if none exists."
           (with-current-buffer buf
             (funcall create target server))
           (cond
+           ((and circe-new-buffer-behavior-ignore-auto-joins
+                 (member-ignore-case target circe-auto-joins))
+            (setq circe-auto-joins
+                  (remove (downcase target) circe-auto-joins)))
            ((eq circe-new-buffer-behavior 'display)
             (display-buffer buf))
            ((eq circe-new-buffer-behavior 'switch)
@@ -3238,6 +3252,23 @@ as arguments."
 
 ;;;;;;;;;;;;;
 ;;; Auto-Join
+
+(defcustom circe-server-auto-join-default-type :immediate
+  "The default auto-join type to use.
+
+Possible options:
+
+:immediate - Immediately after registering on the server
+:after-auth - After nickserv authentication succeeded
+:after-nick - After we regained our preferred nick. See
+              `circe-nickserv-ghost-style'.
+
+See `circe-server-auto-join-channels' for more details."
+  :type '(choice (const :tag "Immediately" :immediate)
+                 (const :tag "After Authentication" :after-auth)
+                 (const :tag "After Nick Regain" :after-nick))
+  :group 'circe)
+
 (defvar circe-server-auto-join-channels nil
   "The default channels to join on this server.
 
@@ -3264,21 +3295,11 @@ A keyword in the first position of the channels list overrides
 joined channels.")
 (make-variable-buffer-local 'circe-server-auto-join-channels)
 
-(defcustom circe-server-auto-join-default-type :immediate
-  "The default auto-join type to use.
-
-Possible options:
-
-:immediate - Immediately after registering on the server
-:after-auth - After nickserv authentication succeeded
-:after-nick - After we regained our preferred nick. See
-              `circe-nickserv-ghost-style'.
-
-See `circe-server-auto-join-channels' for more details."
-  :type '(choice (const :tag "Immediately" :immediate)
-                 (const :tag "After Authentication" :after-auth)
-                 (const :tag "After Nick Regain" :after-nick))
-  :group 'circe)
+(defvar circe-auto-joins ()
+  "Internal variable, listing channels in the process of being
+auto-joined, book-keeping for
+`circe-new-buffer-behavior-ignore-auto-joins'.")
+(make-variable-buffer-local 'circe-auto-joins)
 
 (add-hook 'circe-server-connected-hook 'circe-auto-join-immediate)
 (defun circe-auto-join-immediate ()
@@ -3301,6 +3322,7 @@ See `circe-server-auto-join-channels' for more details."
 
 See `circe-server-auto-join-channels' for details on TYPE."
   (dolist (channel (circe-auto-join-channels type))
+    (add-to-list 'circe-auto-joins (downcase channel))
     (circe-command-JOIN channel)))
 
 (defun circe-auto-join-channels (type)
