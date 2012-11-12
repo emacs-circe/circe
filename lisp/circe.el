@@ -1432,8 +1432,8 @@ initialize a new buffer if none exists."
   "Check if a given command does match an ignore pattern.
 
 A pattern matches if it either matches the user NICK!USER@HOST,
-or if, if COMMAND is a PRIVMSG, if it matches the first word in
-the argument text in ARGS.
+or if COMMAND is a PRIVMSG and it matches the first word in the
+argument text in ARGS.
 
 ALIST should be the list of regular expressions."
   (let ((string (concat nick "!" user "@" host))
@@ -1451,7 +1451,7 @@ ALIST should be the list of regular expressions."
       nil)))
 
 (defun circe-ignored-p (nick user host command args)
-  "True iff this user or message is being ignored.
+  "True if this user or message is being ignored.
 
 See `circe-ignore-functions' and `circe-ignore-list'.
 
@@ -1464,7 +1464,7 @@ COMMAND, which had the arguments ARGS."
                               circe-ignore-list)))
 
 (defun circe-fool-p (nick user host command args)
-  "True iff this user or message is a fool.
+  "True if this user or message is a fool.
 
 See `circe-fool-list'.
 
