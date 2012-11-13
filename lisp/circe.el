@@ -1234,13 +1234,15 @@ It is always possible to use the mynick or target formats."
                                        'face face
                                        text))
     ;; Dynamically-scoped variable
-    (when *circe-fool-p*
-      (font-lock-prepend-text-property 0 (length text)
-                                       'face 'circe-fool-face
-                                       text)
-      (put-text-property 0 (length text)
-                         'lui-fool t
-                         text))
+    (let ((seq *circe-special-display-spec*))
+      (while seq
+        (let ((key (car seq))
+              (val (cadr seq)))
+          (if (eq 'face key)
+              (font-lock-prepend-text-property 0 (length text)
+                                               'face val text)
+            (put-text-property 0 (length text) key val text))
+          (setq seq (cddr seq)))))
     (lui-insert text
                 (memq format circe-format-not-tracked))))
 
@@ -1530,6 +1532,37 @@ COMMAND, which had the arguments ARGS."
      (t
       (circe-server-message
        "No one is not a fool anymore? UNFOOL requires one argument")))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;;; Special Display ;;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom circe-special-display-alist ()
+  "Alist mapping hostmasks and predicates to property lists to be
+added to matching users' messages by `circe-display'."
+  :type '(alist
+          :key-type (or regexp function)
+          :value-type (plist))
+  :group 'circe)
+
+(defun circe-special-display-p (nick user host command args)
+  "Semipredicate, returns a special display spec if this user
+matches an entry in `circe-special-display-alist' or
+`circe-fool-p', which see."
+  (let ((string (concat nick "!" user "@" host))
+        (alist (cons '(circe-fool-p face circe-fool-face
+                                    lui-fool t)
+                     circe-special-display-alist)))
+    (catch 'return
+      (dolist (entry alist)
+        (let ((p (car entry))
+              (props (cdr entry)))
+          (when (or (and (stringp p) (string-match p string))
+                    (and (functionp p)
+                         (funcall p nick user host command args)))
+            (throw 'return props))))
+      nil)))
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -2362,7 +2395,7 @@ This uses `circe-display-table'."
 ;; we lose who the message was from. So we keep a "global variable"
 ;; (dynamically scoped) saying whether we are handling a fool's
 ;; message or not.
-(defvar *circe-fool-p* nil
+(defvar *circe-special-display-spec* nil
   "Internal use. Set this to nil. Do not change it. Go away.")
 (defun circe-server-display (nick user host command args)
   "Display an IRC message.
@@ -2370,7 +2403,8 @@ This uses `circe-display-table'."
 NICK, USER and HOST specify the originator of COMMAND with ARGS
 as arguments."
   (let ((display (circe-display-handler command))
-        (*circe-fool-p* (circe-fool-p nick user host command args)))
+        (*circe-special-display-spec*
+         (circe-special-display-p nick user host command args)))
     (if display
         (funcall display nick user host command args)
       (or (circe-server-default-display-command nick user host
@@ -2511,7 +2545,8 @@ as arguments."
 
 NICK, USER and HOST are the originators, COMMAND the command and
 ARGS the arguments to the command."
-  (let ((*circe-fool-p* (circe-fool-p nick user host command args)))
+  (let ((*circe-special-display-spec*
+         (circe-special-display-p nick user host command args)))
     (if (circe-server-my-nick-p (car args)) ; Query
         (let ((buf (circe-server-auto-query-buffer nick)))
           (if buf

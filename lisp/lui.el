@@ -38,7 +38,7 @@
 ;; lui-insert
 ;; lui-input-function
 ;; lui-completion-function
-;; and the 'lui-fool text property
+;; and the 'lui-fool and 'lui-do-not-track text properties
 
 ;;; Code:
 
@@ -810,7 +810,12 @@ of the buffer."
                                            (point-max)))
                (foolish (text-property-any (point-min)
                                            (point-max)
-                                           'lui-fool t)))
+                                           'lui-fool t))
+               (not-tracked-p
+                (or not-tracked-p
+                    (text-property-any (point-min)
+                                       (point-max)
+                                       'lui-do-not-track t))))
            (widen)
            (lui-truncate)
            (lui-read-only)
