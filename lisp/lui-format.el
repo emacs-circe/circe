@@ -96,8 +96,12 @@ with the respective name as value. The whole string receives a
   ;; If it's only a single argument, that argument is a list.
   (when (not (cdr keywords))
     (setq keywords (car keywords)))
-  (if (functionp format)
-      (apply format keywords)
+  (cond
+   ((functionp format)
+    (apply format keywords))
+   ((functionp (symbol-value format))
+    (apply (symbol-value format) keywords))
+   (t
     (let* ((format-string (if (symbolp format)
                               (symbol-value format)
                             format))
@@ -110,7 +114,7 @@ with the respective name as value. The whole string receives a
                           keywords)))
       (propertize (lui-format-internal format-string plist)
                   'lui-format format
-                  'lui-keywords keywords))))
+                  'lui-keywords keywords)))))
 
 (defun lui-format-internal (fmt keywords)
   "Internal function for `lui-format'.
