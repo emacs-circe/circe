@@ -99,7 +99,8 @@ with the respective name as value. The whole string receives a
   (cond
    ((functionp format)
     (apply format keywords))
-   ((functionp (symbol-value format))
+   ((and (symbolp format)
+         (functionp (symbol-value format)))
     (apply (symbol-value format) keywords))
    (t
     (let* ((format-string (if (symbolp format)
