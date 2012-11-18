@@ -1445,21 +1445,21 @@ initialize a new buffer if none exists."
 ;;; Ignore Handling ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun circe-ignore-matches-p (nick user host command args alist)
+(defun circe-ignore-matches-p (nick user host command args patterns)
   "Check if a given command does match an ignore pattern.
 
 A pattern matches if it either matches the user NICK!USER@HOST,
 or if COMMAND is a PRIVMSG and it matches the first word in the
 argument text in ARGS.
 
-ALIST should be the list of regular expressions."
+PATTERNS should be the list of regular expressions."
   (let ((string (concat nick "!" user "@" host))
         (target (when (and (string= command "PRIVMSG")
                            (not (circe-server-my-nick-p (car args)))
                            (string-match "^\\([^ ]*\\)[:, ]" (cadr args)))
                   (match-string 1 (cadr args)))))
     (catch 'return
-      (dolist (regex alist)
+      (dolist (regex patterns)
         (when (string-match regex string)
           (throw 'return t))
         (when (and (stringp target)
