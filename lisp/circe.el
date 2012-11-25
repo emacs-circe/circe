@@ -1229,13 +1229,20 @@ It is always possible to use the mynick or target formats."
                                 (car keywords)
                               keywords))))
          (text (lui-format format keywords)))
-    ;; add special properties passed in via dynamically-scoped
-    ;; *circe-special-display-spec*
-    (circe-display-add-special-properties text)
     (when face
-      (font-lock-append-text-property 0 (length text)
-                                      'face face
-                                      text))
+      (font-lock-prepend-text-property 0 (length text)
+                                       'face face
+                                       text))
+    ;; Dynamically-scoped variable
+    (let ((seq *circe-special-display-spec*))
+      (while seq
+        (let ((key (car seq))
+              (val (cadr seq)))
+          (if (eq 'face key)
+              (font-lock-prepend-text-property 0 (length text)
+                                               'face val text)
+            (put-text-property 0 (length text) key val text))
+          (setq seq (cddr seq)))))
     (lui-insert text
                 (memq format circe-format-not-tracked))))
 
@@ -1252,28 +1259,6 @@ It is always possible to use the mynick or target formats."
                 (setq keyword entry)
                 entry)))
             keywords)))
-
-(defun circe-display-add-special-properties (text)
-  (let ((properties *circe-special-display-spec*)
-        (len (length text)))
-    (while properties
-      (let ((key (car properties))
-            (val (cadr properties)))
-        (if (eq 'face key)
-            (let ((start (text-property-any
-                          0 len 'highlight-area t
-                          text)))
-              (if start
-                  (while start
-                    (let ((end (or (next-single-property-change
-                                    start 'highlight-area text len)
-                                   len)))
-                      (font-lock-prepend-text-property start end 'face val text)
-                      (setq start (text-property-any
-                                   end len 'highlight-area t text))))
-                (font-lock-append-text-property 0 len 'face val text)))
-          (put-text-property 0 len key val text))
-        (setq properties (cddr properties))))))
 
 ;;; There really ought to be a hook for this!
 (defadvice select-window (after circe-server-track-select-window
