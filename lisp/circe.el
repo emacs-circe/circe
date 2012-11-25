@@ -3377,7 +3377,8 @@ auto-joined, book-keeping for
 
 See `circe-server-auto-join-channels' for details on TYPE."
   (dolist (channel (circe-auto-join-channels type))
-    (add-to-list 'circe-auto-joins (downcase channel))
+    (unless (circe-server-get-chat-buffer channel)
+      (add-to-list 'circe-auto-joins (downcase channel)))
     (circe-command-JOIN channel)))
 
 (defun circe-auto-join-channels (type)
