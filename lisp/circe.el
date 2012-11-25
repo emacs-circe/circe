@@ -1234,13 +1234,15 @@ It is always possible to use the mynick or target formats."
                                        'face face
                                        text))
     ;; Dynamically-scoped variable
-    (let ((seq *circe-special-display-spec*))
+    (let ((seq *circe-default-properties*))
       (while seq
         (let ((key (car seq))
               (val (cadr seq)))
           (if (eq 'face key)
-              (font-lock-prepend-text-property 0 (length text)
-                                               'face val text)
+              ;; Faces are special. We want to set the default face,
+              ;; not override other faces.
+              (font-lock-append-text-property 0 (length text)
+                                              'face val text)
             (put-text-property 0 (length text) key val text))
           (setq seq (cddr seq)))))
     (lui-insert text
@@ -1534,11 +1536,11 @@ COMMAND, which had the arguments ARGS."
        "No one is not a fool anymore? UNFOOL requires one argument")))))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;
-;;; Special Display ;;;
-;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Default Properties ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defcustom circe-special-display-alist ()
+(defcustom circe-default-properties-alist ()
   "Alist mapping hostmasks and predicates to property lists to be
 added to matching users' messages by `circe-display'."
   :type '(alist
@@ -1546,14 +1548,14 @@ added to matching users' messages by `circe-display'."
           :value-type (plist))
   :group 'circe)
 
-(defun circe-special-display-p (nick user host command args)
-  "Semipredicate, returns a special display spec if this user
-matches an entry in `circe-special-display-alist' or
+(defun circe-default-properties (nick user host command args)
+  "Semipredicate, returns a default property list if this user
+matches an entry in `circe-default-properties-alist' or
 `circe-fool-p', which see."
   (let ((string (concat nick "!" user "@" host))
         (alist (cons '(circe-fool-p face circe-fool-face
                                     lui-fool t)
-                     circe-special-display-alist)))
+                     circe-default-properties-alist)))
     (catch 'return
       (dolist (entry alist)
         (let ((p (car entry))
@@ -2393,9 +2395,9 @@ This uses `circe-display-table'."
 ;; I'm a bit unhappy about this. The choice for the face for the
 ;; message happens very deeply within the call stack, and on the way
 ;; we lose who the message was from. So we keep a "global variable"
-;; (dynamically scoped) saying whether we are handling a fool's
-;; message or not.
-(defvar *circe-special-display-spec* nil
+;; (dynamically scoped) saying which default properties to set much
+;; later.
+(defvar *circe-default-properties* nil
   "Internal use. Set this to nil. Do not change it. Go away.")
 (defun circe-server-display (nick user host command args)
   "Display an IRC message.
@@ -2403,8 +2405,8 @@ This uses `circe-display-table'."
 NICK, USER and HOST specify the originator of COMMAND with ARGS
 as arguments."
   (let ((display (circe-display-handler command))
-        (*circe-special-display-spec*
-         (circe-special-display-p nick user host command args)))
+        (*circe-default-properties*
+         (circe-default-properties nick user host command args)))
     (if display
         (funcall display nick user host command args)
       (or (circe-server-default-display-command nick user host
@@ -2435,7 +2437,9 @@ passing TEXT as arguments."
         (args (list target text)))
     (run-hook-with-args 'circe-receive-message-functions
                         nick user host command args)
-    (let ((display (circe-display-handler command)))
+    (let ((display (circe-display-handler command))
+          (*circe-default-properties*
+           (circe-default-properties nick user host command args)))
       (if display
           (funcall display nick user host command args)
         (with-current-buffer (circe-server-last-active-buffer)
@@ -2545,25 +2549,23 @@ as arguments."
 
 NICK, USER and HOST are the originators, COMMAND the command and
 ARGS the arguments to the command."
-  (let ((*circe-special-display-spec*
-         (circe-special-display-p nick user host command args)))
-    (if (circe-server-my-nick-p (car args)) ; Query
-        (let ((buf (circe-server-auto-query-buffer nick)))
-          (if buf
-              (with-current-buffer buf
-                (circe-display 'circe-format-action
-                               :nick nick
-                               :body (cadr args)))
-            (with-current-buffer (circe-server-last-active-buffer)
-              (circe-display 'circe-format-message-action
+  (if (circe-server-my-nick-p (car args)) ; Query
+      (let ((buf (circe-server-auto-query-buffer nick)))
+        (if buf
+            (with-current-buffer buf
+              (circe-display 'circe-format-action
                              :nick nick
-                             :body (cadr args)))))
-      (with-current-buffer (circe-server-get-chat-buffer (car args)
-                                                         'circe-channel-mode)
-        (circe-lurker-mark-as-active nick)
-        (circe-display 'circe-format-action
-                       :nick nick
-                       :body (cadr args))))))
+                             :body (cadr args)))
+          (with-current-buffer (circe-server-last-active-buffer)
+            (circe-display 'circe-format-message-action
+                           :nick nick
+                           :body (cadr args)))))
+    (with-current-buffer (circe-server-get-chat-buffer (car args)
+                                                       'circe-channel-mode)
+      (circe-lurker-mark-as-active nick)
+      (circe-display 'circe-format-action
+                     :nick nick
+                     :body (cadr args)))))
 
 (add-hook 'circe-receive-message-functions 'circe-ctcp-VERSION-handler)
 (defun circe-ctcp-VERSION-handler (nick user host command args)
