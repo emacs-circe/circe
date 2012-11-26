@@ -1229,10 +1229,6 @@ It is always possible to use the mynick or target formats."
                                 (car keywords)
                               keywords))))
          (text (lui-format format keywords)))
-    (when face
-      (font-lock-prepend-text-property 0 (length text)
-                                       'face face
-                                       text))
     ;; Dynamically-scoped variable
     (let ((seq *circe-default-properties*))
       (while seq
@@ -1245,6 +1241,10 @@ It is always possible to use the mynick or target formats."
                                               'face val text)
             (put-text-property 0 (length text) key val text))
           (setq seq (cddr seq)))))
+    (when face
+      (font-lock-append-text-property 0 (length text)
+                                      'face face
+                                      text))
     (lui-insert text
                 (memq format circe-format-not-tracked))))
 
