@@ -127,7 +127,7 @@ new `tracking-start-buffer' is created.")
   "Allow cycling through modified buffers.
 This mode in itself does not track buffer modification, but
 provides an API for programs to add buffers as modified (using
-`tracking-add').
+`tracking-add-buffer').
 
 Once this mode is active, modified buffers are shown in the mode
 line. The user can cycle through them using
