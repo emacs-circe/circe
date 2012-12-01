@@ -42,26 +42,20 @@ do_release () {
     rm -rf release
 
     declare -a GIT_TAG_COMMANDS
+    declare -A VERSION_DICT
 
-    LAST_CIRCE="$(git_last_tag "circe-*")"
-    if git_files_changed "$LAST_CIRCE" "^lisp/circe"
+    LAST_LCS="$(git_last_tag "lcs-*")"
+    VERSION_DICT[lcs]="$LAST_LCS"
+    if git_files_changed "$LAST_LCS" "^lisp/lcs.el"
     then
         mkdir -p release
-        echo -n "Building Circe ... "
-        circe_release "$LAST_CIRCE"
-        echo "ok."
-     fi
- 
-    LAST_LUI="$(git_last_tag "lui-*")"
-    if git_files_changed "$LAST_LUI" "^lisp/lui"
-    then
-        mkdir -p release
-        echo -n "Building Lui ... "
-        elpa_tar lui lisp/lui.el "$LAST_LUI" "'(\"tracking\")"
+        echo -n "Building lcs ... "
+        elpa_file lcs lisp/lcs.el "$LAST_LCS"
         echo "ok."
     fi
 
     LAST_TRACKING="$(git_last_tag "tracking-*")" 
+    VERSION_DICT[tracking]="$LAST_TRACKING"
     if git_files_changed "$LAST_TRACKING" "^lisp/tracking.el"
     then
         mkdir -p release
@@ -69,13 +63,24 @@ do_release () {
         elpa_file tracking lisp/tracking.el "$LAST_TRACKING"
         echo "ok."
     fi
-
-    LAST_LCS="$(git_last_tag "lcs-*")"
-    if git_files_changed "$LAST_LCS" "^lisp/lcs.el"
+ 
+    LAST_LUI="$(git_last_tag "lui-*")"
+    VERSION_DICT[lui]="$LAST_LUI"
+    if git_files_changed "$LAST_LUI" "^lisp/lui"
     then
         mkdir -p release
-        echo -n "Building lcs ... "
-        elpa_file lcs lisp/lcs.el "$LAST_LCS"
+        echo -n "Building Lui ... "
+        elpa_tar lui lisp/lui.el "$LAST_LUI" "tracking"
+        echo "ok."
+    fi
+
+    LAST_CIRCE="$(git_last_tag "circe-*")"
+    VERSION_DICT[circe]="$LAST_CIRCE"
+    if git_files_changed "$LAST_CIRCE" "^lisp/circe"
+    then
+        mkdir -p release
+        echo -n "Building Circe ... "
+        circe_release "$LAST_CIRCE"
         echo "ok."
     fi
 
@@ -114,7 +119,7 @@ do_release () {
 circe_release () {
     local OLD_TAG="$1"
 
-    elpa_tar circe lisp/circe.el "$OLD_TAG" "'(\"lui\" \"lcs\")"
+    elpa_tar circe lisp/circe.el "$OLD_TAG" "lui lcs"
 
     local VERSION="$(elisp_version lisp/circe.el)"
     local DEST="$(pwd)/release/circe-$VERSION/"
@@ -214,6 +219,8 @@ elpa_pkg_file () {
     local DEPENDS="$4"
     local PKGFILE="$5"
 
+    VERSION_DICT["$PACKAGE"]="$VERSION"
+
     (echo "(define-package \"$PACKAGE\" \"$VERSION\" \"$DESC\" $DEPENDS)"
      echo ";; no-byte-compile: t"
     ) > "$PKGFILE"
@@ -223,7 +230,14 @@ elpa_tar () {
     local PACKAGE="$1" # circe
     local FILENAME="$2" # lisp/circe.el
     local OLD_TAG="$3" # circe-0.5
-    local DEPENDS="$4" # "'(\"lui\" \"lcs\")"
+    local DEPENDS_LIST="$4" # "lui lcs"
+
+    DEPENDS="'("
+    for package in $DEPENDS_LIST
+    do
+        DEPENDS="${DEPENDS}($package \"${VERSION_DICT[$package]}\")"
+    done
+    DEPENDS="${DEPENDS})"
 
     local OLD_VERSION="$(elisp_version_in "$OLD_TAG" "$FILENAME")"
     local VERSION="$(elisp_version "$FILENAME")"
@@ -270,6 +284,8 @@ elpa_file () {
     local VERSION="$(elisp_version "$FILENAME")"
     local TAG="$PROJECT-$VERSION"
     local DEFVAR_VERSION="$(elisp_defvar_version "$FILENAME")"
+
+    VERSION_DICT["$PROJECT"]="$VERSION"
 
     if [ -n "$DEFVAR_VERSION" ] && [ "$VERSION" != "$DEFVAR_VERSION" ]
     then
