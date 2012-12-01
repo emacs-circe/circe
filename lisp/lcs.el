@@ -1,4 +1,4 @@
-;;; lcs.el -- find out the longest common sequence
+;;; lcs.el --- find out the longest common sequence
 
 ;;   Copyright (c) 2002-2003 by Alex Shinn, All rights reserved.
 ;;   Copyright (c) 2002-2003 by Shiro Kawai, All rights reserved.
