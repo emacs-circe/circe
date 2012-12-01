@@ -223,7 +223,7 @@ elpa_tar () {
     local PACKAGE="$1" # circe
     local FILENAME="$2" # lisp/circe.el
     local OLD_TAG="$3" # circe-0.5
-    local DEPENDGS="$4" # "'(\"lui\" \"lcs\")"
+    local DEPENDS="$4" # "'(\"lui\" \"lcs\")"
 
     local OLD_VERSION="$(elisp_version_in "$OLD_TAG" "$FILENAME")"
     local VERSION="$(elisp_version "$FILENAME")"
