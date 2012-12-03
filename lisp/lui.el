@@ -42,7 +42,7 @@
 
 ;;; Code:
 
-(defvar lui-version "1.0"
+(defvar lui-version "1.0 devel"
   "Lui version string.")
 
 (require 'ring)
