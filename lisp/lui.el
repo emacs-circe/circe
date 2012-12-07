@@ -78,7 +78,7 @@ t, post-command
 
 post-output
   Keep the input line at the end of the window only after output.
-  
+
 post-scroll
   Keep the input line at the end of the window on every scroll
   event. Careful, this might interact badly with other functions
@@ -591,10 +591,8 @@ Otherwise, we move to the next button."
      ((not sym)
       (message "No such symbol %s" name)
       (ding))
-     ((functionp sym)
-      (describe-function sym))
-     ((symbolp sym)
-      (describe-variable sym)))))
+     (t
+      (help-xref-interned sym)))))
 
 (defun lui-button-rfc (number)
   "Browse the RFC NUMBER."
