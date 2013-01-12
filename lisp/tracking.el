@@ -83,12 +83,16 @@ The first face found in this list is used."
 Each element of this list has one of the following forms:
 
   regexp - Any buffer matching won't be tracked.
+  function - Any buffer matching won't be tracked.
   (regexp faces ...) - Any buffer matching won't be tracked,
       unless it has a face in FACES ... associated with it.
       If no faces are given, `tracking-faces-priorities' is
-      used."
+      used.
+  (function faces ...) - As per above, but with a function
+      as predicate instead of a regexp."
   :type '(repeat (choice regexp
-                         (list regexp
+                         function
+                         (list (choice regexp function)
                                (repeat face))))
   :group 'tracking)
 
@@ -248,14 +252,21 @@ to be ignored."
   (catch 'return
     (let ((buffer-name (buffer-name buffer)))
       (dolist (entry tracking-ignored-buffers)
-        (if (stringp entry)
-            (and (string-match entry buffer-name)
-                 (throw 'return entry))
-          (when (and (string-match (car entry) buffer-name)
-                     (not (tracking-any-in (or (cdr entry)
-                                               tracking-faces-priorities)
-                                           faces)))
-            (throw 'return entry)))))
+        (cond
+         ((stringp entry)
+          (and (string-match entry buffer-name)
+               (throw 'return entry)))
+         ((functionp entry)
+          (and (funcall entry buffer-name)
+               (throw 'return entry)))
+         ((or (and (stringp (car entry))
+                   (string-match (car entry) buffer-name))
+              (and (functionp (car entry))
+                   (funcall (car entry) buffer-name)))
+          (when (not (tracking-any-in (or (cdr entry)
+                                          tracking-faces-priorities)
+                                      faces))
+            (throw 'return entry))))))
     nil))
 
 (defun tracking-status ()
