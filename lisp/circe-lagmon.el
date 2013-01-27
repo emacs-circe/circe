@@ -120,7 +120,8 @@ send a request if it's time for that. See
            (not circe-lagmon-last-receive-time))
       ;; Count up until the answer comes.
       (let ((lag (/ (- now circe-lagmon-last-send-time) 2)))
-        (when (> lag circe-lagmon-server-lag)
+        (when (or (not circe-lagmon-server-lag)
+                  (> lag circe-lagmon-server-lag))
           (setq circe-lagmon-server-lag lag)
           (circe-lagmon-force-mode-line-update)))
       ;; Check for timeout.
