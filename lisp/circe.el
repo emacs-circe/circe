@@ -266,9 +266,16 @@ completion style."
   "If enabled, Circe will stop showing some messages.
 
 This means that JOIN, PART, QUIT and NICK messages are not shown
-for users on channels that have not spoken yet (\"lurker\"). When
-they speak for the first time, Circe displays their join time."
+for users on channels that have not spoken yet (\"lurker\"), or
+haven't spoken in `circe-active-users-timeout' seconds. When they
+speak for the first time, Circe displays their join time."
   :type 'boolean
+  :group 'circe)
+
+(defcustom circe-active-users-timeout nil
+  "When non-nil, should be the number of seconds after which
+active users are regarded as inactive again after speaking."
+  :type 'integer
   :group 'circe)
 
 (defcustom circe-prompt-string (concat (propertize ">"
@@ -554,10 +561,10 @@ strings."
   :type 'string
   :group 'circe-format)
 
-(defcustom circe-format-server-lurker-activity "*** First activity: {nick} joined {joindelta} ago."
-  "The format for a server notice.
+(defcustom circe-format-server-lurker-activity
+  "*** First activity: {nick} joined {joindelta} ago."
+  "The format for the first-activity notice of a user.
 {nick} - The originator.
-{oldnick} - The original nick of the user.
 {jointime} - The join time of the user (in seconds).
 {joindelta} - The duration from joining until now."
   :type 'string
@@ -2886,28 +2893,35 @@ as arguments."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun circe-lurker-p (nick)
-  "Return a true value if this nick has been inactive so far."
+  "Return a true value if this nick is regarded inactive."
   (when (and circe-reduce-lurker-spam
              (not (circe-server-my-nick-p nick)))
-    (circe-channel-user-info nick 'lurker-p t)))
+    (or (circe-channel-user-info nick 'lurker-p t)
+        (> (- (float-time)
+              (circe-channel-user-info nick 'last-active))
+           circe-active-users-timeout))))
 
 (defun circe-lurker-mark-as-active (nick &optional no-notify)
-  "Mark NICK as active now.
+  "Mark NICK as active and give it a new `last-active' timestamp.
 
 If NO-NOTIFY is true, don't notify the user of this."
-  (let ((joined (circe-channel-user-info nick 'joined))
-        (was-lurker (circe-channel-user-info nick 'lurker-p t)))
+  (let ((last-active (circe-channel-user-info nick 'last-active))
+        (was-lurker (circe-lurker-p nick)))
     (circe-channel-user-set-info nick 'last-active (float-time))
     (circe-channel-user-set-info nick 'lurker-p nil)
     (when (and (not no-notify)
-               joined
                was-lurker
-               circe-reduce-lurker-spam)
-      (circe-display 'circe-format-server-lurker-activity
-                     :nick nick
-                     :joindelta (circe-duration-string
-                                 (- (float-time)
-                                    joined))))))
+               circe-reduce-lurker-spam
+               ;; Only when it's the first activity:
+               (null last-active))
+      (let ((joined (circe-channel-user-info nick 'joined)))
+        (unless (null joined)
+          (circe-display 'circe-format-server-lurker-activity
+                         :nick nick
+                         :jointime joined
+                         :joindelta (circe-duration-string
+                                     (- (float-time)
+                                        joined))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Netsplit Handling ;;;
