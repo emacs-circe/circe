@@ -719,7 +719,7 @@ make the whole thing invisible."
     (add-to-invisibility-spec 'lui-fool)))
   ;; For some reason, after this, the display does not always update
   ;; (issue #31). Force an update just in case.
-  (redisplay))
+  (redraw-modeline t))
 
 
 ;;;;;;;;;;;;;;;;
