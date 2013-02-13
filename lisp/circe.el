@@ -1787,7 +1787,7 @@ received."
    ((string= command "005")             ; RPL_ISUPPORT
     (dolist (setting (cdr args))
       (when (string-match "PREFIX=([^)]*)\\(.*\\)" setting)
-        (setq circe-channel-nick-prefixes (match-string 1 setting)))))
+        (setq circe-server-nick-prefixes (match-string 1 setting)))))
    ((string= command "353")             ; RPL_NAMREPLY
     (with-circe-chat-buffer (nth 2 args)
       (when (not circe-channel-receiving-names)
