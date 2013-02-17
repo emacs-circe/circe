@@ -278,6 +278,13 @@ active users are regarded as inactive again after speaking."
   :type 'integer
   :group 'circe)
 
+(defcustom circe-parted-users-timeout (* 20 60)
+  "Forget about parted users after this many seconds.
+
+If nil, parted users are immediately forgotten about."
+  :type 'integer
+  :group 'circe)
+
 (defcustom circe-prompt-string (concat (propertize ">"
                                                    'face 'circe-prompt-face)
                                        " ")
@@ -479,6 +486,7 @@ strings."
                                       circe-format-server-notice
                                       circe-format-server-numeric
                                       circe-format-server-topic
+                                      circe-format-server-user-rejoin
                                       circe-format-server-lurker-activity)
   "A list of formats that should not trigger tracking."
   :type '(repeat symbol)
@@ -567,6 +575,13 @@ strings."
 {nick} - The originator.
 {jointime} - The join time of the user (in seconds).
 {joindelta} - The duration from joining until now."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-user-rejoin
+  "*** Re-join: {nick}"
+  "The format for the re-join notice of a user.
+{nick} - The originator."
   :type 'string
   :group 'circe-format)
 
@@ -1814,12 +1829,41 @@ received."
     (setq circe-channel-users (circe-case-fold-table)))
   (let ((data (make-hash-table)))
     (puthash user data circe-channel-users)
-    (puthash 'joined (float-time) data)))
+    (puthash 'joined (float-time) data))
+  (circe-channel-parted-users-cleanup)
+  (when (and circe-channel-parted-active-users
+             (gethash user circe-channel-parted-active-users))
+    (remhash user circe-channel-parted-active-users)
+    (circe-lurker-mark-as-active user 're-join)))
 
 (defun circe-channel-remove-user (user)
   "Remove USER as a channel user."
   (when circe-channel-users
+    (when (and circe-reduce-lurker-spam
+               circe-parted-users-timeout
+               (not (circe-lurker-p user)))
+      (when (null circe-channel-parted-active-users)
+        (setq circe-channel-parted-active-users (circe-case-fold-table)))
+      (puthash user (float-time) circe-channel-parted-active-users))
+    ;; Do this last, since the entry is still needed up until now.
     (remhash user circe-channel-users)))
+
+(defun circe-channel-parted-users-cleanup ()
+  (when circe-channel-parted-active-users
+    (if circe-parted-users-timeout
+        (maphash (lambda (nick timestamp)
+                   (when (> (- (float-time) timestamp)
+                            circe-parted-users-timeout)
+                     (remhash nick circe-channel-parted-active-users)))
+                 circe-channel-parted-active-users)
+      (setq circe-channel-parted-active-users nil))))
+
+(defvar circe-channel-parted-active-users nil
+  "Per-channel hash-table of recently parted/quit users who were active.
+
+This list is kept to detect users who join again soon after
+parting/quitting. Also see `circe-parted-users-timeout'.")
+(make-variable-buffer-local 'circe-channel-parted-active-users)
 
 (defun circe-channel-user-p (user)
   "Return non-nil when USER is a channel user."
@@ -2901,28 +2945,34 @@ as arguments."
               (circe-channel-user-info nick 'last-active))
            circe-active-users-timeout))))
 
-(defun circe-lurker-mark-as-active (nick &optional no-notify)
+(defun circe-lurker-mark-as-active (nick &optional reason)
   "Mark NICK as active and give it a new `last-active' timestamp.
 
-If NO-NOTIFY is true, don't notify the user of this."
+REASON should be `re-join', or nil."
   (let ((last-active (circe-channel-user-info nick 'last-active))
         (was-lurker (circe-lurker-p nick)))
     (circe-channel-user-set-info nick 'last-active (float-time))
     (circe-channel-user-set-info nick 'lurker-p nil)
-    (when (and (not no-notify)
-               was-lurker
-               circe-reduce-lurker-spam
-               (not (circe-channel-user-info nick 'initial-name))
-               ;; Only when it's the first activity:
-               (null last-active))
-      (let ((joined (circe-channel-user-info nick 'joined)))
-        (unless (null joined)
-          (circe-display 'circe-format-server-lurker-activity
-                         :nick nick
-                         :jointime joined
-                         :joindelta (circe-duration-string
-                                     (- (float-time)
-                                        joined))))))))
+    (when circe-reduce-lurker-spam
+      (cond
+       ((eq reason 're-join)
+        (circe-display 'circe-format-server-user-rejoin
+                       :nick nick))
+       ((null reason)
+        (when (and was-lurker
+                   (not (circe-channel-user-info nick 'initial-name))
+                   ;; Only when it's the first activity:
+                   (null last-active))
+          (let ((joined (circe-channel-user-info nick 'joined)))
+            (unless (null joined)
+              (circe-display 'circe-format-server-lurker-activity
+                             :nick nick
+                             :jointime joined
+                             :joindelta (circe-duration-string
+                                         (- (float-time)
+                                            joined)))))))
+       (t
+        (error "Unrecognized reason: %S" reason))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Netsplit Handling ;;;
