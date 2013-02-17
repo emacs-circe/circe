@@ -1879,19 +1879,19 @@ This uses `circe-server-nick-prefixes'."
 NEW is a hash table with currently active nicks in the channel.
 This will ensure they are all in the `circe-channel-users' table,
 and no other nicks are."
-  ;; We are "initializing" if this is a completely new list. If we
-  ;; are, we mark new nicks as non-lurkers to avoid a spammage of
-  ;; "joined 2 seconds ago" for everyone talking the first time in a
-  ;; busy channel.
-  (let ((initializing (if circe-channel-users
-                          nil
-                        (setq circe-channel-users (circe-case-fold-table))
-                        t)))
+  ;; We are "initializing" if the hash-table is nil or has no more than one
+  ;; entry.  This covers the case where the server sends a JOIN for our own nick
+  ;; before sending the name-list.  It is a false positive if we are the only
+  ;; person in the channel, but that case doesn't matter.
+  (let ((initializing (or (null circe-channel-users)
+                          (<= 1 (hash-table-size circe-channel-users)))))
+    (when (null circe-channel-users)
+      (setq circe-channel-users (circe-case-fold-table)))
     (maphash (lambda (nick ignored)
                (when (not (gethash nick circe-channel-users))
                  (circe-channel-add-user nick)
                  (when initializing
-                   (circe-lurker-mark-as-active nick t))))
+                   (circe-channel-user-set-info nick 'initial-name t))))
              new)
     (maphash (lambda (nick ignored)
                (when (not (gethash nick new))
@@ -2912,6 +2912,7 @@ If NO-NOTIFY is true, don't notify the user of this."
     (when (and (not no-notify)
                was-lurker
                circe-reduce-lurker-spam
+               (not (circe-channel-user-info nick 'initial-name))
                ;; Only when it's the first activity:
                (null last-active))
       (let ((joined (circe-channel-user-info nick 'joined)))
