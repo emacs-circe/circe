@@ -120,7 +120,8 @@ See the {topic-diff} parameter to `circe-format-server-topic'."
   "The face used for fools.
 See `circe-fool-list'.")
 (defface circe-fool-face
-  '((t (:foreground "grey40" :bold t)))
+  '((((type tty)) (:foreground "grey40" :bold t))
+    (((type x)) (:foreground "grey40")))
   "The face used for fools.
 See `circe-fool-list'."
   :group 'circe)
