@@ -1231,8 +1231,7 @@ server's chat buffers."
 (defun circe-server-message (message)
   "Display MESSAGE as a server message."
   (circe-display 'circe-format-server-message
-                 :body (propertize message
-                                   'face 'circe-server-face)))
+                 :body message))
 
 (defun circe-display (format &rest keywords)
   "Display FORMAT formatted with KEYWORDS in the current Circe buffer.
