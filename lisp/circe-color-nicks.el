@@ -68,21 +68,32 @@ See `enable-circe-color-nicks'."
   "Remove `circe-color-nicks' from `lui-pre-output-hook'."
   (remove-hook 'lui-pre-output-hook 'circe-color-nicks))
 
+(defun circe-color-values (color)
+  "Like `color-values', but also handle \"unspecified-bg\" and
+\"unspecified-fg\"."
+  (let ((values (color-values color)))
+    (cond
+     (values values)
+     ((equal color "unspecified-bg") '(0 0 0))
+     ((equal color "unspecified-fg") '(255 255 255)))))
+
 (defun circe-color-distance (color1 color2)
-  "Compute the difference between two colors
-using the weighted Euclidean distance formula proposed on
-<http://www.compuphase.com/cmetric.htm>.
-Remember that every component for the formula is in the range of 0-xFF
-and `color-values' will return a range of 0-FFFF. Thus, divide everything
-by 256. This also helps preventing integer overflow."
-  (let* ((dr (/ (- (nth 0 (color-values color1))
-                   (nth 0 (color-values color2))) 256))
-         (dg (/ (- (nth 1 (color-values color1))
-                   (nth 1 (color-values color2))) 256))
-         (db (/ (- (nth 2 (color-values color1))
-                   (nth 2 (color-values color2))) 256))
-         (red-mean (/ (+ (nth 0 (color-values color1))
-                         (nth 0 (color-values color2)))
+  "Compute the difference between two colors using the weighted
+Euclidean distance formula proposed on
+<http://www.compuphase.com/cmetric.htm>.  Remember that every
+component for the formula is in the range of 0-xFF and
+`color-values' will return a range of 0-FFFF. Thus, divide
+everything by 256. This also helps preventing integer overflow."
+  (let* ((color1-values (circe-color-values color1))
+         (color2-values (circe-color-values color2))
+         (dr (/ (- (nth 0 color1-values)
+                   (nth 0 color2-values)) 256))
+         (dg (/ (- (nth 1 color1-values)
+                   (nth 1 color2-values)) 256))
+         (db (/ (- (nth 2 color1-values)
+                   (nth 2 color2-values)) 256))
+         (red-mean (/ (+ (nth 0 color1-values)
+                         (nth 0 color2-values))
                       2 256)))
     (sqrt (+ (ash (* (+ 512 red-mean) dr dr) -8)
              (* 4 dg dg)
