@@ -2949,10 +2949,15 @@ as arguments."
   "Return a true value if this nick is regarded inactive."
   (when (and circe-reduce-lurker-spam
              (not (circe-server-my-nick-p nick)))
-    (or (circe-channel-user-info nick 'lurker-p t)
-        (> (- (float-time)
-              (circe-channel-user-info nick 'last-active))
-           circe-active-users-timeout))))
+    (cond
+     ((circe-channel-user-info nick 'lurker-p t)
+      t)
+     (circe-active-users-timeout
+      (> (- (float-time)
+            (circe-channel-user-info nick 'last-active))
+         circe-active-users-timeout))
+     (t
+      nil))))
 
 (defun circe-lurker-mark-as-active (nick &optional reason)
   "Mark NICK as active and give it a new `last-active' timestamp.
