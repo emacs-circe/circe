@@ -45,7 +45,7 @@ do_release () {
     declare -A VERSION_DICT
 
     LAST_LCS="$(git_last_tag "lcs-*")"
-    VERSION_DICT[lcs]="$LAST_LCS"
+    VERSION_DICT[lcs]="${LAST_LCS#*-}"
     if git_files_changed "$LAST_LCS" "^lisp/lcs.el"
     then
         mkdir -p release
@@ -54,8 +54,8 @@ do_release () {
         echo "ok."
     fi
 
-    LAST_TRACKING="$(git_last_tag "tracking-*")" 
-    VERSION_DICT[tracking]="$LAST_TRACKING"
+    LAST_TRACKING="$(git_last_tag "tracking-*")"
+    VERSION_DICT[tracking]="${LAST_TRACKING#*-}"
     if git_files_changed "$LAST_TRACKING" "^lisp/tracking.el"
     then
         mkdir -p release
@@ -63,9 +63,9 @@ do_release () {
         elpa_file tracking lisp/tracking.el "$LAST_TRACKING"
         echo "ok."
     fi
- 
+
     LAST_LUI="$(git_last_tag "lui-*")"
-    VERSION_DICT[lui]="$LAST_LUI"
+    VERSION_DICT[lui]="${LAST_LUI#*-}"
     if git_files_changed "$LAST_LUI" "^lisp/lui"
     then
         mkdir -p release
@@ -75,7 +75,7 @@ do_release () {
     fi
 
     LAST_CIRCE="$(git_last_tag "circe-*")"
-    VERSION_DICT[circe]="$LAST_CIRCE"
+    VERSION_DICT[circe]="${LAST_CIRCE#*-}"
     if git_files_changed "$LAST_CIRCE" "^lisp/circe"
     then
         mkdir -p release
@@ -98,14 +98,14 @@ do_release () {
         echo
         echo "git push --tags"
         echo
-        for name in release/circe-*.tar.gz
-        do
-            if [ -f "$name" ]
-            then
-                echo "- Upload $name to "
-                echo "  $UPLOADURL"
-            fi
-        done
+        # for name in release/circe-*.tar.gz
+        # do
+        #     if [ -f "$name" ]
+        #     then
+        #         echo "- Upload $name to "
+        #         echo "  $UPLOADURL"
+        #     fi
+        # done
         for name in release/*.tar release/*.el
         do
             if [ -f "$name" ]
@@ -235,9 +235,9 @@ elpa_tar () {
     DEPENDS="'("
     for package in $DEPENDS_LIST
     do
-        DEPENDS="${DEPENDS}($package \"${VERSION_DICT[$package]}\")"
+        DEPENDS="${DEPENDS}($package \"${VERSION_DICT[$package]}\") "
     done
-    DEPENDS="${DEPENDS})"
+    DEPENDS="${DEPENDS% })"
 
     local OLD_VERSION="$(elisp_version_in "$OLD_TAG" "$FILENAME")"
     local VERSION="$(elisp_version "$FILENAME")"
@@ -304,7 +304,7 @@ elpa_file () {
     fi
 
     GIT_TAG_COMMANDS+=("git tag -a -m \"Released $TAG\" \"$TAG\" HEAD")
-    
+
     cp "$FILENAME" release/
 }
 
