@@ -2949,15 +2949,13 @@ as arguments."
   "Return a true value if this nick is regarded inactive."
   (when (and circe-reduce-lurker-spam
              (not (circe-server-my-nick-p nick)))
-    (cond
-     ((circe-channel-user-info nick 'lurker-p t)
-      t)
-     (circe-active-users-timeout
-      (> (- (float-time)
-            (circe-channel-user-info nick 'last-active))
-         circe-active-users-timeout))
-     (t
-      nil))))
+    (let ((last-active (circe-channel-user-info nick 'last-active)))
+      (or (not last-active)
+          (and last-active
+               circe-active-users-timeout
+               (> (- (float-time)
+                     last-active)
+                  circe-active-users-timeout))))))
 
 (defun circe-lurker-mark-as-active (nick &optional reason)
   "Mark NICK as active and give it a new `last-active' timestamp.
@@ -2966,7 +2964,6 @@ REASON should be `re-join', or nil."
   (let ((last-active (circe-channel-user-info nick 'last-active))
         (was-lurker (circe-lurker-p nick)))
     (circe-channel-user-set-info nick 'last-active (float-time))
-    (circe-channel-user-set-info nick 'lurker-p nil)
     (when circe-reduce-lurker-spam
       (cond
        ((eq reason 're-join)
