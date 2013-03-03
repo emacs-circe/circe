@@ -2876,23 +2876,21 @@ as arguments."
                  (60 "minute")
                  (1 "second")))
         (result nil))
-    (while parts
-      (let* ((tmp (mod duration (caar parts)))
-             (divisor (/ (- duration tmp)
-                         (caar parts))))
-        (setq result (if (not (= tmp duration))
-                         (cons (format "%d %s%s"
-                                       divisor
-                                       (cadr (car parts))
-                                       (if (= divisor 1)
-                                           ""
-                                         "s"))
-                               result))
-              duration tmp
-              parts (cdr parts))))
-    (mapconcat #'identity
-               (nreverse result)
-               " ")))
+    (dolist (part parts)
+      (let* ((seconds-per-part (car part))
+             (description (cadr part))
+             (count (/ duration seconds-per-part)))
+        (when (not (zerop count))
+          (setq result (cons (format "%d %s%s"
+                                     count description
+                                     (if (= count 1) "" "s"))
+                             result)))
+        (setq duration (- duration (* count seconds-per-part)))))
+    (if result
+        (mapconcat #'identity
+                   (nreverse result)
+                   " ")
+      "a moment")))
 
 (circe-set-display-handler "329" 'circe-display-329)
 (defun circe-display-329 (nick user host command args)
