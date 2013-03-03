@@ -45,10 +45,12 @@
 (defvar lui-version "1.1"
   "Lui version string.")
 
-(require 'ring)
-(require 'flyspell)
-(require 'ispell)
 (require 'button)
+(require 'flyspell)
+(require 'help-mode)
+(require 'ispell)
+(require 'ring)
+
 (require 'tracking)
 
 (when (featurep 'xemacs)
@@ -719,7 +721,7 @@ make the whole thing invisible."
     (add-to-invisibility-spec 'lui-fool)))
   ;; For some reason, after this, the display does not always update
   ;; (issue #31). Force an update just in case.
-  (redraw-modeline t))
+  (force-mode-line-update t))
 
 
 ;;;;;;;;;;;;;;;;
