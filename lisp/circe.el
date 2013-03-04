@@ -3127,12 +3127,19 @@ number, it shows the missing people due to that split."
         (if (not entry)
             (circe-server-message (format "No split number %s - use /WL to see a list"
                                           split))
-          (circe-server-message (format "Missing people due to %s:"
-                                        (car entry)))
-          (maphash (lambda (key value)
-                     (circe-server-message
-                      (format "- %s" value)))
-                   (nth 3 entry)))))))
+          (let ((missing nil))
+            (maphash (lambda (key value)
+                       (setq missing (cons value missing)))
+                     (nth 3 entry))
+            (circe-server-message
+             (format "Missing people due to %s: %s"
+                     (car entry)
+                     (mapconcat 'identity
+                                (sort missing
+                                      (lambda (a b)
+                                        (string< (downcase a)
+                                                 (downcase b))))
+                                ", ")))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Default Formatting ;;;
