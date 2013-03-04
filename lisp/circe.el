@@ -2945,15 +2945,30 @@ as arguments."
 
 (defun circe-lurker-p (nick)
   "Return a true value if this nick is regarded inactive."
-  (when (and circe-reduce-lurker-spam
-             (not (circe-server-my-nick-p nick)))
-    (let ((last-active (circe-channel-user-info nick 'last-active)))
-      (or (not last-active)
-          (and last-active
-               circe-active-users-timeout
-               (> (- (float-time)
-                     last-active)
-                  circe-active-users-timeout))))))
+  (let ((last-active (circe-channel-user-info nick 'last-active)))
+    (cond
+     ;; If we do not track lurkers, no one is ever a lurker.
+     ((not circe-reduce-lurker-spam)
+      nil)
+     ;; We ourselves are never lurkers (in this sense).
+     ((circe-server-my-nick-p nick)
+      nil)
+     ;; If someone has never been active, they most definitely *are* a
+     ;; lurker.
+     ((not last-active)
+      t)
+     ;; But if someone has been active, and we mark active users
+     ;; inactive again after a timeout ...
+     (circe-active-users-timeout
+      ;; They are still lurkers if their activity has been too long
+      ;; ago.
+      (> (- (float-time)
+            last-active)
+         circe-active-users-timeout))
+     ;; Otherwise, they have been active and we don't mark active
+     ;; users inactive again, so nope, not a lurker.
+     (t
+      nil))))
 
 (defun circe-lurker-mark-as-active (nick &optional reason)
   "Mark NICK as active and give it a new `last-active' timestamp.
