@@ -2866,7 +2866,6 @@ as arguments."
              (format "Part: %s (%s@%s) - %s"
                      nick user host (cadr args)))))))))
 
-;;; These are here to display the time distance.
 (defun circe-duration-string (duration)
   "Return a description of a DURATION in seconds."
   (let ((parts `((,(* 12 30 24 60 60) "year")
@@ -2875,6 +2874,7 @@ as arguments."
                  (,(* 60 60) "hour")
                  (60 "minute")
                  (1 "second")))
+        (duration (round duration))
         (result nil))
     (dolist (part parts)
       (let* ((seconds-per-part (car part))
