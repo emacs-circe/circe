@@ -33,6 +33,7 @@
 ;;; Code:
 
 (require 'easy-mmode)
+(require 'shorten)
 
 ;;; User customization
 (defgroup tracking nil
@@ -299,36 +300,10 @@ This is usually called via `window-configuration-changed-hook'."
 (defun tracking-shorten (buffers)
   "Shorten BUFFERS according to `tracking-shorten-buffer-names-p'."
   (if tracking-shorten-buffer-names-p
-      (let ((all-buffers (mapcar #'buffer-name (buffer-list))))
-        (mapcar (lambda (buffer)
-                  (tracking-shorten-single buffer
-                                           (remove buffer all-buffers)))
+      (let ((all (shorten-strings (mapcar #'buffer-name (buffer-list)))))
+        (mapcar (lambda (buffer) (cdr (assoc buffer all)))
                 buffers))
     buffers))
-
-(defun tracking-shorten-single (str list)
-  "Return the shortest form of STR which is unambiguous in LIST."
-  (let ((prefix (substring str 0 1))
-        (prefix-length 1)
-        (str-length (length str)))
-    (catch 'return
-      (while (< prefix-length
-                str-length)
-        (setq prefix (substring str 0 prefix-length))
-        (when (not (tracking-find-prefix prefix list))
-          (throw 'return prefix))
-        (setq prefix-length (+ 1 prefix-length)))
-      str)))
-
-(defun tracking-find-prefix (prefix list)
-  "Return non-nil when a string in LIST begins with PREFIX."
-  (let ((rx (concat "^" (regexp-quote prefix))))
-    (catch 'return
-      (while list
-        (when (string-match rx (car list))
-          (throw 'return t))
-        (setq list (cdr list)))
-      nil)))
 
 (defun tracking-any-in (lista listb)
   "Return non-nil when any element in LISTA is in LISTB"
