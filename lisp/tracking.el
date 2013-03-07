@@ -141,31 +141,38 @@ line. The user can cycle through them using
   (cond
    (tracking-mode
     (cond
-     ((and (boundp 'mode-line-modes)
-           (eq tracking-position 'before-modes))
-      (add-to-list 'mode-line-modes
-                   '(t tracking-mode-line-buffers)))
-     ((and (boundp 'mode-line-modes)
-           (eq tracking-position 'after-modes))
-      (add-to-list 'mode-line-modes
-                   '(t tracking-mode-line-buffers)
+     ((eq tracking-position 'before-modes)
+      (let ((head nil)
+            (tail (default-value 'mode-line-format)))
+        (when (not (memq 'tracking-mode-line-buffers tail))
+          (catch 'return
+            (while tail
+              (if (not (eq (car tail)
+                           'mode-line-modes))
+                  (setq head (cons (car tail)
+                                   head)
+                        tail (cdr tail))
+                (setq-default mode-line-format
+                              (append (reverse head)
+                                      '(tracking-mode-line-buffers)
+                                      tail))
+                (throw 'return t)))))))
+     ((eq tracking-position 'after-modes)
+      (add-to-list 'mode-line-misc-info
+                   'tracking-mode-line-buffers))
+     ((eq tracking-position 'end)
+      (add-to-list 'mode-line-misc-info
+                   'tracking-mode-line-buffers
                    t))
      (t
-      ;; Bug in Emacs 21.3, must not have a single symbol alone in
-      ;; `global-mode-string'.
-      (when (not global-mode-string)
-        (setq global-mode-string '("")))
-      (add-to-list 'global-mode-string
-                   'tracking-mode-line-buffers
-                   t)))
+      (error "Invalid value for `tracking-position'" tracking-position)))
     (add-hook 'window-configuration-change-hook
               'tracking-remove-visible-buffers))
    (t
-    (when (boundp 'mode-line-modes)
-      (setq mode-line-modes (delete '(t tracking-mode-line-buffers)
-                                    mode-line-modes)))
-    (setq global-mode-string (delq 'tracking-mode-line-buffers
-                                   global-mode-string))
+    (setq mode-line-misc-info (delq 'tracking-mode-line-buffers
+                                    mode-line-misc-info)
+          mode-line-format (delq 'tracking-mode-line-buffers
+                                 mode-line-format))
     (remove-hook 'window-configuration-change-hook
                  'tracking-remove-visible-buffers))))
 
