@@ -591,7 +591,11 @@ strings."
 (defcustom circe-format-server-rejoin
   "*** Re-join: {nick} ({nick}@{host})"
   "The format for the re-join notice of a user.
-{nick} - The originator."
+{nick} - The originator.
+{user} - User name of the originator.
+{host} - Host name of the originator.
+{departuretime} - Time in seconds when the originator had left.
+{departuredelta} - Description of the time delta since the originator left."
   :type 'string
   :group 'circe-format)
 
