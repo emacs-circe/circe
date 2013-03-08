@@ -166,7 +166,7 @@ line. The user can cycle through them using
                    'tracking-mode-line-buffers
                    t))
      (t
-      (error "Invalid value for `tracking-position'" tracking-position)))
+      (error "Invalid value for `tracking-position' (%s)" tracking-position)))
     (add-hook 'window-configuration-change-hook
               'tracking-remove-visible-buffers))
    (t
