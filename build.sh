@@ -70,7 +70,7 @@ do_release () {
     then
         mkdir -p release
         echo -n "Building tracking ... "
-        elpa_file tracking lisp/tracking.el "$LAST_TRACKING"
+        elpa_file tracking lisp/tracking.el "$LAST_TRACKING" "shorten"
         echo "ok."
     fi
 
@@ -289,6 +289,16 @@ elpa_file () {
     local PROJECT="$1"
     local FILENAME="$2"
     local OLD_TAG="$3"
+    local DEPENDS_LIST="$4" # "lui lcs"
+    if [ ! -z "$DEPENDS_LIST" ]
+    then
+        DEPENDS="("
+        for package in $DEPENDS_LIST
+        do
+            DEPENDS="${DEPENDS}($package \"${VERSION_DICT[$package]}\") "
+        done
+        DEPENDS="${DEPENDS% })"
+    fi
 
     local OLD_VERSION="$(elisp_version_in "$OLD_TAG" "$FILENAME")"
     local VERSION="$(elisp_version "$FILENAME")"
@@ -315,7 +325,15 @@ elpa_file () {
 
     GIT_TAG_COMMANDS+=("git tag -a -m \"Released $TAG\" \"$TAG\" HEAD")
 
-    cp "$FILENAME" release/
+    if [ -z "$DEPENDS" ]
+    then
+        cp "$FILENAME" release/
+    else
+        local DESTFILE=release/"$(basename "$FILENAME")"
+        sed -ne '1,/^;; URL:/p' "$FILENAME" > "$DESTFILE"
+        echo ";; Requirements: $DEPENDS" >> "$DESTFILE"
+        sed -e '1,/^;; URL:/d' "$FILENAME" >> "$DESTFILE"
+    fi
 }
 
 main "$@"
