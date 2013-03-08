@@ -86,16 +86,16 @@
 
 ;; Caller configuration
 ;;
-(defun shorten-split-function (s)
+(defun shorten-split (s)
   (split-string s "\\b" t))
 
-(defun shorten-join-function (lst &optional tail-count)
+(defun shorten-join (lst &optional tail-count)
   (mapconcat #'identity lst ""))
 
 (defun shorten-validate-component-function (str)
   (string-match-p "\\w" str))
 
-(defvar shorten-split-function #'shorten-split-function
+(defvar shorten-split-function #'shorten-split
   "Value should be a function of string->list that breaks a
 string into components.  The default breaks on word-boundaries.
 To get simple prefix shortening, bind this to `list'.
@@ -104,7 +104,7 @@ Users should not generally change the global value of this
 variable; instead, bind it dynamically around calls to
 `shorten-strings'.")
 
-(defvar shorten-join-function #'shorten-join-function
+(defvar shorten-join-function #'shorten-join
   "A function that takes a list of components and a tail-count,
 and returns a joined string.  Tail-count is the number of
 components on the end of the list that are not needed to uniquify
