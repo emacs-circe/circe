@@ -54,6 +54,16 @@ do_release () {
         echo "ok."
     fi
 
+    LAST_SHORTEN="$(git_last_tag "shorten-*")"
+    VERSION_DICT[shorten]="${LAST_SHORTEN#*-}"
+    if git_files_changed "$LAST_SHORTEN" "^lisp/shorten.el"
+    then
+        mkdir -p release
+        echo -n "Building shorten ... "
+        elpa_file shorten lisp/shorten.el "$LAST_SHORTEN"
+        echo "ok."
+    fi
+
     LAST_TRACKING="$(git_last_tag "tracking-*")"
     VERSION_DICT[tracking]="${LAST_TRACKING#*-}"
     if git_files_changed "$LAST_TRACKING" "^lisp/tracking.el"
