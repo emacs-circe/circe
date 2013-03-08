@@ -92,7 +92,7 @@
 (defun shorten-join (lst &optional tail-count)
   (mapconcat #'identity lst ""))
 
-(defun shorten-validate-component-function (str)
+(defun shorten-validate-component (str)
   (string-match-p "\\w" str))
 
 (defvar shorten-split-function #'shorten-split
@@ -116,8 +116,7 @@ Users should not generally change the global value of this
 variable; instead, bind it dynamically around calls to
 `shorten-strings'.")
 
-(defvar shorten-validate-component-function
-  #'shorten-validate-component-function
+(defvar shorten-validate-component-function #'shorten-validate-component
   "Predicate that returns t if a proposed shortened form of a
 single component is acceptable, nil if a longer one should be
 tried.  The default validates only when the candidate contains at
