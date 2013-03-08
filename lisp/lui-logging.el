@@ -148,7 +148,9 @@ file."
 (defun lui-logging-enqueue (file-name text)
   "Given a filename, push text onto its queue, and tickle the
 timer, if necessary."
-  (push text (gethash file-name lui-pending-logs))
+  (puthash file-name
+           (cons text (gethash file-name lui-pending-logs))
+           lui-pending-logs)
   (when (null lui-logging-timer)
     (setq lui-logging-timer
           (run-with-timer lui-logging-flush-delay nil
