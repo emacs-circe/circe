@@ -1785,7 +1785,8 @@ received."
    ((string= command "NICK")
     (dolist (buf (circe-chat-buffers))
       (with-current-buffer buf
-        (when (eq major-mode 'circe-channel-mode)
+        (when (and (eq major-mode 'circe-channel-mode)
+                   (circe-channel-user-p nick))
           (circe-channel-rename-user nick (car args)))
         (when (and (eq major-mode 'circe-query-mode)
                    (circe-case-fold-string= nick
@@ -1874,26 +1875,29 @@ This list is regularly cleaned up, see
   "Rename the user from nick OLD to NEW."
   (when circe-channel-users
     (circe-channel-expire-recent-users)
-    (let* ((old-data (gethash old circe-channel-users))
-           (recent-data (gethash new circe-channel-recent-users))
-           (new-data (or recent-data
-                         old-data
-                         (make-hash-table)))
-           (last-active (max (if old-data
-                                 (gethash 'last-active old-data 0)
-                               0)
-                             (if recent-data
-                                 (gethash 'last-active recent-data 0)
-                               0)
-                             0)))
-      (when old-data
-        (puthash 'joined (gethash 'joined old-data) new-data))
-      (when recent-data
-        (remhash 'departure recent-data))
-      (when (> last-active 0)
-        (puthash 'last-active last-active new-data))
+    (let (new-data)
+      (cond
+       ;; The new nick has recently left, assume this user returned
+       ;; with a new nick and just got back.
+       ((gethash new circe-channel-recent-users)
+        (setq new-data (gethash new circe-channel-recent-users))
+        (remhash new circe-channel-recent-users)
+        (remhash 'departure new-data)
+        ;; But they might have spoken with the new nick already
+        (let ((new-last-active (gethash 'last-active new-data))
+              (old-last-active (circe-channel-user-info old 'last-active)))
+          (when (and new-last-active
+                     old-last-active
+                     (> old-last-active new-last-active))
+            (puthash 'last-active old-last-active new-data))))
+       ;; The new nick is not known, so just copy the old data
+       ((gethash old circe-channel-users)
+        (setq new-data (gethash old circe-channel-users)))
+       ;; This shouldn't happen
+       (t
+        (error "Renaming %S to %S: Not found in current users?" old new)))
+      ;; Now put the new value into the channel users table
       (remhash old circe-channel-users)
-      (remhash new circe-channel-recent-users)
       (puthash new new-data circe-channel-users))))
 
 (defun circe-channel-expire-recent-users ()
@@ -2867,12 +2871,7 @@ as arguments."
       (when (not (circe-lurker-p nick))
         (circe-server-message
          (format "Nick change: %s (%s@%s) is now known as %s"
-                 nick user host (car args))))
-      (when circe-channel-users
-        (let ((data (gethash nick circe-channel-users nil)))
-          (when data
-            (remhash nick circe-channel-users)
-            (puthash (car args) data circe-channel-users)))))))
+                 nick user host (car args)))))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick user host command args)
