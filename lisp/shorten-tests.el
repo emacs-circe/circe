@@ -70,7 +70,7 @@
                    ("bar-quux" . "b-q")))))
 
 (defun shorten-tests-tail-count-join-function (lst tail-count)
-  (concat (shorten-join-function lst)
+  (concat (shorten-join lst)
           "{" (number-to-string tail-count) "}"))
 
 (ert-deftest shorten-strings-tail-count ()
