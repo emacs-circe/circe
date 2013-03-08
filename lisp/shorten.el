@@ -5,6 +5,7 @@
 ;; Version: 0.1
 ;; Keywords: extensions
 ;; Author: John J Foerch <jjfoerch@earthlink.net>
+;; URL: https://github.com/jorgenschaefer/circe/blob/master/lisp/shorten.el
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
