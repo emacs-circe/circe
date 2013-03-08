@@ -53,9 +53,6 @@
 
 (require 'tracking)
 
-(when (featurep 'xemacs)
-  (require 'lui-xemacs))
-
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Customization ;;;
@@ -432,11 +429,6 @@ It can be customized for an application by specifying a
   (set-marker lui-output-marker (point-max))
   (add-hook 'window-scroll-functions 'lui-scroll-window nil t)
   (add-hook 'post-command-hook 'lui-scroll-post-command)
-  (when (fboundp 'make-local-hook)
-    ;; needed for xemacs, as it does not treat the LOCAL argument to
-    ;; `add-hook' the same as GNU Emacs. It's obsolete in GNU Emacs
-    ;; since 21.1.
-    (make-local-hook 'change-major-mode-hook))
   (add-hook 'change-major-mode-hook
             'lui-change-major-mode
             nil t)
@@ -877,12 +869,6 @@ The positions are adjusted by SHIFT positions."
                              ,(nth 4 entry)
                              .
                              ,(nthcdr 5 entry)))
-                    ;; XEmacs: (<extent> start end)
-                    ((and (fboundp 'extentp)
-                          (extentp (car entry)))
-                     (list (nth 0 entry)
-                           (funcall adjust-position (nth 1 entry))
-                           (funcall adjust-position (nth 2 entry))))
                     (t
                      entry)))))
     (mapcar adjust list)))
@@ -912,9 +898,6 @@ unexpecting user.")
                                         field lui-prompt
                                         keymap ,lui-prompt-map
                                         front-sticky t
-                                        ;; XEmacs stuff.
-                                        start-open t
-                                        end-open t
                                         ))))))
 
 (defun lui-prompt-end-of-line (&optional N)
@@ -1185,9 +1168,7 @@ which see for an explanation of the argument BUFFER-STRING."
   (when lui-read-only-output-p
     (add-text-properties (point-min) lui-output-marker
                          '(read-only t
-                           front-sticky t
-                           ;; XEmacs stuff.
-                           start-open nil))))
+                           front-sticky t))))
 
 
 (provide 'lui)

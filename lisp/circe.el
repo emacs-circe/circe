@@ -51,8 +51,6 @@
 (require 'lui-irc-colors)
 (enable-lui-irc-colors)
 
-(require 'circe-fixes)
-
 (defgroup circe nil
   "Yet Another Emacs IRC Client."
   :prefix "circe-"
@@ -2438,9 +2436,7 @@ Arguments are IGNORED."
   (circe-command-SAY (format (concat "I'm using Circe version %s "
                                      "with %s %s (of %s)")
                              circe-version
-                             (if (featurep 'xemacs)
-                                 "XEmacs" ; I have no idea how
-                               "GNU Emacs")
+                             "GNU Emacs"
                              emacs-version
                              (format-time-string "%Y-%m-%d"
                                                  emacs-build-time))))
