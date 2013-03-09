@@ -934,8 +934,8 @@ See `circe-server-max-reconnect-attempts'.")
   (with-circe-server-buffer
     (when (or (called-interactively-p 'any) ;; Always reconnect if the user wants it
               (not circe-server-max-reconnect-attempts)
-              (< circe-server-reconnect-attempts
-                 circe-server-max-reconnect-attempts))
+              (<= circe-server-reconnect-attempts
+                  circe-server-max-reconnect-attempts))
       (setq circe-server-reconnect-attempts (+ circe-server-reconnect-attempts
                                                1))
       (when circe-server-process
