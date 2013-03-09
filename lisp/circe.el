@@ -1921,6 +1921,11 @@ Any user who has a departure-time older than
    ((eq major-mode 'circe-query-mode)
     (circe-case-fold-string= nick circe-chat-target))))
 
+(defun circe-channel-recent-user-p (nick)
+  "Return non-nil when NICK belongs to a user who recently left."
+  (when circe-channel-recent-users
+    (gethash nick circe-channel-recent-users)))
+
 (defun circe-channel-user-info (nick option &optional default)
   "Return option OPTION for the nick NICK in the current channel.
 
@@ -2864,10 +2869,19 @@ as arguments."
                (car args)))))
   (dolist (buf (circe-user-channels nick))
     (with-current-buffer buf
-      (when (not (circe-lurker-p nick))
+      (cond
+       ((circe-lurker-p nick)
+        ;; Don't show lurker.
+        nil)
+       ;; Probably a re-gain for a missing nick
+       ((circe-channel-recent-user-p (car args))
+        (circe-server-message
+         (format "Nick re-gain: %s (%s@%s) is now known as %s"
+                 nick user host (car args))))
+       (t
         (circe-server-message
          (format "Nick change: %s (%s@%s) is now known as %s"
-                 nick user host (car args)))))))
+                 nick user host (car args))))))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick user host command args)
