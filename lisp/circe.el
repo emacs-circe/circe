@@ -1884,9 +1884,11 @@ This list is regularly cleaned up, see
         ;; But they might have spoken with the new nick already
         (let ((new-last-active (gethash 'last-active new-data))
               (old-last-active (circe-channel-user-info old 'last-active)))
-          (when (and new-last-active
-                     old-last-active
-                     (> old-last-active new-last-active))
+          (when (or (and new-last-active
+                         old-last-active
+                         (> old-last-active new-last-active))
+                    (and (not new-last-active)
+                         old-last-active))
             (puthash 'last-active old-last-active new-data))))
        ;; The new nick is not known, so just copy the old data
        ((gethash old circe-channel-users)
