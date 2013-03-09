@@ -1876,8 +1876,8 @@ This list is regularly cleaned up, see
     (let (new-data)
       (cond
        ;; The new nick has recently left, assume this user returned
-       ;; with a new nick and just got back.
-       ((gethash new circe-channel-recent-users)
+       ;; with a new nick and just got the old one back.
+       ((circe-channel-user-nick-regain-p old new)
         (setq new-data (gethash new circe-channel-recent-users))
         (remhash new circe-channel-recent-users)
         (remhash 'departure new-data)
@@ -1897,6 +1897,14 @@ This list is regularly cleaned up, see
       ;; Now put the new value into the channel users table
       (remhash old circe-channel-users)
       (puthash new new-data circe-channel-users))))
+
+(defun circe-channel-user-nick-regain-p (old new)
+  "Return true if a nick change from OLD to NEW constitutes a nick regain.
+
+Currently, this uses only the existence of OLD in the recent
+users, which is a pretty rough heuristic, but it works."
+  (and (circe-channel-user-p old)
+       (circe-channel-recent-user-p old)))
 
 (defun circe-channel-expire-recent-users ()
   "Clean up old users from the recent users table.
@@ -2871,10 +2879,8 @@ as arguments."
     (with-current-buffer buf
       (cond
        ((circe-lurker-p nick)
-        ;; Don't show lurker.
         nil)
-       ;; Probably a re-gain for a missing nick
-       ((circe-channel-recent-user-p (car args))
+       ((circe-channel-user-nick-regain-p nick (car args))
         (circe-server-message
          (format "Nick re-gain: %s (%s@%s) is now known as %s"
                  nick user host (car args))))
