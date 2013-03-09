@@ -301,7 +301,13 @@ This is usually called via `window-configuration-changed-hook'."
   "Shorten BUFFERS according to `tracking-shorten-buffer-names-p'."
   (if tracking-shorten-buffer-names-p
       (let ((all (shorten-strings (mapcar #'buffer-name (buffer-list)))))
-        (mapcar (lambda (buffer) (cdr (assoc buffer all)))
+        (mapcar (lambda (buffer)
+                  (let ((short (cdr (assoc buffer all))))
+                    (set-text-properties
+                     0 (length short)
+                     (text-properties-at 0 buffer)
+                     short)
+                    short))
                 buffers))
     buffers))
 
