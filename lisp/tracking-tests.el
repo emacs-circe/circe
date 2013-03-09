@@ -1,4 +1,4 @@
-;;; Automated tests for shorten.el
+;;; Automated tests for tracking.el
 
 (require 'ert)
 (require 'tracking)
