@@ -479,6 +479,14 @@ This is run from a 001 (RPL_WELCOME) message handler."
   :type 'hook
   :group 'circe)
 
+(defcustom circe-default-properties-alist ()
+  "Alist mapping hostmasks and predicates to property lists to be
+added to matching users' messages by `circe-display'."
+  :type '(alist
+          :key-type (or regexp function)
+          :value-type (plist))
+  :group 'circe)
+
 ;;;;;;;;;;;;;;;
 ;;; Formats ;;;
 ;;;;;;;;;;;;;;;
@@ -1308,7 +1316,7 @@ It is always possible to use the mynick or target formats."
                 entry)))
             keywords)))
 
-;;; There really ought to be a hook for this!
+;; There really ought to be a hook for this!
 (defadvice select-window (after circe-server-track-select-window
                                 (window &optional norecord))
   "Remember the current buffer as the last active buffer.
@@ -1473,145 +1481,6 @@ initialize a new buffer if none exists."
         (when (eq major-mode 'circe-channel-mode)
           (setq buffers (cons buf buffers)))))
     buffers))
-
-;;;;;;;;;;;;;;;;;;;;;;;
-;;; Ignore Handling ;;;
-;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun circe-ignore-matches-p (nick user host command args patterns)
-  "Check if a given command does match an ignore pattern.
-
-A pattern matches if it either matches the user NICK!USER@HOST,
-or if COMMAND is a PRIVMSG and it matches the first word in the
-argument text in ARGS.
-
-PATTERNS should be the list of regular expressions."
-  (let ((string (concat nick "!" user "@" host))
-        (target (when (and (string= command "PRIVMSG")
-                           (not (circe-server-my-nick-p (car args)))
-                           (string-match "^\\([^ ]*\\)[:, ]" (cadr args)))
-                  (match-string 1 (cadr args)))))
-    (catch 'return
-      (dolist (regex patterns)
-        (when (string-match regex string)
-          (throw 'return t))
-        (when (and (stringp target)
-                   (string-match regex target))
-          (throw 'return t)))
-      nil)))
-
-(defun circe-ignored-p (nick user host command args)
-  "True if this user or message is being ignored.
-
-See `circe-ignore-functions' and `circe-ignore-list'.
-
-NICK, USER and HOST should be the sender of a the command
-COMMAND, which had the arguments ARGS."
-  (or (run-hook-with-args-until-success 'circe-ignore-functions
-                                        nick user host
-                                        command args)
-      (circe-ignore-matches-p nick user host command args
-                              circe-ignore-list)))
-
-(defun circe-fool-p (nick user host command args)
-  "True if this user or message is a fool.
-
-See `circe-fool-list'.
-
-NICK, USER and HOST should be the sender of a the command
-COMMAND, which had the arguments ARGS."
-  (circe-ignore-matches-p nick user host command args
-                          circe-fool-list))
-
-(defun circe-command-IGNORE (line)
-  "Add the regex on LINE to the `circe-ignore-list'."
-  (with-current-buffer (circe-server-last-active-buffer)
-    (cond
-     ((string-match "\\S-+" line)
-      (let ((regex (match-string 0 line)))
-        (add-to-list 'circe-ignore-list regex)
-        (circe-server-message (format "Ignore list, meet %s"
-                                      regex))))
-     ((not circe-ignore-list)
-      (circe-server-message "Your ignore list is empty"))
-     (t
-      (circe-server-message "Your ignore list:")
-      (dolist (regex circe-ignore-list)
-        (circe-server-message (format "- %s" regex)))))))
-
-(defun circe-command-UNIGNORE (line)
-  "Remove the entry LINE from `circe-ignore-list'."
-  (with-current-buffer (circe-server-last-active-buffer)
-    (cond
-     ((string-match "\\S-+" line)
-      (let ((regex (match-string 0 line)))
-        (setq circe-ignore-list (delete regex circe-ignore-list))
-        (circe-server-message (format "Ignore list forgot about %s"
-                                      regex))))
-     (t
-      (circe-server-message
-       "Who do you want to unignore? UNIGNORE requires one argument")))))
-
-(defun circe-command-FOOL (line)
-  "Add the regex on LINE to the `circe-fool-list'."
-  (with-current-buffer (circe-server-last-active-buffer)
-    (cond
-     ((string-match "\\S-+" line)
-      (let ((regex (match-string 0 line)))
-        (add-to-list 'circe-fool-list regex)
-        (circe-server-message (format "Recognizing %s as a fool"
-                                      regex))))
-     ((not circe-fool-list)
-      (circe-server-message "Your do not know any fools"))
-     (t
-      (circe-server-message "Your list of fools:")
-      (dolist (regex circe-fool-list)
-        (circe-server-message (format "- %s" regex)))))))
-
-(defun circe-command-UNFOOL (line)
-  "Remove the entry LINE from `circe-fool-list'."
-  (with-current-buffer (circe-server-last-active-buffer)
-    (cond
-     ((string-match "\\S-+" line)
-      (let ((regex (match-string 0 line)))
-        (setq circe-fool-list (delete regex circe-fool-list))
-        (circe-server-message (format "Assuming %s is not a fool anymore"
-                                      regex))))
-     (t
-      (circe-server-message
-       "No one is not a fool anymore? UNFOOL requires one argument")))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Default Properties ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defcustom circe-default-properties-alist ()
-  "Alist mapping hostmasks and predicates to property lists to be
-added to matching users' messages by `circe-display'."
-  :type '(alist
-          :key-type (or regexp function)
-          :value-type (plist))
-  :group 'circe)
-
-(defun circe-default-properties (nick user host command args)
-  "Semipredicate, returns a default property list if this user
-matches an entry in `circe-default-properties-alist' or
-`circe-fool-p', which see."
-  (let ((string (concat nick "!" user "@" host))
-        (alist (cons '(circe-fool-p face circe-fool-face
-                                    lui-fool t)
-                     circe-default-properties-alist)))
-    (catch 'return
-      (dolist (entry alist)
-        (let ((p (car entry))
-              (props (cdr entry)))
-          (when (or (and (stringp p) (string-match p string))
-                    (and (functionp p)
-                         (funcall p nick user host command args)))
-            (throw 'return props))))
-      nil)))
-
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Chat Buffers ;;;
@@ -2023,6 +1892,57 @@ and no other nicks are."
                (circe-channel-remove-user nick)))
            circe-channel-users)
   (setq circe-channel-users-synchronized t))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Join/Part Spam Protection
+
+(defun circe-lurker-p (nick)
+  "Return a true value if this nick is regarded inactive."
+  (let ((last-active (circe-channel-user-info nick 'last-active)))
+    (cond
+     ;; If we do not track lurkers, no one is ever a lurker.
+     ((not circe-reduce-lurker-spam)
+      nil)
+     ;; We ourselves are never lurkers (in this sense).
+     ((circe-server-my-nick-p nick)
+      nil)
+     ;; Someone who isn't even on the channel (e.g. NickServ) isn't a
+     ;; lurker, either.
+     ((not (circe-channel-user-p nick))
+      nil)
+     ;; If someone has never been active, they most definitely *are* a
+     ;; lurker.
+     ((not last-active)
+      t)
+     ;; But if someone has been active, and we mark active users
+     ;; inactive again after a timeout ...
+     (circe-active-users-timeout
+      ;; They are still lurkers if their activity has been too long
+      ;; ago.
+      (> (- (float-time)
+            last-active)
+         circe-active-users-timeout))
+     ;; Otherwise, they have been active and we don't mark active
+     ;; users inactive again, so nope, not a lurker.
+     (t
+      nil))))
+
+(defun circe-lurker-display-active (nick user host)
+  "Show that this user is active if they are a lurker."
+  (when (and (circe-lurker-p nick)
+             ;; If we saw them when we joined the channel, no need to
+             ;; say "they're suddenly active!!111one".
+             (not (circe-channel-user-info nick 'seen-on-initial-names)))
+    (let ((joined (circe-channel-user-info nick 'joined)))
+      (circe-display 'circe-format-server-lurker-activity
+                     :nick nick
+                     :user user
+                     :host host
+                     :jointime joined
+                     :joindelta (circe-duration-string
+                                 (- (float-time)
+                                    joined))))))
+
 
 
 ;;;;;;;;;;;;;;;
@@ -2469,50 +2389,9 @@ Arguments are IGNORED."
                              (format-time-string "%Y-%m-%d"
                                                  emacs-build-time))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Display Handlers ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun circe-set-display-handler (command handler)
-  "Set the display handler for COMMAND to HANDLER.
-
-A handler is either a function or a list.
-
-A function gets called in the server buffer with five arguments,
-NICK, USER, HOST, COMMAND and ARGS, and is expected to display
-this message however it wants.
-
-Alternatively, the handler can be a list of two or three
-elements:
-
-  target   - The target of this message
-  format   - The format for this string
-
-The target can be any of:
-
-  'active  - The last active buffer of this server
-  'nick    - The nick who sent this message
-  'server  - The server buffer for this server
-  number   - The index of the argument of the target
-
-The format is passed to `lui-format'. Possible format string
-substitutions are {mynick}, {target}, {nick}, {user}, {host},
-{origin}, {command}, {target}, and indexed arguments for the
-arguments to the IRC message."
-  (when (not circe-display-table)
-    (setq circe-display-table (make-hash-table :test 'equal)))
-  (puthash command handler circe-display-table))
-
-(defun circe-display-handler (command)
-  "Return the display handler for COMMAND.
-
-See `circe-set-display-handler' for more information."
-  (when circe-display-table
-    (gethash command circe-display-table)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Message Handlers ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; IRC Protocol Handling ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun circe-server-handler (line)
   "Handle LINE from the server."
@@ -2546,14 +2425,50 @@ See `circe-set-display-handler' for more information."
           (when (not *circe-ignored-p*)
             (circe-server-display-message nick user host command args))
           (circe-server-handle-message nick user host command args))
-      (circe-server-internal-handler nick user host command args))))
+      (circe-server-handle-message-internal nick user host command args))))
+
+(defun circe-server-parse-line (line)
+  "Parse LINE as a line sent by the IRC server.
+This returns a vector with five elements: The nick, user, host,
+command, and args of the message."
+  (let ((nick nil)
+        (user nil)
+        (host nil)
+        (command nil)
+        (args nil))
+    (with-temp-buffer
+      (insert line)
+      (goto-char (point-min))
+      (cond
+       ((looking-at "^:\\([^! ]*\\)!\\([^@ ]*\\)@\\([^ ]*\\) ")
+        (setq nick (match-string 1)
+              user (match-string 2)
+              host (match-string 3))
+        (replace-match ""))
+       ((looking-at "^:\\([^ ]*\\) ")
+        (setq nick (match-string 1))
+        (replace-match "")))
+      (when (looking-at "[^ ]*")
+        (setq command (match-string 0))
+        (replace-match ""))
+      (if (re-search-forward " :\\(.*\\)" nil t)
+          (progn
+            (setq args (list (match-string 1)))
+            (replace-match ""))
+        (goto-char (point-max)))
+      (while (re-search-backward " " nil t)
+        (setq args (cons (buffer-substring (+ 1 (point))
+                                           (point-max))
+                         args))
+        (delete-region (point) (point-max))))
+    (vector nick user host command args)))
 
 (defun circe-server-display-message (nick user host command args)
   "Display an IRC message.
 
 NICK, USER and HOST specify the originator of COMMAND with ARGS
 as arguments."
-  (let ((display (circe-display-handler command)))
+  (let ((display (circe-get-display-handler command)))
     (cond
      ;; Functions get called
      ((functionp display)
@@ -2623,21 +2538,6 @@ as arguments."
                               args
                               " "))))))))))
 
-(defun circe-server-handle-message (nick user host command args)
-  "Handle an IRC message.
-
-Message handlers are meant to process IRC messages in a way that
-primarily does not display anything, as to avoid multiple
-displays for the sameg message. This allows for bookkeeping and
-other such handlers.
-
-Please note that message handlers are called even if the user is
-ignored."
-  (dolist (function (circe-get-message-handlers command))
-    (funcall function nick user host command args))
-  (run-hook-with-args 'circe-receive-message-functions
-                      nick user host command args))
-
 (defun circe-display-target (target nick user host command args)
   "Return the target buffer and name.
 The buffer might be nil if it is not alive.
@@ -2664,43 +2564,22 @@ as arguments."
    (t
     (error "Bad target in format string: %s" target))))
 
-(defun circe-server-parse-line (line)
-  "Parse LINE as a line sent by the IRC server.
-This returns a vector with five elements: The nick, user, host,
-command, and args of the message."
-  (let ((nick nil)
-        (user nil)
-        (host nil)
-        (command nil)
-        (args nil))
-    (with-temp-buffer
-      (insert line)
-      (goto-char (point-min))
-      (cond
-       ((looking-at "^:\\([^! ]*\\)!\\([^@ ]*\\)@\\([^ ]*\\) ")
-        (setq nick (match-string 1)
-              user (match-string 2)
-              host (match-string 3))
-        (replace-match ""))
-       ((looking-at "^:\\([^ ]*\\) ")
-        (setq nick (match-string 1))
-        (replace-match "")))
-      (when (looking-at "[^ ]*")
-        (setq command (match-string 0))
-        (replace-match ""))
-      (if (re-search-forward " :\\(.*\\)" nil t)
-          (progn
-            (setq args (list (match-string 1)))
-            (replace-match ""))
-        (goto-char (point-max)))
-      (while (re-search-backward " " nil t)
-        (setq args (cons (buffer-substring (+ 1 (point))
-                                           (point-max))
-                         args))
-        (delete-region (point) (point-max))))
-    (vector nick user host command args)))
+(defun circe-server-handle-message (nick user host command args)
+  "Handle an IRC message.
 
-(defun circe-server-internal-handler (nick user host command args)
+Message handlers are meant to process IRC messages in a way that
+primarily does not display anything, as to avoid multiple
+displays for the sameg message. This allows for bookkeeping and
+other such handlers.
+
+Please note that message handlers are called even if the user is
+ignored."
+  (dolist (function (circe-get-message-handlers command))
+    (funcall function nick user host command args))
+  (run-hook-with-args 'circe-receive-message-functions
+                      nick user host command args))
+
+(defun circe-server-handle-message-internal (nick user host command args)
   "Handle this message for internal bookkeeping.
 
 This does mandatory client-side bookkeeping of the server state.
@@ -2741,8 +2620,52 @@ as arguments."
              (string= command "437"))) ; ERRL_UNAVAILRESOURCE
     (circe-server-send (format "NICK %s" (funcall circe-nick-next-function
                                                   (cadr args))))))
-  (circe-channel-message-handler nick user host command args)
-  )
+  (circe-channel-message-handler nick user host command args))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Accessing Display Handlers ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun circe-set-display-handler (command handler)
+  "Set the display handler for COMMAND to HANDLER.
+
+A handler is either a function or a list.
+
+A function gets called in the server buffer with five arguments,
+NICK, USER, HOST, COMMAND and ARGS, and is expected to display
+this message however it wants.
+
+Alternatively, the handler can be a list of two or three
+elements:
+
+  target   - The target of this message
+  format   - The format for this string
+
+The target can be any of:
+
+  'active  - The last active buffer of this server
+  'nick    - The nick who sent this message
+  'server  - The server buffer for this server
+  number   - The index of the argument of the target
+
+The format is passed to `lui-format'. Possible format string
+substitutions are {mynick}, {target}, {nick}, {user}, {host},
+{origin}, {command}, {target}, and indexed arguments for the
+arguments to the IRC message."
+  (when (not circe-display-table)
+    (setq circe-display-table (make-hash-table :test 'equal)))
+  (puthash command handler circe-display-table))
+
+(defun circe-get-display-handler (command)
+  "Return the display handler for COMMAND.
+
+See `circe-set-display-handler' for more information."
+  (when circe-display-table
+    (gethash command circe-display-table)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Accessing Message Handlers ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun circe-add-message-handler (command handler)
   "Add HANDLER to the list of functions called on COMMAND.
@@ -2763,10 +2686,138 @@ See `circe-add-message-handler' for more information."
   (when circe-message-handler-table
     (gethash command circe-message-handler-table)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Default Properties ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;;;;;;
-;;; CTCP Functions ;;;
-;;;;;;;;;;;;;;;;;;;;;;
+(defun circe-default-properties (nick user host command args)
+  "Semipredicate, returns a default property list if this user
+matches an entry in `circe-default-properties-alist' or
+`circe-fool-p', which see."
+  (let ((string (concat nick "!" user "@" host))
+        (alist (cons '(circe-fool-p face circe-fool-face
+                                    lui-fool t)
+                     circe-default-properties-alist)))
+    (catch 'return
+      (dolist (entry alist)
+        (let ((p (car entry))
+              (props (cdr entry)))
+          (when (or (and (stringp p) (string-match p string))
+                    (and (functionp p)
+                         (funcall p nick user host command args)))
+            (throw 'return props))))
+      nil)))
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;;; Ignore Handling ;;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun circe-ignore-matches-p (nick user host command args patterns)
+  "Check if a given command does match an ignore pattern.
+
+A pattern matches if it either matches the user NICK!USER@HOST,
+or if COMMAND is a PRIVMSG and it matches the first word in the
+argument text in ARGS.
+
+PATTERNS should be the list of regular expressions."
+  (let ((string (concat nick "!" user "@" host))
+        (target (when (and (string= command "PRIVMSG")
+                           (not (circe-server-my-nick-p (car args)))
+                           (string-match "^\\([^ ]*\\)[:, ]" (cadr args)))
+                  (match-string 1 (cadr args)))))
+    (catch 'return
+      (dolist (regex patterns)
+        (when (string-match regex string)
+          (throw 'return t))
+        (when (and (stringp target)
+                   (string-match regex target))
+          (throw 'return t)))
+      nil)))
+
+(defun circe-ignored-p (nick user host command args)
+  "True if this user or message is being ignored.
+
+See `circe-ignore-functions' and `circe-ignore-list'.
+
+NICK, USER and HOST should be the sender of a the command
+COMMAND, which had the arguments ARGS."
+  (or (run-hook-with-args-until-success 'circe-ignore-functions
+                                        nick user host
+                                        command args)
+      (circe-ignore-matches-p nick user host command args
+                              circe-ignore-list)))
+
+(defun circe-fool-p (nick user host command args)
+  "True if this user or message is a fool.
+
+See `circe-fool-list'.
+
+NICK, USER and HOST should be the sender of a the command
+COMMAND, which had the arguments ARGS."
+  (circe-ignore-matches-p nick user host command args
+                          circe-fool-list))
+
+(defun circe-command-IGNORE (line)
+  "Add the regex on LINE to the `circe-ignore-list'."
+  (with-current-buffer (circe-server-last-active-buffer)
+    (cond
+     ((string-match "\\S-+" line)
+      (let ((regex (match-string 0 line)))
+        (add-to-list 'circe-ignore-list regex)
+        (circe-server-message (format "Ignore list, meet %s"
+                                      regex))))
+     ((not circe-ignore-list)
+      (circe-server-message "Your ignore list is empty"))
+     (t
+      (circe-server-message "Your ignore list:")
+      (dolist (regex circe-ignore-list)
+        (circe-server-message (format "- %s" regex)))))))
+
+(defun circe-command-UNIGNORE (line)
+  "Remove the entry LINE from `circe-ignore-list'."
+  (with-current-buffer (circe-server-last-active-buffer)
+    (cond
+     ((string-match "\\S-+" line)
+      (let ((regex (match-string 0 line)))
+        (setq circe-ignore-list (delete regex circe-ignore-list))
+        (circe-server-message (format "Ignore list forgot about %s"
+                                      regex))))
+     (t
+      (circe-server-message
+       "Who do you want to unignore? UNIGNORE requires one argument")))))
+
+(defun circe-command-FOOL (line)
+  "Add the regex on LINE to the `circe-fool-list'."
+  (with-current-buffer (circe-server-last-active-buffer)
+    (cond
+     ((string-match "\\S-+" line)
+      (let ((regex (match-string 0 line)))
+        (add-to-list 'circe-fool-list regex)
+        (circe-server-message (format "Recognizing %s as a fool"
+                                      regex))))
+     ((not circe-fool-list)
+      (circe-server-message "Your do not know any fools"))
+     (t
+      (circe-server-message "Your list of fools:")
+      (dolist (regex circe-fool-list)
+        (circe-server-message (format "- %s" regex)))))))
+
+(defun circe-command-UNFOOL (line)
+  "Remove the entry LINE from `circe-fool-list'."
+  (with-current-buffer (circe-server-last-active-buffer)
+    (cond
+     ((string-match "\\S-+" line)
+      (let ((regex (match-string 0 line)))
+        (setq circe-fool-list (delete regex circe-fool-list))
+        (circe-server-message (format "Assuming %s is not a fool anymore"
+                                      regex))))
+     (t
+      (circe-server-message
+       "No one is not a fool anymore? UNFOOL requires one argument")))))
+
+;;;;;;;;;;;;;;;;;;;;;
+;;; CTCP Handling ;;;
+;;;;;;;;;;;;;;;;;;;;;
 
 (circe-set-display-handler "CTCP-ACTION" 'circe-ctcp-display-ACTION)
 (defun circe-ctcp-display-ACTION (nick user host command args)
@@ -2903,10 +2954,9 @@ as arguments."
                                     (format " to %s" (car args)))
                                   nick user host))))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Display Functions ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Display Handlers ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
 
 (circe-set-display-handler "PING" 'circe-display-PING)
 (defun circe-display-PING (nick user host command args)
@@ -3108,59 +3158,6 @@ as arguments."
                (circe-duration-string (- (float-time)
                                          time)))))))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Join/Part Spam Protections ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun circe-lurker-p (nick)
-  "Return a true value if this nick is regarded inactive."
-  (let ((last-active (circe-channel-user-info nick 'last-active)))
-    (cond
-     ;; If we do not track lurkers, no one is ever a lurker.
-     ((not circe-reduce-lurker-spam)
-      nil)
-     ;; We ourselves are never lurkers (in this sense).
-     ((circe-server-my-nick-p nick)
-      nil)
-     ;; Someone who isn't even on the channel (e.g. NickServ) isn't a
-     ;; lurker, either.
-     ((not (circe-channel-user-p nick))
-      nil)
-     ;; If someone has never been active, they most definitely *are* a
-     ;; lurker.
-     ((not last-active)
-      t)
-     ;; But if someone has been active, and we mark active users
-     ;; inactive again after a timeout ...
-     (circe-active-users-timeout
-      ;; They are still lurkers if their activity has been too long
-      ;; ago.
-      (> (- (float-time)
-            last-active)
-         circe-active-users-timeout))
-     ;; Otherwise, they have been active and we don't mark active
-     ;; users inactive again, so nope, not a lurker.
-     (t
-      nil))))
-
-(defun circe-lurker-display-active (nick user host)
-  "Show that this user is active if they are a lurker."
-  (when (and (circe-lurker-p nick)
-             ;; If we saw them when we joined the channel, no need to
-             ;; say "they're suddenly active!!111one".
-             (not (circe-channel-user-info nick 'seen-on-initial-names)))
-    (let ((joined (circe-channel-user-info nick 'joined)))
-      (circe-display 'circe-format-server-lurker-activity
-                     :nick nick
-                     :user user
-                     :host host
-                     :jointime joined
-                     :joindelta (circe-duration-string
-                                 (- (float-time)
-                                    joined))))))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Netsplit Handling ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3330,9 +3327,9 @@ number, it shows the missing people due to that split."
                                                  (downcase b))))
                                 ", ")))))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Default Formatting ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Simple Format Specifiers ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (dolist (fmt '(("INVITE" active "Invite: {origin} invites you to {1}")
                ("KICK" 0 "Kick: {1} kicked by {origin}: {2}")
@@ -3465,11 +3462,10 @@ number, it shows the missing people due to that split."
 
 (defun circe-set-message-target (command target)
   "Set the target of TYPE in `circe-format-strings' to TARGET."
-  (let ((handler (circe-display-handler command)))
+  (let ((handler (circe-get-display-handler command)))
     (when (not (consp handler))
       (error "Handler of command %s is not a list" command))
     (setcar handler target)))
-
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Extensions ;;;
