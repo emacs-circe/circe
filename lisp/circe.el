@@ -2460,16 +2460,40 @@ Arguments are IGNORED."
 ;;; Display Handlers ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun circe-set-display-handler (command function)
-  "Set the display handler for COMMAND to FUNCTION.
-This uses `circe-display-table'."
+(defun circe-set-display-handler (command handler)
+  "Set the display handler for COMMAND to HANDLER.
+
+A handler is either a function or a list.
+
+A function gets called in the server buffer with five arguments,
+NICK, USER, HOST, COMMAND and ARGS, and is expected to display
+this message however it wants.
+
+Alternatively, the handler can be a list of two or three
+elements:
+
+  target   - The target of this message
+  format   - The format for this string
+
+The target can be any of:
+
+  'active  - The last active buffer of this server
+  'nick    - The nick who sent this message
+  'server  - The server buffer for this server
+  number   - The index of the argument of the target
+
+The format is passed to `lui-format'. Possible format string
+substitutions are {mynick}, {target}, {nick}, {user}, {host},
+{origin}, {command}, {target}, and indexed arguments for the
+arguments to the IRC message."
   (when (not circe-display-table)
     (setq circe-display-table (make-hash-table :test 'equal)))
-  (puthash command function circe-display-table))
+  (puthash command handler circe-display-table))
 
 (defun circe-display-handler (command)
-  "Return the display function for COMMAND.
-This uses `circe-display-table'."
+  "Return the display handler for COMMAND.
+
+See `circe-set-display-handler' for an explanation."
   (when circe-display-table
     (gethash command circe-display-table)))
 
@@ -2525,21 +2549,77 @@ as arguments."
   (let ((display (circe-display-handler command))
         (*circe-default-properties*
          (circe-default-properties nick user host command args)))
-    (if display
-        (funcall display nick user host command args)
-      (or (circe-server-default-display-command nick user host
-                                                command args)
-          (with-current-buffer (circe-server-last-active-buffer)
-            (circe-server-message
-             (format "[%s from %s%s] %s"
-                     command
-                     nick
-                     (if (or user host)
-                         (format " (%s@%s)" user host)
-                       "")
-                     (mapconcat #'identity
-                                args
-                                " "))))))))
+    (cond
+     ;; Functions get called
+     ((functionp display)
+      (funcall display nick user host command args))
+     ;; Lists describe patterns
+     ((consp display)
+      (let* ((target+name (circe-display-target (car display)
+                                                nick user host
+                                                command args))
+             (target (car target+name))
+             (name (cdr target+name))
+             (format (nth 1 display))
+             (origin (if (or user host)
+                         (format "%s (%s@%s)"
+                                 (or nick "(unknown)")
+                                 (or user "(unknown)")
+                                 (or host "(unknown)"))
+                       (or nick "(unknown)"))))
+        (with-current-buffer (or target
+                                 (circe-server-last-active-buffer))
+          (let ((circe-format-server-numeric
+                 (if target
+                     (format "*** %s" format)
+                   (format "*** [%s] %s" name format))))
+            (circe-display 'circe-format-server-numeric
+                           :nick (or nick "(unknown)")
+                           :user (or user "(unknown)")
+                           :host (or host "(unknown)")
+                           :origin origin
+                           :command command
+                           :target name
+                           :indexed-args args)))))
+     ;; No configured display handler, show a default
+     (t
+      (with-current-buffer (circe-server-last-active-buffer)
+        (circe-server-message
+         (format "[%s from %s%s] %s"
+                 command
+                 nick
+                 (if (or user host)
+                     (format " (%s@%s)" user host)
+                   "")
+                 (mapconcat #'identity
+                            args
+                            " "))))))))
+
+(defun circe-display-target (target nick user host command args)
+  "Return the target buffer and name.
+The buffer might be nil if it is not alive.
+
+See `circe-set-display-handler' for a description of target.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
+  (cond
+   ((eq target 'nick)
+    (cons (circe-server-get-chat-buffer nick)
+          nick))
+   ((numberp target)
+    (let ((name (nth target
+                     args)))
+      (cons (circe-server-get-chat-buffer name)
+            name)))
+   ((eq target 'active)
+    (let ((buf (circe-server-last-active-buffer)))
+      (cons buf
+            (buffer-name buf))))
+   ((eq target 'server)
+    (cons (current-buffer) (buffer-name)))
+   (t
+    (error "Bad target in format string: %s" target))))
 
 (defun circe-server-ctcp-handler (nick user host requestp
                                        ctcp-command target text)
@@ -3227,229 +3307,142 @@ number, it shows the missing people due to that split."
 ;;; Default Formatting ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defcustom circe-format-strings
-  '(("INVITE" active "Invite: {origin} invites you to {1}")
-    ("KICK" 0 "Kick: {1} kicked by {origin}: {2}")
-    ("ERROR" active "Error: {0-}")
-    ("001" server "{1}")
-    ("002" server "{1}")
-    ("003" server "{1}")
-    ("004" server "{1-}")
-    ("005" server "{1-}")
-    ;; IRCnet: * Please wait while we process your connection.
-    ("020" server "{0-}")
-    ;; IRCnet
-    ("042" server "Your unique ID is {1}")
-    ("200" active "{1-}")
-    ("201" active "{1-}")
-    ("203" active "{1-}")
-    ("204" active "{1-}")
-    ("205" active "{1-}")
-    ("206" active "{1-}")
-    ("207" active "{1-}")
-    ("208" active "{1-}")
-    ("209" active "{1-}")
-    ("211" active "{1-}")
-    ("212" active "{1-}")
-    ("219" active "{1-}")
-    ("221" active "User mode: {1-}")
-    ("234" active "Service: {1-}")
-    ("235" active "{1-}")
-    ("242" active "{1}")
-    ("243" active "{1-}")
-    ("250" server "{1}")
-    ("251" server "{1}")
-    ("252" server "{1-}")
-    ("253" server "{1-}")
-    ("254" server "{1-}")
-    ("255" server "{1}")
-    ("256" active "{1-}")
-    ("257" active "{1}")
-    ("258" active "{1}")
-    ("259" active "{1}")
-    ("261" active "{1-}")
-    ("262" active "{1-}")
-    ("263" active "{1-}")
-    ("265" server "{1-}")
-    ("266" server "{1-}")
-    ;; This is returned on both WHOIS and PRIVMSG
-    ;; It should go to the active window for the former, and the query
-    ;; window for the latter. Oh well.
-    ("301" active "User away: {1}")
-    ("302" active "User hosts: {1}")
-    ("303" active "Users online: {1}")
-    ("305" active "{1}")
-    ("306" active "{1}")
-    ("307" active "{1-}")
-    ;; Coldfront: 310 <nick> is available for help.
-    ("310" active "{1-}")
-    ("311" active "{1} is {2}@{3} ({5})")
-    ("312" active "{1} is on {2} ({3})")
-    ("313" active "{1} {2}")
-    ("314" active "{1} was {2}@{3} ({5})")
-    ("315" active "{2}")
-    ("318" active "{2}")
-    ("319" active "{1} is on {2}")
-    ("320" active "{1-}")
-    ("322" active "{1-}")
-    ("323" active "{1-}")
-    ("324" 1 "Channel mode for {1}: {2-}")
-    ("325" 1 "Unique operator on {1} is {2}")
-    ("328" 1 "Channel homepage for {1}: {2-}")
-    ("330" active "{1} is logged in as {2}")
-    ("331" 1 "No topic for {1} set")
-    ("332" 1 "Topic for {1}: {2}")
-    ("341" active "Inviting {1} to {2}")
-    ("346" 1 "Invite mask: {2}")
-    ("347" 1 "{2}")
-    ("348" 1 "Except mask: {2}")
-    ("349" 1 "{2}")
-    ("351" active "{1-}")
-    ("352" active "{5} ({2}@{3}) in {1} on {4}: {6-}")
-    ("353" 2 "Names: {3}")
-    ("364" active "{1-}")
-    ("365" active "{1-}")
-    ("366" 1 "{2}")
-    ("367" 1 "Ban mask: {2}")
-    ("368" 1 "{2}")
-    ("369" active "{1} {2}")
-    ("371" active "{1}")
-    ("372" server "{1}")
-    ("374" active "{1}")
-    ("375" server "{1}")
-    ("376" server "{1}")
-    ("378" active "{1-}")
-    ("381" active "{1}")
-    ("382" active "{1-}")
-    ("391" active "Time on {1}: {2}")
-    ("401" active "No such nick: {1}")
-    ("402" active "No such server: {1}")
-    ("403" active "No such channel: {1}")
-    ("404" 1 "Can not send to channel {1}")
-    ("405" active "Can not join {1}: {2}")
-    ("406" active "{1-}")
-    ("407" active "{1-}")
-    ("408" active "No such service: {1}")
-    ("422" active "{1}")
-    ("432" active "Erroneous nick name: {1}")
-    ("433" active "Nick name in use: {1}")
-    ("437" active "Nick/channel is temporarily unavailable: {1}")
-    ("441" 2 "User not on channel: {1}")
-    ("442" active "You are not on {1}")
-    ("443" 2 "User {1} is already on channel {2}")
-    ("467" 1 "{2}")
-    ("470" 1 "{1} made you join {2}: {3-}")
-    ("471" 1 "{2}")
-    ("472" active "{1-}")
-    ("473" active "{1-}")
-    ("474" active "{1-}")
-    ("475" active "{1-}")
-    ("476" active "{1-}")
-    ("477" active "{1-}")
-    ("481" 1 "{2-}")
-    ("484" active "{1-}")
-    ;; Coldfront: 671 <nick> is using a Secure Connection
-    ("671" active "{1-}")
-    ("728" 1 "Quiet mask: {3}")
-    ("729" 1 "{3-}")
-    )
-  "A list of strings used to format IRC message.
-Each element of the list consists of four parts:
+(dolist (fmt '(("INVITE" active "Invite: {origin} invites you to {1}")
+               ("KICK" 0 "Kick: {1} kicked by {origin}: {2}")
+               ("ERROR" active "Error: {0-}")
+               ("001" server "{1}")
+               ("002" server "{1}")
+               ("003" server "{1}")
+               ("004" server "{1-}")
+               ("005" server "{1-}")
+               ;; IRCnet: * Please wait while we process your connection.
+               ("020" server "{0-}")
+               ;; IRCnet
+               ("042" server "Your unique ID is {1}")
+               ("200" active "{1-}")
+               ("201" active "{1-}")
+               ("203" active "{1-}")
+               ("204" active "{1-}")
+               ("205" active "{1-}")
+               ("206" active "{1-}")
+               ("207" active "{1-}")
+               ("208" active "{1-}")
+               ("209" active "{1-}")
+               ("211" active "{1-}")
+               ("212" active "{1-}")
+               ("219" active "{1-}")
+               ("221" active "User mode: {1-}")
+               ("234" active "Service: {1-}")
+               ("235" active "{1-}")
+               ("242" active "{1}")
+               ("243" active "{1-}")
+               ("250" server "{1}")
+               ("251" server "{1}")
+               ("252" server "{1-}")
+               ("253" server "{1-}")
+               ("254" server "{1-}")
+               ("255" server "{1}")
+               ("256" active "{1-}")
+               ("257" active "{1}")
+               ("258" active "{1}")
+               ("259" active "{1}")
+               ("261" active "{1-}")
+               ("262" active "{1-}")
+               ("263" active "{1-}")
+               ("265" server "{1-}")
+               ("266" server "{1-}")
+               ;; This is returned on both WHOIS and PRIVMSG. It
+               ;; should go to the active window for the former, and
+               ;; the query window for the latter. Oh well.
+               ("301" active "User away: {1}")
+               ("302" active "User hosts: {1}")
+               ("303" active "Users online: {1}")
+               ("305" active "{1}")
+               ("306" active "{1}")
+               ("307" active "{1-}")
+               ;; Coldfront: 310 <nick> is available for help.
+               ("310" active "{1-}")
+               ("311" active "{1} is {2}@{3} ({5})")
+               ("312" active "{1} is on {2} ({3})")
+               ("313" active "{1} {2}")
+               ("314" active "{1} was {2}@{3} ({5})")
+               ("315" active "{2}")
+               ("318" active "{2}")
+               ("319" active "{1} is on {2}")
+               ("320" active "{1-}")
+               ("322" active "{1-}")
+               ("323" active "{1-}")
+               ("324" 1 "Channel mode for {1}: {2-}")
+               ("325" 1 "Unique operator on {1} is {2}")
+               ("328" 1 "Channel homepage for {1}: {2-}")
+               ("330" active "{1} is logged in as {2}")
+               ("331" 1 "No topic for {1} set")
+               ("332" 1 "Topic for {1}: {2}")
+               ("341" active "Inviting {1} to {2}")
+               ("346" 1 "Invite mask: {2}")
+               ("347" 1 "{2}")
+               ("348" 1 "Except mask: {2}")
+               ("349" 1 "{2}")
+               ("351" active "{1-}")
+               ("352" active "{5} ({2}@{3}) in {1} on {4}: {6-}")
+               ("353" 2 "Names: {3}")
+               ("364" active "{1-}")
+               ("365" active "{1-}")
+               ("366" 1 "{2}")
+               ("367" 1 "Ban mask: {2}")
+               ("368" 1 "{2}")
+               ("369" active "{1} {2}")
+               ("371" active "{1}")
+               ("372" server "{1}")
+               ("374" active "{1}")
+               ("375" server "{1}")
+               ("376" server "{1}")
+               ("378" active "{1-}")
+               ("381" active "{1}")
+               ("382" active "{1-}")
+               ("391" active "Time on {1}: {2}")
+               ("401" active "No such nick: {1}")
+               ("402" active "No such server: {1}")
+               ("403" active "No such channel: {1}")
+               ("404" 1 "Can not send to channel {1}")
+               ("405" active "Can not join {1}: {2}")
+               ("406" active "{1-}")
+               ("407" active "{1-}")
+               ("408" active "No such service: {1}")
+               ("422" active "{1}")
+               ("432" active "Erroneous nick name: {1}")
+               ("433" active "Nick name in use: {1}")
+               ("437" active "Nick/channel is temporarily unavailable: {1}")
+               ("441" 2 "User not on channel: {1}")
+               ("442" active "You are not on {1}")
+               ("443" 2 "User {1} is already on channel {2}")
+               ;; Coldfront: 451 * :You have not registered
+               ("451" active "{1-}")
+               ("467" 1 "{2}")
+               ("470" 1 "{1} made you join {2}: {3-}")
+               ("471" 1 "{2}")
+               ("472" active "{1-}")
+               ("473" active "{1-}")
+               ("474" active "{1-}")
+               ("475" active "{1-}")
+               ("476" active "{1-}")
+               ("477" active "{1-}")
+               ("481" 1 "{2-}")
+               ("484" active "{1-}")
+               ;; Coldfront: 671 <nick> is using a Secure Connection
+               ("671" active "{1-}")
+               ("728" 1 "Quiet mask: {3}")
+               ("729" 1 "{3-}")
+               ))
+  (circe-set-display-handler (car fmt) (cdr fmt)))
 
-  command  - A string naming the command this applies to
-  target   - The target of this message (see below)
-  format   - The format for this string (see below)
-  trackedp - Optional boolean saying that this message
-             should cause Lui tracking in the mode line
-
-The target can be any of:
-
-  'active  - The last active buffer of this server
-  'nick    - The nick who sent this message
-  'server  - The server buffer for this server
-  number   - The index of the argument of the target
-
-The strings itself are formatted using `lui-format'. Possible
-format strings are {mynick}, {target}, {nick}, {user}, {host},
-{origin}, {command}, {target}, and indexed arguments for the
-arguments to the IRC message."
-  :type '(repeat (list (string :tag "Message")
-                       (choice :tag "Destination Window"
-                               (const :tag "Active Window" active)
-                               (const :tag "Originating Nick" nick)
-                               (const :tag "Server Buffer" server)
-                               (number :tag "Index"))
-                       (string :tag "Format")))
-  :group 'circe)
-
-(defun circe-set-message-target (type target)
+(defun circe-set-message-target (command target)
   "Set the target of TYPE in `circe-format-strings' to TARGET."
-  (setcar (cdr (assoc type circe-format-strings))
-          target))
+  (let ((handler (circe-display-handler command)))
+    (when (not (consp handler))
+      (error "Handler of command %s is not a list" command))
+    (setcar handler target)))
 
-(defun circe-server-default-display-command (nick user host command args)
-  "Show a default message according to `circe-format-strings'.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (let ((spec (assoc command circe-format-strings)))
-    (when spec
-      (let* ((target+name (circe-display-target spec nick user host
-                                                command args))
-             (target (car target+name))
-             (name (cdr target+name))
-             (format (nth 2 spec))
-             (origin (if (or user host)
-                         (format "%s (%s@%s)"
-                                 (or nick "(unknown)")
-                                 (or user "(unknown)")
-                                 (or host "(unknown)"))
-                       (or nick "(unknown)"))))
-        (with-current-buffer (or target
-                                 (circe-server-last-active-buffer))
-          (let ((circe-format-server-numeric
-                 (if target
-                     (format "*** %s" format)
-                   (format "*** [%s] %s" name format))))
-            (condition-case err
-                (circe-display 'circe-format-server-numeric
-                               :nick (or nick "(unknown)")
-                               :user (or user "(unknown)")
-                               :host (or host "(unknown)")
-                               :origin origin
-                               :command command
-                               :target name
-                               :indexed-args args)
-              (error
-               (error "Error in format %S, args %S: %S"
-                      circe-format-server-numeric args err))))))
-      t)))
-
-(defun circe-display-target (spec nick user host command args)
-  "Return the target buffer and name.
-The buffer might be nil if it is not alive.
-
-See `circe-format-strings' for a documentation of SPEC.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (cond
-   ((eq (nth 1 spec) 'nick)
-    (cons (circe-server-get-chat-buffer nick)
-          nick))
-   ((numberp (nth 1 spec))
-    (let ((name (nth (nth 1 spec)
-                     args)))
-      (cons (circe-server-get-chat-buffer name)
-            name)))
-   ((eq (nth 1 spec) 'active)
-    (let ((buf (circe-server-last-active-buffer)))
-      (cons buf
-            (buffer-name buf))))
-   ((eq (nth 1 spec) 'server)
-    (cons (current-buffer) (buffer-name)))
-   (t
-    (error "Bad target in format string: %s" (nth 1 spec)))))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Extensions ;;;
