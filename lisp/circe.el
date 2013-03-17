@@ -683,6 +683,9 @@ it.")
 (defvar circe-display-table nil
   "A hash table mapping commands to their display functions.")
 
+(defvar circe-message-handler-table nil
+  "A hash table mapping commands to their handler function lists.")
+
 (defvar circe-server-quitting-p nil
   "Non-nil when quitting from the server.
 This is only non-nil when the user is quitting the current
@@ -1229,11 +1232,21 @@ server's chat buffers."
    (t
     (concat oldnick "-"))))
 
-
 (defun circe-server-message (message)
   "Display MESSAGE as a server message."
   (circe-display 'circe-format-server-message
                  :body message))
+
+;; I'm a bit unhappy about this. The choice for the face for the
+;; message happens very deeply within the call stack, and on the way
+;; we lose who the message was from. So we keep a "global variable"
+;; (dynamically scoped) saying which default properties to set much
+;; later.
+(defvar *circe-default-properties* nil
+  "Internal use. Set this to nil. Do not change it. Go away.")
+
+(defvar *circe-ignored-p* nil
+  "Whether the current message should be ignored or not.")
 
 (defun circe-display (format &rest keywords)
   "Display FORMAT formatted with KEYWORDS in the current Circe buffer.
@@ -2493,7 +2506,7 @@ arguments to the IRC message."
 (defun circe-display-handler (command)
   "Return the display handler for COMMAND.
 
-See `circe-set-display-handler' for an explanation."
+See `circe-set-display-handler' for more information."
   (when circe-display-table
     (gethash command circe-display-table)))
 
@@ -2514,41 +2527,33 @@ See `circe-set-display-handler' for an explanation."
          (host (aref parsed 2))
          (command (aref parsed 3))
          (args (aref parsed 4)))
-    (when (not (circe-ignored-p nick user host command args))
-      (if (and (or (string= command "PRIVMSG")
-                   (string= command "NOTICE"))
+    (when (and (member command '("PRIVMSG" "NOTICE"))
                (string-match "^\C-a\\([^ ]*\\)\\( \\(.*\\)\\)?\C-a$"
                              (cadr args)))
-          (let ((ctcp (match-string 1 (cadr args)))
-                (arg (match-string 3 (cadr args))))
-            (circe-server-ctcp-handler nick user host
-                                       (string= command "PRIVMSG")
-                                       ctcp
-                                       (car args)
-                                       (or arg
-                                           "")))
-        (unwind-protect
-            (progn
-              (run-hook-with-args 'circe-receive-message-functions
-                                  nick user host command args)
-              (circe-server-display nick user host command args))
-          (circe-server-internal-handler nick user host command args))))))
+      (setq command (format "CTCP-%s%s"
+                            (match-string 1 (cadr args))
+                            (if (string= command "PRIVMSG")
+                                ""
+                              "-REPLY"))
+            args (list (car args)
+                       (or (match-string 3 (cadr args))
+                           ""))))
+    (unwind-protect
+        (let ((*circe-default-properties*
+               (circe-default-properties nick user host command args))
+              (*circe-ignored-p*
+               (circe-ignored-p nick user host command args)))
+          (when (not *circe-ignored-p*)
+            (circe-server-display-message nick user host command args))
+          (circe-server-handle-message nick user host command args))
+      (circe-server-internal-handler nick user host command args))))
 
-;; I'm a bit unhappy about this. The choice for the face for the
-;; message happens very deeply within the call stack, and on the way
-;; we lose who the message was from. So we keep a "global variable"
-;; (dynamically scoped) saying which default properties to set much
-;; later.
-(defvar *circe-default-properties* nil
-  "Internal use. Set this to nil. Do not change it. Go away.")
-(defun circe-server-display (nick user host command args)
+(defun circe-server-display-message (nick user host command args)
   "Display an IRC message.
 
 NICK, USER and HOST specify the originator of COMMAND with ARGS
 as arguments."
-  (let ((display (circe-display-handler command))
-        (*circe-default-properties*
-         (circe-default-properties nick user host command args)))
+  (let ((display (circe-display-handler command)))
     (cond
      ;; Functions get called
      ((functionp display)
@@ -2584,16 +2589,54 @@ as arguments."
      ;; No configured display handler, show a default
      (t
       (with-current-buffer (circe-server-last-active-buffer)
-        (circe-server-message
-         (format "[%s from %s%s] %s"
-                 command
-                 nick
-                 (if (or user host)
-                     (format " (%s@%s)" user host)
-                   "")
-                 (mapconcat #'identity
-                            args
-                            " "))))))))
+        (cond
+         ((string-match "CTCP-\\(.*\\)-REPLY" command)
+          (if (circe-server-my-nick-p (car args))
+              (circe-server-message
+               (format "CTCP %s reply from %s (%s@%s): %s"
+                       command nick user host (cadr args)))
+            (circe-server-message
+             (format "CTCP %s reply from %s (%s@%s) to %s: %s"
+                     command nick user host (car args) (cadr args)))))
+         ((string-match "CTCP-\\(.*\\)" command)
+          (if (circe-server-my-nick-p (car args))
+              (circe-server-message
+               (format "Unknown CTCP request %s from %s (%s@%s): %s"
+                       (match-string 1 command)
+                       nick user host
+                       (cadr args)))
+            (circe-server-message
+             (format "Unknown CTCP request %s from %s (%s@%s) to %s: %s"
+                     (match-string 1 command)
+                     nick user host
+                     (car args)
+                     (cadr args)))))
+         (t
+          (circe-server-message
+           (format "[%s from %s%s] %s"
+                   command
+                   nick
+                   (if (or user host)
+                       (format " (%s@%s)" user host)
+                     "")
+                   (mapconcat #'identity
+                              args
+                              " "))))))))))
+
+(defun circe-server-handle-message (nick user host command args)
+  "Handle an IRC message.
+
+Message handlers are meant to process IRC messages in a way that
+primarily does not display anything, as to avoid multiple
+displays for the sameg message. This allows for bookkeeping and
+other such handlers.
+
+Please note that message handlers are called even if the user is
+ignored."
+  (dolist (function (circe-get-message-handlers command))
+    (funcall function nick user host command args))
+  (run-hook-with-args 'circe-receive-message-functions
+                      nick user host command args))
 
 (defun circe-display-target (target nick user host command args)
   "Return the target buffer and name.
@@ -2620,42 +2663,6 @@ as arguments."
     (cons (current-buffer) (buffer-name)))
    (t
     (error "Bad target in format string: %s" target))))
-
-(defun circe-server-ctcp-handler (nick user host requestp
-                                       ctcp-command target text)
-  "Handle a CTCP message.
-
-NICK, USER and HOST are the originators of the message. If
-REQUESTP is set, this is a CTCP request, otherwise it is a reply.
-CTCP-COMMAND specifies the command name which was sent to TARGET,
-passing TEXT as arguments."
-  (let ((command (concat "CTCP-" ctcp-command (if requestp
-                                                  ""
-                                                "-REPLY")))
-        (args (list target text)))
-    (run-hook-with-args 'circe-receive-message-functions
-                        nick user host command args)
-    (let ((display (circe-display-handler command))
-          (*circe-default-properties*
-           (circe-default-properties nick user host command args)))
-      (if display
-          (funcall display nick user host command args)
-        (with-current-buffer (circe-server-last-active-buffer)
-          (cond
-           (requestp
-            (circe-server-message
-             (format "Unknown CTCP request %s from %s (%s@%s): %s"
-                     ctcp-command
-                     nick user host
-                     text)))
-           ((circe-server-my-nick-p target)
-            (circe-server-message
-             (format "CTCP %s reply from %s (%s@%s): %s"
-                     ctcp-command nick user host text)))
-           (t
-            (circe-server-message
-             (format "CTCP %s reply from %s (%s@%s) to %s: %s"
-                     ctcp-command nick user host target text)))))))))
 
 (defun circe-server-parse-line (line)
   "Parse LINE as a line sent by the IRC server.
@@ -2737,6 +2744,26 @@ as arguments."
   (circe-channel-message-handler nick user host command args)
   )
 
+(defun circe-add-message-handler (command handler)
+  "Add HANDLER to the list of functions called on COMMAND.
+
+Each HANDLER is called in a server buffer with five arguments,
+NICK, USER, HOST, COMMAND and ARGS."
+  (when (not circe-message-handler-table)
+    (setq circe-message-handler-table (make-hash-table :test 'equal)))
+  (puthash command
+           (append (gethash command circe-message-handler-table)
+                   (list handler))
+           circe-message-handler-table))
+
+(defun circe-get-message-handlers (command)
+  "Return the list of handler functions for COMMAND.
+
+See `circe-add-message-handler' for more information."
+  (when circe-message-handler-table
+    (gethash command circe-message-handler-table)))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTCP Functions ;;;
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -2766,13 +2793,13 @@ ARGS the arguments to the command."
                      :nick nick
                      :body (cadr args)))))
 
-(add-hook 'circe-receive-message-functions 'circe-ctcp-VERSION-handler)
+(circe-add-message-handler "CTCP-VERSION" 'circe-ctcp-VERSION-handler)
 (defun circe-ctcp-VERSION-handler (nick user host command args)
   "Handle a CTCP VERSION request.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (when (string= command "CTCP-VERSION")
+  (when (not *circe-ignored-p*)
     (circe-server-send
      (format "NOTICE %s :\C-aVERSION Circe: Client for IRC in Emacs, version %s\C-a"
              nick circe-version))))
@@ -2791,13 +2818,13 @@ as arguments."
        (format "CTCP VERSION request from %s (%s@%s) to %s"
                nick user host (car args))))))
 
-(add-hook 'circe-receive-message-functions 'circe-ctcp-PING-handler)
+(circe-add-message-handler "CTCP-PING" 'circe-ctcp-PING-handler)
 (defun circe-ctcp-PING-handler (nick user host command args)
   "Handle a CTCP PING request.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (when (string= command "CTCP-PING")
+  (when (not *circe-ignored-p*)
     (circe-server-send (format "NOTICE %s :\C-aPING %s\C-a"
                                nick (cadr args)))))
 
@@ -2842,13 +2869,13 @@ as arguments."
                                               nick user host
                                               (cadr args))))))))
 
-(add-hook 'circe-receive-message-functions 'circe-ctcp-TIME-handler)
+(circe-add-message-handler "CTCP-TIME" 'circe-ctcp-TIME-handler)
 (defun circe-ctcp-TIME-handler (nick user host command args)
   "Handle a CTCP TIME request.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (when (string= command "CTCP-TIME")
+  (when (not *circe-ignored-p*)
     (circe-server-send
      (format "NOTICE %s :\C-aTIME %s\C-a"
              nick
@@ -3606,24 +3633,25 @@ Arguments are IGNORED."
     (lui-replace-input (format "/TOPIC %s %s" circe-chat-target circe-channel-topic))
     (goto-char (point-max))))
 
-(add-hook 'circe-receive-message-functions 'circe-topic-handler)
-(defun circe-topic-handler (nick user host command args)
-  "Manage the topic.
+(circe-add-message-handler "TOPIC" 'circe-handle-TOPIC)
+(defun circe-handle-TOPIC (nick user host command args)
+  "Handle TOPIC messages."
+  (with-circe-chat-buffer (car args)
+    (setq circe-channel-topic-old circe-channel-topic
+          circe-channel-topic (cadr args))))
 
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (cond
-   ((string= command "TOPIC")
-    (with-circe-chat-buffer (car args)
-      (setq circe-channel-topic-old circe-channel-topic
-            circe-channel-topic (cadr args))))
-   ((string= command "331")             ; RPL_NOTOPIC
-    (with-circe-chat-buffer (cadr args)
-      (setq circe-channel-topic "")))
-   ((string= command "332")             ; RPL_TOPIC
-    (with-circe-chat-buffer (cadr args)
-      (setq circe-channel-topic (nth 2 args)
-            circe-channel-topic-old circe-channel-topic)))))
+(circe-add-message-handler "331" 'circe-handle-331)
+(defun circe-handle-331 (nick user host command args)
+  "Handle 331 RPL_NOTOPIC messages."
+  (with-circe-chat-buffer (cadr args)
+    (setq circe-channel-topic "")))
+
+(circe-add-message-handler "332" 'circe-handle-332)
+(defun circe-handle-332 (nick user host command args)
+  "Handle 332 RPL_TOPIC messages."
+  (with-circe-chat-buffer (cadr args)
+    (setq circe-channel-topic (nth 2 args)
+          circe-channel-topic-old circe-channel-topic)))
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
 (defun circe-display-topic (nick user host command args)
@@ -3805,50 +3833,54 @@ pass an argument to the `circe' function for this.")
       (circe-nickserv-ghost)
       (setq circe-auto-regain-awaiting-nick-change t))))
 
-(add-hook 'circe-receive-message-functions 'circe-nickserv-handler)
-(defun circe-nickserv-handler (nick user host command args)
-  "React to messages relevant to nickserv authentication and auto-regain.
+(circe-add-message-handler "PRIVMSG" 'circe-nickserv-handle-PRIVMSG)
+(defun circe-nickserv-handle-PRIVMSG (nick user host command args)
+  "Handle PRIVMSG messages from nickserv, which is unusual.
 
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (with-circe-server-buffer
+But bitlbee uses this."
+  (circe-nickserv-handle-NOTICE nick user host command args))
+
+(circe-add-message-handler "NOTICE" 'circe-nickserv-handle-NOTICE)
+(defun circe-nickserv-handle-NOTICE (nick user host command args)
+  "React to messages relevant to nickserv authentication and auto-regain."
+  (when (and circe-nickserv-mask
+             (string-match circe-nickserv-mask
+                           (format "%s!%s@%s" nick user host)))
     (cond
-     ((and circe-nickserv-mask
-           ;; bitlbee uses PRIVMSG
-           (member command '("NOTICE" "PRIVMSG")))
-      (when (and (string-match circe-nickserv-mask
-                               (format "%s!%s@%s" nick user host)))
-        ;; This is indeed sent by the nickserv on this network.
-        (cond
-         ;; Identify challenge
-         ((and circe-nickserv-identify-challenge
-               (string-match circe-nickserv-identify-challenge (cadr args)))
-          (circe-nickserv-identify))
-         ;; Confirmation
-         ((and circe-nickserv-identify-confirmation
-               circe-nickserv-nick
-               (string-match circe-nickserv-identify-confirmation (cadr args)))
-          (run-hooks 'circe-nickserv-authenticated-hook)
-          (when (eq 'after-auth circe-nickserv-ghost-style)
-            (if (circe-server-my-nick-p circe-nickserv-nick)
-                (run-hooks 'circe-acquired-preferred-nick-hook)
-              (circe-nickserv-ghost)
-              (setq circe-auto-regain-awaiting-nick-change t))))
-         ;; Nick got ghosted
-         ((and circe-auto-regain-awaiting-nick-change
-               circe-nickserv-ghost-confirmation
-               circe-nickserv-nick
-               (string-match circe-nickserv-ghost-confirmation
-                             (cadr args)))
-          (circe-command-NICK circe-nickserv-nick)))))
-     ;; Regain stuff
-     ((and circe-auto-regain-awaiting-nick-change
+     ;; Identify challenge
+     ((and circe-nickserv-identify-challenge
+           (string-match circe-nickserv-identify-challenge (cadr args)))
+      (circe-nickserv-identify))
+     ;; Confirmation
+     ((and circe-nickserv-identify-confirmation
            circe-nickserv-nick
-           (string= command "NICK")
-           (circe-server-my-nick-p nick)
-           (string= (car args) circe-nickserv-nick))
-      (setq circe-auto-regain-awaiting-nick-change nil)
-      (run-hooks 'circe-acquired-preferred-nick-hook)))))
+           (string-match circe-nickserv-identify-confirmation (cadr args)))
+      (run-hooks 'circe-nickserv-authenticated-hook)
+      (when (eq 'after-auth circe-nickserv-ghost-style)
+        (if (circe-server-my-nick-p circe-nickserv-nick)
+            (run-hooks 'circe-acquired-preferred-nick-hook)
+          (circe-nickserv-ghost)
+          (setq circe-auto-regain-awaiting-nick-change t))))
+     ;; Nick got ghosted
+     ((and circe-auto-regain-awaiting-nick-change
+           circe-nickserv-ghost-confirmation
+           circe-nickserv-nick
+           (string-match circe-nickserv-ghost-confirmation
+                         (cadr args)))
+      (circe-command-NICK circe-nickserv-nick)))))
+
+(circe-add-message-handler "NICK" 'circe-nickserv-handle-NICK)
+(defun circe-nickserv-handle-NICK (nick user host command args)
+  "Handle NICK messages in relation to nickserv commands.
+
+This is used to run `circe-acquired-preferred-nick-hook' when
+we're waiting for our nick change."
+  (when (and circe-auto-regain-awaiting-nick-change
+             (circe-server-my-nick-p nick)
+             circe-nickserv-nick
+             (string= (car args) circe-nickserv-nick))
+    (setq circe-auto-regain-awaiting-nick-change nil)
+    (run-hooks 'circe-acquired-preferred-nick-hook)))
 
 (provide 'circe)
 ;;; circe.el ends here
