@@ -38,7 +38,7 @@
 
 ;;; Code:
 
-(defvar circe-version "1.1"
+(defvar circe-version "1.1 devel"
   "Circe version string.")
 
 (require 'ring)
