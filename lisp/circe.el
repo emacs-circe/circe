@@ -2935,6 +2935,9 @@ as arguments."
                (condition-case nil
                    (with-temp-buffer
                      (call-process "ddate" nil (current-buffer))
+                     (goto-char (point-min))
+                     (while (re-search-forward "\n" nil t)
+                       (replace-match " "))
                      (buffer-substring (point-min)
                                        (- (point-max)
                                           1)))
