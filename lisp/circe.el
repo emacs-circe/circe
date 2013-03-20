@@ -951,12 +951,13 @@ See `circe-server-max-reconnect-attempts'.")
                                                1))
       (when circe-server-process
         (delete-process circe-server-process))
+      (setq circe-server-registered-p nil
+            circe-server-filter-data nil
+            circe-server-flood-queue nil)
       (circe-server-message "Connecting...")
       (dolist (buf (circe-chat-buffers))
         (with-current-buffer buf
           (circe-server-message "Connecting...")))
-      (setq circe-server-registered-p nil
-            circe-server-flood-queue nil)
       (cond
         (circe-server-use-tls
          (require 'tls)
