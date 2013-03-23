@@ -2958,6 +2958,23 @@ as arguments."
                                     (format " to %s" (car args)))
                                   nick user host))))
 
+(circe-add-message-handler "CTCP-CLIENTINFO" 'circe-ctcp-CLIENTINFO-handler)
+(defun circe-ctcp-CLIENTINFO-handler (nick user host command args)
+  "Handle a CTCP CLIENTINFO request, which replies with a list of
+supported CTCPs.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
+  (when (not *circe-ignored-p*)
+    (let ((ctcps (list)))
+      (maphash #'(lambda (command _)
+                   (when (string-prefix-p "CTCP-" command)
+                     (push (substring command 5) ctcps)))
+               circe-message-handler-table)
+      (circe-server-send
+       (format "NOTICE %s :\C-aCLIENTINFO %s\C-a"
+               nick (mapconcat #'identity (sort ctcps #'string<) " "))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Display Handlers ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
