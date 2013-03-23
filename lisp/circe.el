@@ -2508,39 +2508,27 @@ as arguments."
      ;; No configured display handler, show a default
      (t
       (with-current-buffer (circe-server-last-active-buffer)
-        (cond
-         ((string-match "CTCP-\\(.*\\)-REPLY" command)
-          (if (circe-server-my-nick-p (car args))
-              (circe-server-message
-               (format "CTCP %s reply from %s (%s@%s): %s"
-                       command nick user host (cadr args)))
+        (let ((target (if (circe-server-my-nick-p (car args))
+                         ""
+                       (format " to %s" (car args)))))
+          (cond
+           ((string-match "CTCP-\\(.*\\)-REPLY" command)
             (circe-server-message
-             (format "CTCP %s reply from %s (%s@%s) to %s: %s"
-                     command nick user host (car args) (cadr args)))))
-         ((string-match "CTCP-\\(.*\\)" command)
-          (if (circe-server-my-nick-p (car args))
-              (circe-server-message
-               (format "Unknown CTCP request %s from %s (%s@%s): %s"
-                       (match-string 1 command)
-                       nick user host
-                       (cadr args)))
+             (format "CTCP %s reply from %s (%s@%s)%s: %s"
+                     (match-string 1 command) nick user host target (cadr args))))
+           ((string-match "CTCP-\\(.*\\)" command)
             (circe-server-message
-             (format "Unknown CTCP request %s from %s (%s@%s) to %s: %s"
-                     (match-string 1 command)
-                     nick user host
-                     (car args)
-                     (cadr args)))))
-         (t
-          (circe-server-message
-           (format "[%s from %s%s] %s"
-                   command
-                   nick
-                   (if (or user host)
-                       (format " (%s@%s)" user host)
-                     "")
-                   (mapconcat #'identity
-                              args
-                              " "))))))))))
+             (format "Unknown CTCP request %s from %s (%s@%s)%s: %s"
+                     (match-string 1 command) nick user host target (cadr args))))
+           (t
+            (circe-server-message
+             (format "[%s from %s%s] %s"
+                     command
+                     nick
+                     (if (or user host)
+                         (format " (%s@%s)" user host)
+                       "")
+                     (mapconcat #'identity args " ")))))))))))
 
 (defun circe-display-target (target nick user host command args)
   "Return the target buffer and name.
@@ -2823,6 +2811,22 @@ COMMAND, which had the arguments ARGS."
 ;;; CTCP Handling ;;;
 ;;;;;;;;;;;;;;;;;;;;;
 
+(defun circe-ctcp-display-general (nick user host command args)
+  "Show a CTCP request that does not require special handling.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
+  (with-current-buffer (circe-server-last-active-buffer)
+    (let ((ctcp (substring command 5))
+          (target (if (circe-server-my-nick-p (car args))
+                      ""
+                    (format " to %s" (car args))))
+          (argstring (if (equal (cadr args) "")
+                         ""
+                       (concat ": " (cadr args)))))
+      (circe-server-message (format "CTCP %s request%s from %s (%s@%s)%s"
+                                    ctcp target nick user host argstring)))))
+
 (circe-set-display-handler "CTCP-ACTION" 'circe-ctcp-display-ACTION)
 (defun circe-ctcp-display-ACTION (nick user host command args)
   "Show an ACTION.
@@ -2849,6 +2853,7 @@ ARGS the arguments to the command."
                      :body (cadr args)))))
 
 (circe-add-message-handler "CTCP-VERSION" 'circe-ctcp-VERSION-handler)
+(circe-set-display-handler "CTCP-VERSION" 'circe-ctcp-display-general)
 (defun circe-ctcp-VERSION-handler (nick user host command args)
   "Handle a CTCP VERSION request.
 
@@ -2859,19 +2864,6 @@ as arguments."
      (format "NOTICE %s :\C-aVERSION Circe: Client for IRC in Emacs, version %s\C-a"
              nick circe-version))))
 
-(circe-set-display-handler "CTCP-VERSION" 'circe-ctcp-display-VERSION)
-(defun circe-ctcp-display-VERSION (nick user host command args)
-  "Show a CTCP VERSION.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (with-current-buffer (circe-server-last-active-buffer)
-    (if (circe-server-my-nick-p (car args))
-        (circe-server-message (format "CTCP VERSION request from %s (%s@%s)"
-                                      nick user host))
-      (circe-server-message
-       (format "CTCP VERSION request from %s (%s@%s) to %s"
-               nick user host (car args))))))
 
 (circe-add-message-handler "CTCP-PING" 'circe-ctcp-PING-handler)
 (defun circe-ctcp-PING-handler (nick user host command args)
@@ -2925,6 +2917,7 @@ as arguments."
                                               (cadr args))))))))
 
 (circe-add-message-handler "CTCP-TIME" 'circe-ctcp-TIME-handler)
+(circe-set-display-handler "CTCP-TIME" 'circe-ctcp-display-general)
 (defun circe-ctcp-TIME-handler (nick user host command args)
   "Handle a CTCP TIME request.
 
@@ -2948,20 +2941,8 @@ as arguments."
                  (error
                   (current-time-string))))))))
 
-(circe-set-display-handler "CTCP-TIME" 'circe-ctcp-display-TIME)
-(defun circe-ctcp-display-TIME (nick user host command args)
-  "Show a CTCP TIME request.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (with-current-buffer (circe-server-last-active-buffer)
-    (circe-server-message (format "CTCP TIME request%s from %s (%s@%s)"
-                                  (if (circe-server-my-nick-p (car args))
-                                      ""
-                                    (format " to %s" (car args)))
-                                  nick user host))))
-
 (circe-add-message-handler "CTCP-CLIENTINFO" 'circe-ctcp-CLIENTINFO-handler)
+(circe-set-display-handler "CTCP-CLIENTINFO" 'circe-ctcp-display-general)
 (defun circe-ctcp-CLIENTINFO-handler (nick user host command args)
   "Handle a CTCP CLIENTINFO request, which replies with a list of
 supported CTCPs.
@@ -2979,6 +2960,7 @@ as arguments."
                nick (mapconcat #'identity (sort ctcps #'string<) " "))))))
 
 (circe-add-message-handler "CTCP-SOURCE" 'circe-ctcp-SOURCE-handler)
+(circe-set-display-handler "CTCP-SOURCE" 'circe-ctcp-display-general)
 (defun circe-ctcp-SOURCE-handler (nick user host command args)
   "Handle a CTCP SOURCE request, which replies with Circe's github url.
 
