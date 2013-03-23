@@ -609,6 +609,9 @@ strings."
 ;;; Private variables ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defvar circe-source-url "https://github.com/jorgenschaefer/circe"
+  "URL to Circe's source repository")
+
 (defvar circe-server-name nil
   "The name of the server we're currently connected to.")
 (make-variable-buffer-local 'circe-server-name)
@@ -2974,6 +2977,17 @@ as arguments."
       (circe-server-send
        (format "NOTICE %s :\C-aCLIENTINFO %s\C-a"
                nick (mapconcat #'identity (sort ctcps #'string<) " "))))))
+
+(circe-add-message-handler "CTCP-SOURCE" 'circe-ctcp-SOURCE-handler)
+(defun circe-ctcp-SOURCE-handler (nick user host command args)
+  "Handle a CTCP SOURCE request, which replies with Circe's github url.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments."
+  (when (not *circe-ignored-p*)
+    (circe-server-send
+     (format "NOTICE %s :\C-aSOURCE %s\C-a"
+               nick circe-source-url))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Display Handlers ;;;
