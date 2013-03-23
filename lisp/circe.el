@@ -2666,10 +2666,11 @@ Each HANDLER is called in a server buffer with five arguments,
 NICK, USER, HOST, COMMAND and ARGS."
   (when (not circe-message-handler-table)
     (setq circe-message-handler-table (make-hash-table :test 'equal)))
-  (puthash command
-           (append (gethash command circe-message-handler-table)
-                   (list handler))
-           circe-message-handler-table))
+  (when (not (member handler (circe-get-message-handlers command)))
+    (puthash command
+             (append (gethash command circe-message-handler-table)
+                     (list handler))
+             circe-message-handler-table)))
 
 (defun circe-get-message-handlers (command)
   "Return the list of handler functions for COMMAND.
