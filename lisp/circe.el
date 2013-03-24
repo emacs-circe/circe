@@ -1249,17 +1249,6 @@ server's chat buffers."
   (circe-display 'circe-format-server-message
                  :body message))
 
-;; I'm a bit unhappy about this. The choice for the face for the
-;; message happens very deeply within the call stack, and on the way
-;; we lose who the message was from. So we keep a "global variable"
-;; (dynamically scoped) saying which default properties to set much
-;; later.
-(defvar *circe-default-properties* nil
-  "Internal use. Set this to nil. Do not change it. Go away.")
-
-(defvar *circe-ignored-p* nil
-  "Whether the current message should be ignored or not.")
-
 (defun circe-display (format &rest keywords)
   "Display FORMAT formatted with KEYWORDS in the current Circe buffer.
 See `lui-format' for a description of the format.
@@ -1287,8 +1276,7 @@ It is always possible to use the mynick or target formats."
                                 (car keywords)
                               keywords))))
          (text (lui-format format keywords)))
-    ;; Dynamically-scoped variable
-    (let ((seq *circe-default-properties*))
+    (let ((seq (circe-message-option 'text-properties)))
       (while seq
         (let ((key (car seq))
               (val (cadr seq)))
@@ -2422,11 +2410,9 @@ Arguments are IGNORED."
                        (or (match-string 3 (cadr args))
                            ""))))
     (unwind-protect
-        (let ((*circe-default-properties*
-               (circe-default-properties nick user host command args))
-              (*circe-ignored-p*
-               (circe-ignored-p nick user host command args)))
-          (when (not *circe-ignored-p*)
+        (let* ((circe-current-message (list nick user host command args))
+               (circe-message-option-cache (make-hash-table :test 'equal)))
+          (when (not (circe-message-option 'dont-display))
             (circe-server-display-message nick user host command args))
           (circe-server-handle-message nick user host command args))
       (circe-server-handle-message-internal nick user host command args))))
@@ -2679,27 +2665,115 @@ See `circe-add-message-handler' for more information."
   (when circe-message-handler-table
     (gethash command circe-message-handler-table)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Default Properties ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;
+;;; Message Options ;;;
+;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun circe-default-properties (nick user host command args)
-  "Semipredicate, returns a default property list if this user
-matches an entry in `circe-default-properties-alist' or
-`circe-fool-p', which see."
-  (let ((string (concat nick "!" user "@" host))
-        (alist (cons '(circe-fool-p face circe-fool-face
-                                    lui-fool t)
-                     circe-default-properties-alist)))
-    (catch 'return
-      (dolist (entry alist)
-        (let ((p (car entry))
-              (props (cdr entry)))
-          (when (or (and (stringp p) (string-match p string))
-                    (and (functionp p)
-                         (funcall p nick user host command args)))
-            (throw 'return props))))
-      nil)))
+(defvar circe-message-option-functions '(circe-message-option-ignored
+                                         circe-message-option-fool)
+  "A list of functions to call to get options for a message.
+
+Each function receives five arguments: NICK, USER, HOST, COMMAND
+and ARGS. It should return an alist mapping option symbols to
+values.
+
+Possible options:
+
+  dont-reply
+      Boolean. t if Circe should never reply to this.
+
+  dont-display
+      Boolean. t if Circe should not display this message.
+
+  hide
+      Boolean. t if Circe should hide this message by default,
+      but allow the user to show it on demand.
+
+  text-properties
+      Property list. Default text properties for this message.")
+
+(defvar circe-message-option-cache nil
+  "A caching table for the current message's options.
+
+This should not be set globally.")
+
+(defvar circe-current-message nil
+  "The current message.
+
+A list of NICK, USER, HOST, COMMAND and ARGS, or nil if no
+current message.")
+
+(defun circe-message-options ()
+  "Return the table for the current message options."
+  (when circe-current-message
+    (let ((cached (gethash (current-buffer) circe-message-option-cache)))
+      (when (not cached)
+        (setq cached (make-hash-table :test 'equal))
+        (puthash (current-buffer) cached circe-message-option-cache)
+        (circe-message-options-update cached))
+      cached)))
+
+(defun circe-message-option (name)
+  "Return the value of the option NAME, or nil if not set."
+  (let ((table (circe-message-options)))
+    (when table
+      (gethash name table))))
+
+(defun circe-message-options-update (table)
+  "Add current message options to TABLE."
+  (dolist (fun circe-message-option-functions)
+    (dolist (elt (apply fun circe-current-message))
+      (let ((key (car elt))
+            (value (cdr elt)))
+        (if (not (eq key 'text-properties))
+            (puthash key value table)
+          (puthash 'text-properties
+                   (circe-merge-text-properties
+                    (gethash 'text-properties table)
+                    value)
+                   table))))))
+
+(defun circe-merge-text-properties (plist1 plist2)
+  "Merge two property lists and return the merged list.
+
+PLIST1 should have priority over PLIST2, except for faces, where
+the two face lists are merged."
+  (let ((new (append plist1 nil))) ; Copy list
+    (while plist2
+      (if (not (eq 'face (car plist2)))
+          (setq new (plist-put new (car plist2) (cadr plist2)))
+        ;; Faces should be merged, not overridden.
+        (let* ((face1 (plist-get new 'face))
+               (face2 (cadr plist2))
+               new-face)
+          (cond
+           ((not face1)
+            (setq new-face face2))
+           ((not face2)
+            (setq new-face face1))
+           (t
+            (setq new-face (append (if (consp face1)
+                                       face1
+                                     (list face1))
+                                   (if (consp face2)
+                                       face2
+                                     (list face2))))))
+          (setq new (plist-put new 'face new-face))))
+      (setq plist2 (cddr plist2)))
+    new))
+
+(defun circe-message-option-ignored (nick user host command args)
+  "Return appropriate properties when a user is ignored."
+  (when (circe-ignored-p nick user host command args)
+    '((dont-reply . t)
+      (dont-display . t))))
+
+(defun circe-message-option-fool (nick user host command args)
+  "Return appropriate properties when a user should not be shown by default."
+  (when (circe-fool-p nick user host command args)
+    '((hide . t)
+      (text-properties . (face circe-fool-face
+                          lui-fool t)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ignore Handling ;;;
@@ -2860,9 +2934,10 @@ ARGS the arguments to the command."
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (when (not *circe-ignored-p*)
+  (when (not (circe-message-option 'dont-reply))
     (circe-server-send
-     (format "NOTICE %s :\C-aVERSION Circe: Client for IRC in Emacs, version %s\C-a"
+     (format (concat "NOTICE %s :\C-aVERSION Circe: Client for IRC in Emacs, "
+                     "version %s\C-a")
              nick circe-version))))
 
 
@@ -2872,7 +2947,7 @@ as arguments."
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (when (not *circe-ignored-p*)
+  (when (not (circe-message-option 'dont-reply))
     (circe-server-send (format "NOTICE %s :\C-aPING %s\C-a"
                                nick (cadr args)))))
 
@@ -2924,7 +2999,7 @@ as arguments."
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (when (not *circe-ignored-p*)
+  (when (not (circe-message-option 'dont-reply))
     (circe-server-send
      (format "NOTICE %s :\C-aTIME %s\C-a"
              nick
@@ -2950,7 +3025,7 @@ supported CTCPs.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (when (not *circe-ignored-p*)
+  (when (not (circe-message-option 'dont-reply))
     (let ((ctcps (list)))
       (maphash #'(lambda (command _)
                    (when (string-prefix-p "CTCP-" command)
@@ -2967,7 +3042,7 @@ as arguments."
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (when (not *circe-ignored-p*)
+  (when (not (circe-message-option 'dont-reply))
     (circe-server-send
      (format "NOTICE %s :\C-aSOURCE %s\C-a"
                nick circe-source-url))))
