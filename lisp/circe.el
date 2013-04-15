@@ -649,13 +649,15 @@ This is required for reconnecting.")
   "The process of the server connection.")
 (make-variable-buffer-local 'circe-server-process)
 
-(defvar circe-nowait-on-connect t
+(defvar circe-nowait-on-connect
+  (not (eq system-type 'windows-nt))
   "Whether to use asynchronous connect.
 
 Use `circe-network-options' to set this, by adding
 :nowait-on-connect nil to your options.
 
-Some users experience problems with this. No idea why.")
+Windows-based Emacs appear not to support this, so it defaults to off
+on that platform.")
 
 (defvar circe-server-registered-p nil
   "Non-nil when we have registered with the server.")
