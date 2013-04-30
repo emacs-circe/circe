@@ -130,7 +130,8 @@ filename."
 
 (defun lui-logging-write-to-log (file-name content)
   "Actually perform a write to the logfile."
-  (write-region content nil file-name t 'nomessage))
+  (let ((coding-system-for-write 'raw-text))
+    (write-region content nil file-name t 'nomessage)))
 
 (defun lui-logging-flush-file (file-name queue)
   "Consume the logging queue and write the content to the log
