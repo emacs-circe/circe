@@ -1,0 +1,4 @@
+(define-package "circe" "$VERSION"
+                "Client for IRC in Emacs"
+                '((tracking "0")
+                  ))

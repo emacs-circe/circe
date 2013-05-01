@@ -70,7 +70,7 @@ do_release () {
     then
         mkdir -p release
         echo -n "Building tracking ... "
-        elpa_file tracking lisp/tracking.el "$LAST_TRACKING" "shorten"
+        elpa_file tracking lisp/tracking.el "$LAST_TRACKING"
         echo "ok."
     fi
 
@@ -80,7 +80,7 @@ do_release () {
     then
         mkdir -p release
         echo -n "Building Lui ... "
-        elpa_tar lui lisp/lui.el "$LAST_LUI" "tracking"
+        elpa_tar lui lisp/lui.el "$LAST_LUI"
         echo "ok."
     fi
 
@@ -90,7 +90,7 @@ do_release () {
     then
         mkdir -p release
         echo -n "Building Circe ... "
-        circe_release "$LAST_CIRCE"
+        elpa_tar circe lisp/circe.el "$LAST_CIRCE"
         echo "ok."
     fi
 
@@ -108,14 +108,6 @@ do_release () {
         echo
         echo "git push --tags"
         echo
-        # for name in release/circe-*.tar.gz
-        # do
-        #     if [ -f "$name" ]
-        #     then
-        #         echo "- Upload $name to "
-        #         echo "  $UPLOADURL"
-        #     fi
-        # done
         for name in release/*.tar release/*.el
         do
             if [ -f "$name" ]
@@ -124,22 +116,6 @@ do_release () {
             fi
         done
     fi
-}
-
-circe_release () {
-    local OLD_TAG="$1"
-
-    elpa_tar circe lisp/circe.el "$OLD_TAG" "lui lcs"
-
-    local VERSION="$(elisp_version lisp/circe.el)"
-    local DEST="$(pwd)/release/circe-$VERSION/"
-    mkdir -p "$DEST"
-    cp -r LICENSE README.md lisp/ "$DEST"
-    elisp_autoloads "circe" "$DEST/lisp/" 2>/dev/null
-    elisp_compile "$DEST/lisp" 2>/dev/null
-    tar -C release/ -c "circe-$VERSION" \
-    | gzip -9 > "release/circe-$VERSION.tar.gz"
-    rm -rf "$DEST"
 }
 
 ##################################################################
@@ -223,31 +199,25 @@ elpa_readme () {
 
 
 elpa_pkg_file () {
-    local PACKAGE="$1"
-    local VERSION="$2"
-    local DESC="$3"
-    local DEPENDS="$4"
-    local PKGFILE="$5"
+    local PKGFILE="$1" # build/circe-0.1/circe-pkg.el
+    local PACKAGE="$2" # circe
+    local VERSION="$3" # 1.0
 
     VERSION_DICT["$PACKAGE"]="$VERSION"
-
-    (echo "(define-package \"$PACKAGE\" \"$VERSION\" \"$DESC\" $DEPENDS)"
-     echo ";; no-byte-compile: t"
-    ) > "$PKGFILE"
+    (
+        echo ",s/\\\$VERSION/$VERSION/g"
+        for pkgname in "${!VERSION_DICT[@]}"
+        do
+            echo ",s/($pkgname \"[0-9.]\\+\")/($pkgname \"${VERSION_DICT[$pkgname]}\")/g"
+        done
+        echo "w"
+    ) | ed "$PKGFILE" 2>/dev/null || :
 }
 
 elpa_tar () {
     local PACKAGE="$1" # circe
     local FILENAME="$2" # lisp/circe.el
     local OLD_TAG="$3" # circe-0.5
-    local DEPENDS_LIST="$4" # "lui lcs"
-
-    DEPENDS="'("
-    for package in $DEPENDS_LIST
-    do
-        DEPENDS="${DEPENDS}($package \"${VERSION_DICT[$package]}\") "
-    done
-    DEPENDS="${DEPENDS% })"
 
     local OLD_VERSION="$(elisp_version_in "$OLD_TAG" "$FILENAME")"
     local VERSION="$(elisp_version "$FILENAME")"
@@ -278,8 +248,8 @@ elpa_tar () {
     local DESC="$(elisp_short_description lisp/$PACKAGE.el)"
     elpa_readme "$DEST/$PACKAGE.el" "$DEST/README"
     elisp_autoloads "$PACKAGE" "$DEST" 2>/dev/null
-    elpa_pkg_file "$PACKAGE" "$VERSION" "$DESC" "$DEPENDS" \
-        "$DEST/$PACKAGE-pkg.el"
+    mv "$DEST/$PACKAGE-pkg.el.in" "$DEST/$PACKAGE-pkg.el"
+    elpa_pkg_file "$DEST/$PACKAGE-pkg.el" "$PACKAGE" "$VERSION"
     tar -C release/ -c "$PACKAGE-$VERSION" \
     > "release/$PACKAGE-$VERSION.tar"
     rm -rf "$DEST"
@@ -289,16 +259,6 @@ elpa_file () {
     local PROJECT="$1"
     local FILENAME="$2"
     local OLD_TAG="$3"
-    local DEPENDS_LIST="$4" # "lui lcs"
-    if [ ! -z "$DEPENDS_LIST" ]
-    then
-        DEPENDS="("
-        for package in $DEPENDS_LIST
-        do
-            DEPENDS="${DEPENDS}($package \"${VERSION_DICT[$package]}\") "
-        done
-        DEPENDS="${DEPENDS% })"
-    fi
 
     local OLD_VERSION="$(elisp_version_in "$OLD_TAG" "$FILENAME")"
     local VERSION="$(elisp_version "$FILENAME")"
@@ -325,15 +285,23 @@ elpa_file () {
 
     GIT_TAG_COMMANDS+=("git tag -a -m \"Released $TAG\" \"$TAG\" HEAD")
 
-    if [ -z "$DEPENDS" ]
-    then
-        cp "$FILENAME" release/
-    else
-        local DESTFILE=release/"$(basename "$FILENAME")"
-        sed -ne '1,/^;; URL:/p' "$FILENAME" > "$DESTFILE"
-        echo ";; Requirements: $DEPENDS" >> "$DESTFILE"
-        sed -e '1,/^;; URL:/d' "$FILENAME" >> "$DESTFILE"
-    fi
+    cp "$FILENAME" release/
+    elpa_file_adjust_versions release/"$(basename "$FILENAME")"
+}
+
+
+elpa_file_adjust_versions () {
+    local FILENAME="$1"
+    # Adjust ;; Requirements: ((shorten "[0-9.]*")) with correct
+    # versions from VERSION_DICT
+
+    (
+        for pkgname in "${!VERSION_DICT[@]}"
+        do
+            echo "/^;; Requirements:/s/($pkgname \"[0-9.]\\+\")/($pkgname \"${VERSION_DICT[$pkgname]}\")/g"
+        done
+        echo "w"
+    ) | ed "$FILENAME" 2> /dev/null || :
 }
 
 main "$@"

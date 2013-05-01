@@ -1,0 +1,5 @@
+(define-package "lui" "$VERSION"
+                "Linewise User Interface"
+                '((lui "0")
+                  (lcs "0")
+                  ))
