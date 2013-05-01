@@ -1783,7 +1783,7 @@ This list is regularly cleaned up, see
 Currently, this uses only the existence of OLD in the recent
 users, which is a pretty rough heuristic, but it works."
   (and (circe-channel-user-p old)
-       (circe-channel-recent-user-p old)))
+       (circe-channel-recent-user-p new)))
 
 (defun circe-channel-expire-recent-users ()
   "Clean up old users from the recent users table.
