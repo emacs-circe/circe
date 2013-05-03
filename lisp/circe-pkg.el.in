@@ -1,4 +1,3 @@
 (define-package "circe" "$VERSION"
                 "Client for IRC in Emacs"
-                '((tracking "0")
-                  ))
+                '((lui "0") (lcs "0")))
