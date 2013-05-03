@@ -298,7 +298,7 @@ elpa_file_adjust_versions () {
     (
         for pkgname in "${!VERSION_DICT[@]}"
         do
-            echo "/^;; Requirements:/s/($pkgname \"[0-9.]\\+\")/($pkgname \"${VERSION_DICT[$pkgname]}\")/g"
+            echo "/^;; Package-Requires:/s/($pkgname \"[0-9.]\\+\")/($pkgname \"${VERSION_DICT[$pkgname]}\")/g"
         done
         echo "w"
     ) | ed "$FILENAME" 2> /dev/null || :
