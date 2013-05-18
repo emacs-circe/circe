@@ -1667,6 +1667,7 @@ received."
                    (circe-case-fold-string= nick
                                             circe-chat-target))
           (setq circe-chat-target (car args))
+          (rename-buffer circe-chat-target t)
           (with-circe-server-buffer
             (circe-server-remove-chat-buffer nick)
             (circe-server-add-chat-buffer (car args)
