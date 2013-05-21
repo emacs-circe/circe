@@ -2385,6 +2385,11 @@ Arguments are IGNORED."
                              (format-time-string "%Y-%m-%d"
                                                  emacs-build-time))))
 
+(defun circe-command-CLEAR (&optional ignored)
+  "Delete all buffer contents before the lui prompt."
+  (let ((inhibit-read-only t))
+    (delete-region (point-min) lui-output-marker)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; IRC Protocol Handling ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
