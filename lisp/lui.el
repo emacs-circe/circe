@@ -1,8 +1,8 @@
 ;;; lui.el --- Linewise User Interface
 
-;; Copyright (C) 2005 - 2012  Jorgen Schaefer
+;; Copyright (C) 2005 - 2013  Jorgen Schaefer
 
-;; Version: 1.1
+;; Version: 1.2
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe/wiki/Lui
 
@@ -42,7 +42,7 @@
 
 ;;; Code:
 
-(defvar lui-version "1.1"
+(defvar lui-version "1.2"
   "Lui version string.")
 
 (require 'button)
