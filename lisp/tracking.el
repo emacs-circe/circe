@@ -243,7 +243,11 @@ decided according to `tracking-faces-priorities'."
         (ding)
         (setq tracking-mode-line-buffers (tracking-status))))
     (setq tracking-last-buffer (current-buffer))
-    (sit-for 0) ;; Update mode line
+    ;; Update mode line. See `force-mode-line-update' for the idea for
+    ;; this code. Using `sit-for' can be quite inefficient for larger
+    ;; buffers.
+    (dolist (w (window-list))
+      (with-current-buffer (window-buffer w)))
     )))
 
 ;;;###autoload
