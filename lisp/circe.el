@@ -479,14 +479,6 @@ This is run from a 001 (RPL_WELCOME) message handler."
   :type 'hook
   :group 'circe)
 
-(defcustom circe-default-properties-alist ()
-  "Alist mapping hostmasks and predicates to property lists to be
-added to matching users' messages by `circe-display'."
-  :type '(alist
-          :key-type (or regexp function)
-          :value-type (plist))
-  :group 'circe)
-
 ;;;;;;;;;;;;;;;
 ;;; Formats ;;;
 ;;;;;;;;;;;;;;;
