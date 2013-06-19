@@ -2681,7 +2681,7 @@ values.
 Possible options:
 
   dont-reply
-      Boolean. t if Circe should never reply to this.
+      Boolean. t if Circe should never reply to this (as for CTCP queries).
 
   dont-display
       Boolean. t if Circe should not display this message.
