@@ -2548,7 +2548,7 @@ as arguments."
 
 Message handlers are meant to process IRC messages in a way that
 primarily does not display anything, as to avoid multiple
-displays for the sameg message. This allows for bookkeeping and
+displays for the same message. This allows for bookkeeping and
 other such handlers.
 
 Please note that message handlers are called even if the user is
@@ -2614,8 +2614,7 @@ A function gets called in the server buffer with five arguments,
 NICK, USER, HOST, COMMAND and ARGS, and is expected to display
 this message however it wants.
 
-Alternatively, the handler can be a list of two or three
-elements:
+Alternatively, the handler can be a list of two elements:
 
   target   - The target of this message
   format   - The format for this string
