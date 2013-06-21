@@ -92,6 +92,10 @@
 (defun shorten-join (lst &optional tail-count)
   (mapconcat #'identity lst ""))
 
+(defun shorten-join-sans-tail (lst tail-count)
+  "A shorten-join that drops unnecessary tail components."
+  (shorten-join (butlast lst tail-count)))
+
 (defun shorten-validate-component (str)
   (string-match-p "\\w" str))
 
