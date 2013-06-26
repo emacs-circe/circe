@@ -2669,8 +2669,7 @@ See `circe-add-message-handler' for more information."
 ;;; Message Options ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar circe-message-option-functions '(circe-message-option-ignored
-                                         circe-message-option-fool)
+(defvar circe-message-option-functions nil
   "A list of functions to call to get options for a message.
 
 Each function receives five arguments: NICK, USER, HOST, COMMAND
@@ -2762,12 +2761,14 @@ the two face lists are merged."
       (setq plist2 (cddr plist2)))
     new))
 
+(add-hook 'circe-message-option-functions 'circe-message-option-ignored)
 (defun circe-message-option-ignored (nick user host command args)
   "Return appropriate properties when a user is ignored."
   (when (circe-ignored-p nick user host command args)
     '((dont-reply . t)
       (dont-display . t))))
 
+(add-hook 'circe-message-option-functions 'circe-message-option-fool)
 (defun circe-message-option-fool (nick user host command args)
   "Return appropriate properties when a user should not be shown by default."
   (when (circe-fool-p nick user host command args)
