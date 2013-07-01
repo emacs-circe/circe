@@ -3102,7 +3102,7 @@ as arguments."
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (let ((queryp (circe-server-my-nick-p (car args))))
-    (if nick
+    (if (and nick (not (string-match "\\." nick)))
         (with-current-buffer (or (circe-server-get-chat-buffer (if queryp
                                                                    nick
                                                                  (car args)))
