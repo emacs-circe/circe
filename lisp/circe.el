@@ -2142,6 +2142,12 @@ See `minibuffer-completion-table' for details."
                 str)))
           (apropos-internal "^circe-command-")))
 
+(defun circe-command-HELP (&optional ignored)
+  "Display a list of recognized commands, nicely formatted."
+  (circe-server-message
+   (concat "Recognized commands are: "
+	   (mapconcat (lambda (s) s) (circe-commands-list) ""))))
+
 (defun circe-command-SAY (line)
   "Say LINE to the current target."
   (interactive "sSay: ")
