@@ -2018,7 +2018,8 @@ See `minibuffer-completion-table' for details."
    ((eq action nil)
     (try-completion string
                     (circe-completion-candidates
-                     (if (= (field-beginning) lui-input-marker)
+                     (if (= (- (point) (length string))
+                            lui-input-marker)
                          circe-completion-suffix
                        " "))
                     pred))
@@ -2026,7 +2027,8 @@ See `minibuffer-completion-table' for details."
    ((eq action t)
     (all-completions string
                      (circe-completion-candidates
-                      (if (= (field-beginning) lui-input-marker)
+                      (if (= (- (point) (length string))
+                             lui-input-marker)
                           circe-completion-suffix
                         " "))
                      pred))
@@ -2034,7 +2036,8 @@ See `minibuffer-completion-table' for details."
    ((eq action 'lambda)
     (test-completion string
                      (circe-completion-candidates
-                      (if (= (field-beginning) lui-input-marker)
+                      (if (= (- (point) (length string))
+                             lui-input-marker)
                           circe-completion-suffix
                         " "))
                      pred))
