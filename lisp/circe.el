@@ -947,8 +947,18 @@ See `circe-server-max-reconnect-attempts'.")
                   circe-server-max-reconnect-attempts))
       (setq circe-server-reconnect-attempts (+ circe-server-reconnect-attempts
                                                1))
-      (when circe-server-process
-        (delete-process circe-server-process))
+      (dolist (proc (list circe-server-process
+                          (get-buffer-process (current-buffer))))
+        (when (and proc
+                   (process-live-p proc))
+          ;; Remove the sentinel to avoid it reconnecting when we kill
+          ;; it.
+          (set-process-sentinel proc nil)
+          ;; A tls connection would spam the server buffer, so bind
+          ;; the process to a temp buffer
+          (with-temp-buffer
+            (set-process-buffer proc (current-buffer))
+            (delete-process proc))))
       (setq circe-server-registered-p nil
             circe-server-filter-data nil
             circe-server-flood-queue nil)
