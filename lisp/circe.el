@@ -772,7 +772,7 @@ network names."
         (completion-ignore-case t))
     (dolist (network-spec (append circe-network-options
                                   circe-networks))
-      (add-to-list 'networks (car network-spec)))
+      (push (car network-spec) networks))
     (completing-read "Network or host: "
                      (sort networks 'string-lessp)
                      nil nil nil nil

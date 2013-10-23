@@ -921,7 +921,7 @@ The argument N is ignored."
           (when (and face
                      (facep face)
                      (face-differs-from-default-p face))
-            (add-to-list 'faces face)))
+            (push face faces)))
         (goto-char (next-single-property-change (point) 'face
                                                 nil end))))
     faces))
