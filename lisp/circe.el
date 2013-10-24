@@ -153,7 +153,7 @@ This alist maps network names to respective options.
 
 Common options:
 
-  :pass - The IRC server password to use for this network.
+  :pass - The IRC server password to use for this network or a function to fetch it.
   :nick - The nick name to use (defaults to `circe-default-nick')
   :user - The user name to use (defaults to `circe-default-user')
   :realname - The real name to use (defaults to `circe-default-realname')
@@ -629,7 +629,9 @@ strings."
 (make-variable-buffer-local 'circe-server-realname)
 
 (defvar circe-server-pass nil
-  "The password for the current server.
+  "The password for the current server or a function to recall it.
+
+If a function is set it will be called with the value of `circe-server-name'.
 This is required for reconnecting.")
 (make-variable-buffer-local 'circe-server-pass)
 
@@ -1072,7 +1074,12 @@ Circe server buffer in which EVENT happened."
         (cond
          ((string-match "^open" event)
           (when circe-server-pass
-            (circe-server-send (format "PASS %s" circe-server-pass)))
+            (circe-server-send (format
+                                "PASS %s"
+                                (if (functionp circe-server-pass)
+                                  (funcall circe-server-pass
+                                           circe-server-name)
+                                  circe-server-name))))
           (circe-server-send (format "NICK %s" circe-server-nick))
           (circe-server-send (format "USER %s 8 * :%s"
                                      circe-server-user
