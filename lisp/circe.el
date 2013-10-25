@@ -1077,9 +1077,9 @@ Circe server buffer in which EVENT happened."
             (circe-server-send (format
                                 "PASS %s"
                                 (if (functionp circe-server-pass)
-                                  (funcall circe-server-pass
-                                           circe-server-name)
-                                  circe-server-name))))
+                                    (funcall circe-server-pass
+                                             circe-server-name)
+                                  circe-server-pass))))
           (circe-server-send (format "NICK %s" circe-server-nick))
           (circe-server-send (format "USER %s 8 * :%s"
                                      circe-server-user
