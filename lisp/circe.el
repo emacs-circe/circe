@@ -1141,27 +1141,28 @@ protection algorithm."
   "Send messages in `circe-server-flood-queue' of BUFFER.
 See `circe-server-flood-margin' for an explanation of the flood
 protection algorithm."
-  (with-current-buffer buffer
-    (let ((now (float-time)))
-      (when circe-server-flood-timer
-        (cancel-timer circe-server-flood-timer)
-        (setq circe-server-flood-timer nil))
-      (when (< circe-server-flood-last-message
-               now)
-        (setq circe-server-flood-last-message now))
-      (while (and circe-server-flood-queue
-                  (< circe-server-flood-last-message
-                     (+ now circe-server-flood-margin)))
-        (let ((msg (car circe-server-flood-queue)))
-          (setq circe-server-flood-queue (cdr circe-server-flood-queue)
-                circe-server-flood-last-message
-                (+ circe-server-flood-last-message
-                   circe-server-flood-penalty))
-          (process-send-string circe-server-process msg)))
-      (when circe-server-flood-queue
-        (setq circe-server-flood-timer
-              (run-at-time (+ 0.2 circe-server-flood-penalty) ; So we get a free spot
-                           nil #'circe-server-send-queue buffer))))))
+  (when (buffer-live-p buffer)
+    (with-current-buffer buffer
+      (let ((now (float-time)))
+        (when circe-server-flood-timer
+          (cancel-timer circe-server-flood-timer)
+          (setq circe-server-flood-timer nil))
+        (when (< circe-server-flood-last-message
+                 now)
+          (setq circe-server-flood-last-message now))
+        (while (and circe-server-flood-queue
+                    (< circe-server-flood-last-message
+                       (+ now circe-server-flood-margin)))
+          (let ((msg (car circe-server-flood-queue)))
+            (setq circe-server-flood-queue (cdr circe-server-flood-queue)
+                  circe-server-flood-last-message
+                  (+ circe-server-flood-last-message
+                     circe-server-flood-penalty))
+            (process-send-string circe-server-process msg)))
+        (when circe-server-flood-queue
+          (setq circe-server-flood-timer
+                (run-at-time (+ 0.2 circe-server-flood-penalty) ; So we get a free spot
+                             nil #'circe-server-send-queue buffer)))))))
 
 (defun circe-buffer-killed ()
   "The current buffer is being killed. Do the necessary bookkeeping for circe."
