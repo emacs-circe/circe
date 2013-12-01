@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2005 - 2013  Jorgen Schaefer
 
-;; Version: 1.2
+;; Version: 1.3
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe/wiki/Lui
 
@@ -42,7 +42,7 @@
 
 ;;; Code:
 
-(defvar lui-version "1.2"
+(defvar lui-version "1.3"
   "Lui version string.")
 
 (require 'button)

@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2006, 2012 - 2013  Jorgen Schaefer
 
-;; Version: 1.3
+;; Version: 1.4
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe/wiki/Tracking
 ;; Package-Requires: ((shorten "0.1"))
