@@ -3933,7 +3933,8 @@ pass an argument to the `circe' function for this.")
   "Regain/reclaim/ghost your nick if necessary."
   (with-circe-server-buffer
     (when (and circe-nickserv-ghost-command
-               circe-nickserv-nick)
+               circe-nickserv-nick
+               circe-nickserv-password)
       (circe-server-send (lui-format circe-nickserv-ghost-command
                                      :nick circe-nickserv-nick
                                      :password circe-nickserv-password)))))
