@@ -99,20 +99,31 @@ everything by 256. This also helps preventing integer overflow."
              (* 4 dg dg)
              (ash (* (- 767 red-mean) dr dr) -8)))))
 
+(defsubst circe-perceived-brightness (color)
+  (apply '+
+         (mapcar* '* 
+                  (color-values color)
+                  '(0.299 0.587 0.114))))
+
 (defun circe-generate-nick-color ()
   "Compute a suitable random nick color. Suitable means
 1) Not a shade of gray
 2) Not similar to foreground, background, or my-message colors
-Similarity is computed with `circe-color-distance'"
-  (let ((min-distance 200)
-        (fg (face-foreground 'default))
-        (bg (face-background 'default))
-        (nick (face-foreground 'circe-my-message-face))
-        (color (car (elt color-name-rgb-alist (random (length color-name-rgb-alist))))))
+Similarity is computed with `circe-color-distance'
+3) Perceived brightness difference between background and foreground is high enough"
+  (let* ((min-distance 200)
+         (min-brightness-difference 30000)
+         (fg (face-foreground 'default))
+         (bg (face-background 'default))
+         (nick (face-foreground 'circe-my-message-face))
+         (color (car (elt color-name-rgb-alist (random (length color-name-rgb-alist)))))
+         (color-perceived-brightness (circe-perceived-brightness color))
+         (bg-perceived-brightness (circe-perceived-brightness bg)))
     (if (and (not (color-gray-p color))
-             (> (circe-color-distance color bg) min-distance)
-             (> (circe-color-distance color fg) min-distance)
-             (or (null nick) (> (circe-color-distance color nick) min-distance)))
+           (> (circe-color-distance color bg) min-distance)
+           (> (circe-color-distance color fg) min-distance)
+           (or (null nick) (> (circe-color-distance color nick) min-distance))
+           (> (abs (- color-perceived-brightness bg-perceived-brightness)) min-brightness-difference))
         color
       (circe-generate-nick-color))))
 
