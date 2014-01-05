@@ -121,7 +121,7 @@ everything by 256. This also helps preventing integer overflow."
 (defun circe-generate-nick-color ()
   "Compute a suitable random nick color. Suitable means
 1) Not a shade of gray
-2) Not similar to background or my-message colors
+2) Not similar to foreground or my-message colors
 Similarity is computed with `circe-color-distance'
 3) Perceived brightness difference between background and foreground is high enough"
   (let* ((fg (face-foreground 'default))
