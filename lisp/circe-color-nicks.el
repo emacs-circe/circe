@@ -99,6 +99,19 @@ everything by 256. This also helps preventing integer overflow."
              (* 4 dg dg)
              (ash (* (- 767 red-mean) dr dr) -8)))))
 
+(defgroup circe-color-nicks nil
+  "Nicks colorization for Circe"
+  :prefix "circe-color-nicks-"
+  :group 'circe)
+
+(defcustom circe-color-nicks-min-brightness-difference 35000
+  "Minimal brightness difference between background and nick colors, 0 to 65535."
+  :group 'circe-color-nicks)
+
+(defcustom circe-color-nicks-min-color-distance 80
+  "Minimal color distance between foreground and nick colors, 0 to approximately 765."
+  :group 'circe-color-nicks)
+
 (defsubst circe-perceived-brightness (color)
   (apply '+
          (mapcar* '* 
@@ -108,24 +121,22 @@ everything by 256. This also helps preventing integer overflow."
 (defun circe-generate-nick-color ()
   "Compute a suitable random nick color. Suitable means
 1) Not a shade of gray
-2) Not similar to foreground, background, or my-message colors
+2) Not similar to background or my-message colors
 Similarity is computed with `circe-color-distance'
 3) Perceived brightness difference between background and foreground is high enough"
-  (let* ((min-distance 200)
-         (min-brightness-difference 30000)
-         (fg (face-foreground 'default))
+  (let* ((fg (face-foreground 'default))
          (bg (face-background 'default))
          (nick (face-foreground 'circe-my-message-face))
          (color (car (elt color-name-rgb-alist (random (length color-name-rgb-alist)))))
          (color-perceived-brightness (circe-perceived-brightness color))
          (bg-perceived-brightness (circe-perceived-brightness bg)))
     (if (and (not (color-gray-p color))
-           (> (circe-color-distance color bg) min-distance)
-           (> (circe-color-distance color fg) min-distance)
-           (or (null nick) (> (circe-color-distance color nick) min-distance))
-           (> (abs (- color-perceived-brightness bg-perceived-brightness)) min-brightness-difference))
+           (> (circe-color-distance color fg) circe-color-nicks-min-color-distance)
+           (or (null nick) (> (circe-color-distance color nick) circe-color-nicks-min-color-distance))
+           (> (abs (- color-perceived-brightness bg-perceived-brightness)) circe-color-nicks-min-brightness-difference))
         color
       (circe-generate-nick-color))))
+
 
 (defvar circe-nick-color-mapping (make-hash-table :test 'equal)
   "Hash-map mapping nicks to color names.")
