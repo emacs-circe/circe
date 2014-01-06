@@ -160,7 +160,7 @@ Uses 3 bits of state to make it less random"
   "Minimal color distance between foreground and nick colors, 0 to 1."
   :group 'circe-color-nicks)
 
-(defcustom circe-color-nicks-max-color-distance 0.3
+(defcustom circe-color-nicks-max-color-distance 0.1
   "Maximum color distance between foreground and nick colors, 0 to 1."
   :group 'circe-color-nicks)
 
