@@ -117,11 +117,17 @@ See `enable-circe-color-nicks'."
                                     255)))
                        values))))
 
+(random t)
+(setq circe-color-nicks-rand-state (random 7))
+
 (defsubst circe-color-nicks-rand ()
-  "Generates random value in range from 0 to 1"
-  (progn
-    (random t)
-    (/ (random 65535) 65535.0)))
+  "Generates quasi-random value in range from 0 to 1
+Uses 3 bits of state to make it less random"
+  (let ((rand (/ (random 65535) 65535.0 7)))
+    (setq circe-color-nicks-rand-state (1+ circe-color-nicks-rand-state))
+    (+ rand (- (/ (logand circe-color-nicks-rand-state 7) 7.0)
+               (/ 1 7.0)))))
+
 
 (defsubst circe-color-nicks-rand-exclude (val distance rand)
   "Excludes distance around val"
