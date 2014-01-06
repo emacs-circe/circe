@@ -97,7 +97,7 @@ everything by 256. This also helps preventing integer overflow."
                       2 256)))
     (sqrt (+ (ash (* (+ 512 red-mean) dr dr) -8)
              (* 4 dg dg)
-             (ash (* (- 767 red-mean) dr dr) -8)))))
+             (ash (* (- 767 red-mean) db db -8)))))
 
 (defgroup circe-color-nicks nil
   "Nicks colorization for Circe"
