@@ -156,33 +156,55 @@ Uses 3 bits of state to make it less random"
        (* total-distance
           rand))))
 
-(defun circe-generate-nick-color-cie-1931-xyz (nick)
+(defcustom circe-color-nicks-min-color-distance 0.05
+  "Minimal color distance between foreground and nick colors, 0 to 1."
+  :group 'circe-color-nicks)
+
+(defcustom circe-color-nicks-max-color-distance 0.3
+  "Maximum color distance between foreground and nick colors, 0 to 1."
+  :group 'circe-color-nicks)
+
+(defcustom circe-color-nicks-min-brightness-difference 0.45
+  "Minimal brightness difference between background and nick colors, 0 to 1."
+  :group 'circe-color-nicks)
+
+(defcustom circe-color-nicks-persistent-colors nil
+  "Make colors persistent for nicks."
+  :group 'circe-color-nicks)
+
+(defun circe-get-nick-color-cie-1931-xyz (nickname)
   "Compute a suitable random nick color. Suitable means
 1) Luminance differs enough from background's
 2) Neither too close to nor too far from foreground
 by mix of cone response curves and blue stimulation"
+  (if circe-color-nicks-persistent-colors
+      (setq circe-color-nicks-rand-state (mod (reduce '+ (string-to-list nickname)) 7)))
   (let* ((bg (face-background 'default))
          (fg (face-foreground 'default))
          (bg-xyz (circe-color-to-xyz bg))
          (fg-xyz (circe-color-to-xyz fg))
          (bg-luminance (cadr bg-xyz))
          (fg-mix-of-cone-response-curves (car fg-xyz))
-         (fg-blue-stimulation (caddr fg-xyz)))
-    (circe-xyz-to-color 
-     (list 
-      (circe-color-nicks-rand-exclude fg-mix-of-cone-response-curves
-                                      0.05
-                                      (circe-color-nicks-rand-scale fg-mix-of-cone-response-curves
-                                                                    0.3
-                                                                    (circe-color-nicks-rand)))
-      (circe-color-nicks-rand-exclude bg-luminance
-                                      0.45
-                                      (circe-color-nicks-rand))
-      (circe-color-nicks-rand-exclude fg-blue-stimulation 
-                                      0.05
-                                      (circe-color-nicks-rand-scale fg-blue-stimulation
-                                                                    0.3
-                                                                    (circe-color-nicks-rand)))))))
+         (fg-blue-stimulation (caddr fg-xyz))
+         (color (circe-xyz-to-color 
+                 (list 
+                  (circe-color-nicks-rand-exclude fg-mix-of-cone-response-curves
+                                                  circe-color-nicks-min-color-distance
+                                                  (circe-color-nicks-rand-scale fg-mix-of-cone-response-curves
+                                                                                circe-color-nicks-max-color-distance
+                                                                                (circe-color-nicks-rand)))
+                  (circe-color-nicks-rand-exclude bg-luminance
+                                                  circe-color-nicks-min-brightness-difference
+                                                  (circe-color-nicks-rand))
+                  (circe-color-nicks-rand-exclude fg-blue-stimulation 
+                                                  circe-color-nicks-min-color-distance
+                                                  (circe-color-nicks-rand-scale fg-blue-stimulation
+                                                                                circe-color-nicks-max-color-distance
+                                                                                (circe-color-nicks-rand)))))))
+    (progn
+      (if (not circe-color-nicks-persistent-colors)
+          (puthash nickname color circe-nick-color-mapping))
+      color)))
 
 
 (defun circe-color-distance (color1 color2)
@@ -208,21 +230,13 @@ everything by 256. This also helps preventing integer overflow."
              (ash (* (- 767 red-mean) db db) -8)))))
 
 
-(defcustom circe-color-nicks-min-brightness-difference 35000
-  "Minimal brightness difference between background and nick colors, 0 to 65535."
-  :group 'circe-color-nicks)
-
-(defcustom circe-color-nicks-min-color-distance 80
-  "Minimal color distance between foreground and nick colors, 0 to approximately 765."
-  :group 'circe-color-nicks)
-
 (defsubst circe-perceived-brightness (color)
   (apply '+
          (mapcar* '* 
                   (color-values color)
                   '(0.299 0.587 0.114))))
 
-(defun circe-generate-nick-color (nick)
+(defun circe-generate-nick-color (nickname)
   "Compute a suitable random nick color. Suitable means
 1) Not a shade of gray
 2) Not similar to foreground or my-message colors
@@ -235,10 +249,14 @@ Similarity is computed with `circe-color-distance'
          (color-perceived-brightness (circe-perceived-brightness color))
          (bg-perceived-brightness (circe-perceived-brightness bg)))
     (if (and (not (color-gray-p color))
-           (> (circe-color-distance color fg) circe-color-nicks-min-color-distance)
-           (or (null nick) (> (circe-color-distance color nick) circe-color-nicks-min-color-distance))
-           (> (abs (- color-perceived-brightness bg-perceived-brightness)) circe-color-nicks-min-brightness-difference))
-        color
+           (> (circe-color-distance color fg) (* 765 circe-color-nicks-min-color-distance))
+           (or (null nick) (> (circe-color-distance color nick) (* 765 circe-color-nicks-min-color-distance)))
+           (> (abs (- color-perceived-brightness 
+                      bg-perceived-brightness)) (* circe-color-nicks-min-brightness-difference
+                                                   65535)))
+      (progn 
+        (puthash nickname color circe-nick-color-mapping)
+        color)
       (circe-generate-nick-color))))
 
 
@@ -264,8 +282,7 @@ Similarity is computed with `circe-color-distance'
           (when (not (circe-server-my-nick-p nick))
             (let ((color (gethash nick circe-nick-color-mapping)))
               (when (not color)
-                (setq color (funcall circe-get-nick-color-function nick))
-                (puthash nick color circe-nick-color-mapping))
+                (setq color (funcall circe-get-nick-color-function nick)))
               (put-text-property nickstart nickend 'face `(:foreground ,color)))))))
     (when circe-color-nicks-everywhere
       (let ((body (text-property-any (point-min) (point-max)
