@@ -118,7 +118,7 @@ See `enable-circe-color-nicks'."
                        values))))
 
 (random t)
-(setq circe-color-nicks-rand-state (random 7))
+(setq circe-color-nicks-rand-state (random 8))
 
 (defsubst circe-color-nicks-rand ()
   "Generates quasi-random value in range from 0 to 1
@@ -207,7 +207,7 @@ circe-pick-nick-color - just get a color from circe-color-nicks-colors"
 2) Neither too close to nor too far from foreground
 by mix of cone response curves and blue stimulation"
   (if circe-color-nicks-persistent-colors
-      (setq circe-color-nicks-rand-state (mod (reduce '+ (string-to-list nickname)) 7)))
+      (setq circe-color-nicks-rand-state (mod (reduce '+ (string-to-list nickname)) 8)))
   (let* ((bg (face-background 'default))
          (fg (face-foreground 'default))
          (bg-xyz (circe-color-to-xyz bg))
@@ -217,6 +217,16 @@ by mix of cone response curves and blue stimulation"
          (fg-blue-stimulation (caddr fg-xyz))
          (color (circe-xyz-to-color 
                  (list 
+                  ;; at first we are getting a random value:
+                  ;; 0 <------------------------------------------------> 1
+                  ;; then scaling it (f - foreground, d - distance):
+                  ;; 0 -------------------------------f------------------ 1
+                  ;; 0 --------------------------<-d->-<-d->------------- 1
+                  ;; 0 --------------------------<--------->------------- 1
+                  ;; then excluding some distance around f (e - excluded):
+                  ;; 0 ---------------------<-d-><-e->f<-e-><-d->-------- 1
+                  ;; and getting something like this in the end:
+                  ;; 0 ---------------------<--->-----------<--->-------- 1
                   (circe-color-nicks-rand-exclude fg-mix-of-cone-response-curves
                                                   circe-color-nicks-min-color-distance
                                                   (circe-color-nicks-rand-scale fg-mix-of-cone-response-curves
