@@ -161,7 +161,8 @@ Uses 3 bits of state to make it less random"
   :group 'circe-color-nicks)
 
 (defcustom circe-color-nicks-max-color-distance 0.1
-  "Maximum color distance between foreground and nick colors, 0 to 1."
+  "Maximum color distance between foreground and nick colors, 0 to 1.
+Only for cie-1931-xyz function."
   :group 'circe-color-nicks)
 
 (defcustom circe-color-nicks-min-brightness-difference 0.45
@@ -169,8 +170,36 @@ Uses 3 bits of state to make it less random"
   :group 'circe-color-nicks)
 
 (defcustom circe-color-nicks-persistent-colors nil
-  "Make colors persistent for nicks."
+  "Make colors persistent for nicks.
+Only for cie-1931-xyz function."
   :group 'circe-color-nicks)
+
+(defcustom circe-color-nicks-colors '(green)
+  "List of colors to use for nicks
+Only for pick-nick-color function."
+  :group 'circe-color-nicks
+  :type '(repeat color))
+
+(defcustom circe-color-nicks-get-nick-color-function 'circe-get-nick-color-cie-1931-xyz
+  "A function to colorize nicks
+Built-in functions are:
+circe-generate-nick-color - pick a color from color-name-rgb-alist, using weighted Euclidian distance wrt to settings
+circe-get-nick-color-cie-1931-xyz - generate a color, using CIE 1931 XYZ wrt to settings
+circe-pick-nick-color - just get a color from circe-color-nicks-colors"
+  :group 'circe-color-nicks
+  :type 'symbol)
+
+
+(defvar circe-color-nicks-colors-current nil)
+
+(defun circe-pick-nick-color (nickname)
+  "Just get a color from a list"
+  (if (not circe-color-nicks-colors-current)
+      (setq circe-color-nicks-colors-current circe-color-nicks-colors))
+  (let ((color (car circe-color-nicks-colors-current)))
+    (setq circe-color-nicks-colors-current (cdr circe-color-nicks-colors-current))
+    (puthash nickname color circe-nick-color-mapping)
+    color))
 
 (defun circe-get-nick-color-cie-1931-xyz (nickname)
   "Compute a suitable random nick color. Suitable means
@@ -267,9 +296,6 @@ Similarity is computed with `circe-color-distance'
   "Whether nicks should be colored in message bodies too."
   :group 'circe)
 
-(defvar circe-get-nick-color-function 'circe-generate-nick-color-cie-1931-xyz
-  "A function to generate nick colors")
-
 (defun circe-color-nicks ()
   "Color nicks on this lui output line."
   (when (eq major-mode 'circe-channel-mode)
@@ -282,7 +308,7 @@ Similarity is computed with `circe-color-distance'
           (when (not (circe-server-my-nick-p nick))
             (let ((color (gethash nick circe-nick-color-mapping)))
               (when (not color)
-                (setq color (funcall circe-get-nick-color-function nick)))
+                (setq color (funcall circe-color-nicks-get-nick-color-function nick)))
               (put-text-property nickstart nickend 'face `(:foreground ,color)))))))
     (when circe-color-nicks-everywhere
       (let ((body (text-property-any (point-min) (point-max)
