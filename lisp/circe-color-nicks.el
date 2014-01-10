@@ -275,9 +275,9 @@ everything by 256. This also helps preventing integer overflow."
 
 (defsubst circe-perceived-brightness (color)
   (apply '+
-         (cl-mapcar '* 
+         (cl-mapcar (lambda (x y) (* (expt (/ x 65535.0) 2.2) y))
                     (color-values color)
-                    '(0.299 0.587 0.114))))
+                    '(0.2126 0.7151 0.0721))))
 
 (defun circe-generate-nick-color (nickname)
   "Compute a suitable random nick color. Suitable means
@@ -296,8 +296,7 @@ Similarity is computed with `circe-color-distance'
              (or (null nick) (> (circe-color-distance color nick) (* 765 circe-color-nicks-min-color-distance)))
              (> (abs (- color-perceived-brightness 
                         bg-perceived-brightness))
-                (* circe-color-nicks-min-brightness-difference
-                   65535)))
+                circe-color-nicks-min-brightness-difference))
         (progn 
           (puthash nickname color circe-nick-color-mapping)
           color)
