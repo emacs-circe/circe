@@ -295,8 +295,9 @@ Similarity is computed with `circe-color-distance'
              (> (circe-color-distance color fg) (* 765 circe-color-nicks-min-color-distance))
              (or (null nick) (> (circe-color-distance color nick) (* 765 circe-color-nicks-min-color-distance)))
              (> (abs (- color-perceived-brightness 
-                        bg-perceived-brightness)) (* circe-color-nicks-min-brightness-difference
-                                                     65535)))
+                        bg-perceived-brightness))
+                (* circe-color-nicks-min-brightness-difference
+                   65535)))
         (progn 
           (puthash nickname color circe-nick-color-mapping)
           color)
