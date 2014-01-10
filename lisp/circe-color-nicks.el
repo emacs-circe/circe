@@ -73,7 +73,7 @@ See `enable-circe-color-nicks'."
   :prefix "circe-color-nicks-"
   :group 'circe)
 
-(defun circe-color-values (color)
+(defsubst circe-color-values (color)
   "Like `color-values', but also handle \"unspecified-bg\" and
 \"unspecified-fg\"."
   (let ((values (color-values color)))
@@ -84,7 +84,7 @@ See `enable-circe-color-nicks'."
 
 (defsubst circe-xyz-helper (values matrix)
   (mapcar (lambda (row)
-            (reduce '+ (mapcar* '* values row)))
+            (cl-reduce '+ (cl-mapcar '* values row)))
           matrix))
 
 (defsubst circe-rgb-to-xyz (rgb)
@@ -180,8 +180,12 @@ Only for pick-nick-color function."
   :group 'circe-color-nicks
   :type '(repeat color))
 
-(defcustom circe-color-nicks-get-nick-color-function 'circe-get-nick-color-cie-1931-xyz
+(defcustom circe-color-nicks-get-nick-color-function 'circe-generate-nick-color
   "A function to colorize nicks
+This function will be called with one argument, nick, 
+and could store a color in circe-nick-color-mapping hash,
+so it will be used next time instead of calling the function.
+
 Built-in functions are:
 circe-generate-nick-color - pick a color from color-name-rgb-alist, using weighted Euclidian distance wrt to settings
 circe-get-nick-color-cie-1931-xyz - generate a color, using CIE 1931 XYZ wrt to settings
@@ -207,7 +211,7 @@ circe-pick-nick-color - just get a color from circe-color-nicks-colors"
 2) Neither too close to nor too far from foreground
 by mix of cone response curves and blue stimulation"
   (if circe-color-nicks-persistent-colors
-      (setq circe-color-nicks-rand-state (mod (reduce '+ (string-to-list nickname)) 8)))
+      (setq circe-color-nicks-rand-state (mod (cl-reduce '+ (string-to-list nickname)) 8)))
   (let* ((bg (face-background 'default))
          (fg (face-foreground 'default))
          (bg-xyz (circe-color-to-xyz bg))
@@ -246,7 +250,7 @@ by mix of cone response curves and blue stimulation"
       color)))
 
 
-(defun circe-color-distance (color1 color2)
+(defsubst circe-color-distance (color1 color2)
   "Compute the difference between two colors using the weighted
 Euclidean distance formula proposed on
 <http://www.compuphase.com/cmetric.htm>.  Remember that every
@@ -271,9 +275,9 @@ everything by 256. This also helps preventing integer overflow."
 
 (defsubst circe-perceived-brightness (color)
   (apply '+
-         (mapcar* '* 
-                  (color-values color)
-                  '(0.299 0.587 0.114))))
+         (cl-mapcar '* 
+                    (color-values color)
+                    '(0.299 0.587 0.114))))
 
 (defun circe-generate-nick-color (nickname)
   "Compute a suitable random nick color. Suitable means
@@ -288,15 +292,15 @@ Similarity is computed with `circe-color-distance'
          (color-perceived-brightness (circe-perceived-brightness color))
          (bg-perceived-brightness (circe-perceived-brightness bg)))
     (if (and (not (color-gray-p color))
-           (> (circe-color-distance color fg) (* 765 circe-color-nicks-min-color-distance))
-           (or (null nick) (> (circe-color-distance color nick) (* 765 circe-color-nicks-min-color-distance)))
-           (> (abs (- color-perceived-brightness 
-                      bg-perceived-brightness)) (* circe-color-nicks-min-brightness-difference
-                                                   65535)))
-      (progn 
-        (puthash nickname color circe-nick-color-mapping)
-        color)
-      (circe-generate-nick-color))))
+             (> (circe-color-distance color fg) (* 765 circe-color-nicks-min-color-distance))
+             (or (null nick) (> (circe-color-distance color nick) (* 765 circe-color-nicks-min-color-distance)))
+             (> (abs (- color-perceived-brightness 
+                        bg-perceived-brightness)) (* circe-color-nicks-min-brightness-difference
+                                                     65535)))
+        (progn 
+          (puthash nickname color circe-nick-color-mapping)
+          color)
+      (circe-generate-nick-color nickname))))
 
 
 (defvar circe-nick-color-mapping (make-hash-table :test 'equal)
