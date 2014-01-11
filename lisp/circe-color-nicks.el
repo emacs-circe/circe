@@ -108,7 +108,7 @@ See `enable-circe-color-nicks'."
 ;; generation of 7:1 ratio colors
 
 (defsubst circe-w3-contrast-rand ()
-  (/ (random 42000) 42000.0))
+  (/ (random 42001) 42000.0))
 
 (defsubst circe-w3-contrast-l-to-c (m)
   (if (<= m (/ 0.03928 12.92))
