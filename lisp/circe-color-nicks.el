@@ -82,6 +82,105 @@ See `enable-circe-color-nicks'."
      ((equal color "unspecified-bg") '(0 0 0))
      ((equal color "unspecified-fg") '(255 255 255)))))
 
+
+;; implementation of http://www.w3.org/TR/2013/NOTE-WCAG20-TECHS-20130905/G18
+
+(defsubst circe-w3-contrast-c-to-l (c)
+  (if (<= c 0.03928)
+      (/ c 12.92)
+    (expt (/ (+ c 0.055) 1.055) 2.4)))
+
+(defsubst circe-w3-contrast-relative-luminance (rgb)
+  (apply '+
+         (cl-mapcar (lambda (color coefficient)
+                      (* coefficient
+                         (circe-w3-contrast-c-to-l color)))
+                    rgb
+                    '(0.2126 0.7152 0.0722))))
+
+(defsubst circe-w3-contrast-contrast-ratio (color1 color2)
+  (let ((l1 (+ 0.05 (circe-w3-contrast-relative-luminance color1)))
+        (l2 (+ 0.05 (circe-w3-contrast-relative-luminance color2))))
+    (if (> l1 l2)
+        (/ l1 l2)
+        (/ l2 l1))))
+
+;; generation of 7:1 ratio colors
+
+(defsubst circe-w3-contrast-rand ()
+  (/ (random 42000) 42000.0))
+
+(defsubst circe-w3-contrast-l-to-c (m)
+  (if (<= m (/ 0.03928 12.92))
+      (* m 12.92)
+      (- (* (expt m (/ 1 2.4))
+            1.055)
+         0.055)))
+
+(defsubst circe-w3-contrast-nn (n)
+  (cond ((< n 0) 0)
+        ((> n 1) 1)
+        (t n)))
+
+(defsubst circe-w3-contrast-color-with-luminance-higher-than (N)
+  (let* ((Rc 0.2126)
+         (Gc 0.7152)
+         (Bc 0.0722)
+
+         (R-min-lum (circe-w3-contrast-nn (/ (- N Gc Bc) Rc)))
+         (R-min-color (circe-w3-contrast-l-to-c R-min-lum))
+         (R-color (+ R-min-color (* (circe-w3-contrast-rand) (- 1 R-min-color))))
+         (R-lum (* Rc (circe-w3-contrast-c-to-l R-color)))
+
+         (G-min-lum (circe-w3-contrast-nn (/ (- N R-lum Bc) Gc)))
+         (G-min-color (circe-w3-contrast-l-to-c G-min-lum))
+         (G-color (+ G-min-color (* (circe-w3-contrast-rand) (- 1 G-min-color))))
+         (G-lum (* Gc (circe-w3-contrast-c-to-l G-color)))
+         
+         (B-min-lum (circe-w3-contrast-nn (/ (- N R-lum G-lum) Bc)))
+         (B-min-color (circe-w3-contrast-l-to-c B-min-lum))
+         (B-color (+ B-min-color (* (circe-w3-contrast-rand) (- 1 B-min-color))))
+         (B-lum (* Bc (circe-w3-contrast-c-to-l B-color))))
+    (list R-color G-color B-color)))
+
+(defsubst circe-w3-contrast-color-with-luminance-lower-than (N)
+  (let* ((Rc 0.2126)
+         (Gc 0.7152)
+         (Bc 0.0722)
+
+         (R-max-lum (circe-w3-contrast-nn (/ N Rc)))
+         (R-max-color (circe-w3-contrast-l-to-c R-max-lum))
+         (R-color (* R-max-color (circe-w3-contrast-rand)))
+         (R-lum (* Rc (circe-w3-contrast-c-to-l R-color)))
+
+         (G-max-lum (circe-w3-contrast-nn (/ (- N R-lum) Gc)))
+         (G-max-color (circe-w3-contrast-l-to-c G-max-lum))
+         (G-color (* G-max-color (circe-w3-contrast-rand)))
+         (G-lum (* Gc (circe-w3-contrast-c-to-l G-color)))
+
+         (B-max-lum (circe-w3-contrast-nn (/ (- N R-lum G-lum) Bc)))
+         (B-max-color (circe-w3-contrast-l-to-c B-max-lum))
+         (B-color (* B-max-color (circe-w3-contrast-rand)))
+         (B-lum (* Bc (circe-w3-contrast-c-to-l B-color))))
+    (list R-color G-color B-color)))
+
+(defsubst circe-w3-contrast-generate-contrast-color (color ratio)
+  (let ((color-lum (circe-w3-contrast-relative-luminance color)))
+    (if (< color-lum (- (/ 1.0 ratio) 0.05))
+        (circe-w3-contrast-color-with-luminance-higher-than (+ (* (+ color-lum 0.05) ratio) 0.05))
+        (circe-w3-contrast-color-with-luminance-lower-than (- (/ (+ color-lum 0.05) ratio) 0.05)))))
+
+(defun circe-w3-nick-color (nick)
+  (let ((color (circe-color-from-values 
+                (circe-w3-contrast-generate-contrast-color 
+                 (mapcar (lambda (x) (/ x 65535.0))
+                         (color-values (face-background 'default)))
+                 7))))
+    (puthash nick color circe-nick-color-mapping)
+    color))
+
+
+
 (defsubst circe-xyz-helper (values matrix)
   (mapcar (lambda (row)
             (cl-reduce '+ (cl-mapcar '* values row)))
@@ -189,7 +288,8 @@ so it will be used next time instead of calling the function.
 Built-in functions are:
 circe-generate-nick-color - pick a color from color-name-rgb-alist, using weighted Euclidian distance wrt to settings
 circe-get-nick-color-cie-1931-xyz - generate a color, using CIE 1931 XYZ wrt to settings
-circe-pick-nick-color - just get a color from circe-color-nicks-colors"
+circe-pick-nick-color - just get a color from circe-color-nicks-colors
+circe-w3-nick-color - generates colors with 7:1 contrast ratio"
   :group 'circe-color-nicks
   :type 'symbol)
 
