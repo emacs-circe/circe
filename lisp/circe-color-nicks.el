@@ -174,7 +174,7 @@ See `enable-circe-color-nicks'."
   (let ((color (circe-color-from-values 
                 (circe-w3-contrast-generate-contrast-color 
                  (mapcar (lambda (x) (/ x 65535.0))
-                         (color-values (face-background 'default)))
+                         (circe-color-values (face-background 'default)))
                  7))))
     (puthash nick color circe-nick-color-mapping)
     color))
