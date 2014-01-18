@@ -68,7 +68,28 @@ See `enable-circe-color-nicks'."
   "Remove `circe-color-nicks' from `lui-pre-output-hook'."
   (remove-hook 'lui-pre-output-hook 'circe-color-nicks))
 
-(defun circe-color-values (color)
+
+;; customization
+
+(defgroup circe-color-nicks nil
+  "Nicks colorization for Circe"
+  :prefix "circe-color-nicks-"
+  :group 'circe)
+
+(defcustom circe-color-nicks-min-contrast-ratio 7
+  "Minimum contrast ratio for generated colors; 
+recommended is 7:1, or at least 4.5:1 (7 stands for 7:1 here).
+Lower value allows higher color spread, but could lead to less readability."
+  :group 'circe-color-nicks)
+
+(defcustom circe-color-nicks-everywhere nil
+  "Whether nicks should be colored in message bodies too."
+  :group 'circe)
+
+
+;; helper functions
+
+(defsubst circe-color-values (color)
   "Like `color-values', but also handle \"unspecified-bg\" and
 \"unspecified-fg\"."
   (let ((values (color-values color)))
@@ -77,51 +98,131 @@ See `enable-circe-color-nicks'."
      ((equal color "unspecified-bg") '(0 0 0))
      ((equal color "unspecified-fg") '(255 255 255)))))
 
-(defun circe-color-distance (color1 color2)
-  "Compute the difference between two colors using the weighted
-Euclidean distance formula proposed on
-<http://www.compuphase.com/cmetric.htm>.  Remember that every
-component for the formula is in the range of 0-xFF and
-`color-values' will return a range of 0-FFFF. Thus, divide
-everything by 256. This also helps preventing integer overflow."
-  (let* ((color1-values (circe-color-values color1))
-         (color2-values (circe-color-values color2))
-         (dr (/ (- (nth 0 color1-values)
-                   (nth 0 color2-values)) 256))
-         (dg (/ (- (nth 1 color1-values)
-                   (nth 1 color2-values)) 256))
-         (db (/ (- (nth 2 color1-values)
-                   (nth 2 color2-values)) 256))
-         (red-mean (/ (+ (nth 0 color1-values)
-                         (nth 0 color2-values))
-                      2 256)))
-    (sqrt (+ (ash (* (+ 512 red-mean) dr dr) -8)
-             (* 4 dg dg)
-             (ash (* (- 767 red-mean) dr dr) -8)))))
+(defsubst circe-color-from-values (values)
+  (apply 'concat 
+         (cons "#" 
+               (mapcar (lambda (val) 
+                         (format "%02x" 
+                                 (* (cond ((< val 0) 0)
+                                          ((> val 1) 1)
+                                          (t val))
+                                    255)))
+                       values))))
 
-(defun circe-generate-nick-color ()
-  "Compute a suitable random nick color. Suitable means
-1) Not a shade of gray
-2) Not similar to foreground, background, or my-message colors
-Similarity is computed with `circe-color-distance'"
-  (let ((min-distance 200)
-        (fg (face-foreground 'default))
-        (bg (face-background 'default))
-        (nick (face-foreground 'circe-my-message-face))
-        (color (car (elt color-name-rgb-alist (random (length color-name-rgb-alist))))))
-    (if (and (not (color-gray-p color))
-             (> (circe-color-distance color bg) min-distance)
-             (> (circe-color-distance color fg) min-distance)
-             (or (null nick) (> (circe-color-distance color nick) min-distance)))
-        color
-      (circe-generate-nick-color))))
+(defvar circe-color-nicks-rand-state 
+  (random 8)
+  "circe-color-nicks random state")
+
+(defsubst circe-color-nicks-rand ()
+  "Generates quasi-random value in range from 0 to 1
+Uses 3 bits of state to make it less random"
+  (let ((rand (/ (random 65536) 65535.0 7)))
+    (setq circe-color-nicks-rand-state (1+ circe-color-nicks-rand-state))
+    (+ rand (- (/ (logand circe-color-nicks-rand-state 7) 7.0)
+               (/ 1 7.0)))))
+
+
+;; implementation of http://www.w3.org/TR/2013/NOTE-WCAG20-TECHS-20130905/G18
+
+(defsubst circe-w3-contrast-c-to-l (c)
+  (if (<= c 0.03928)
+      (/ c 12.92)
+    (expt (/ (+ c 0.055) 1.055) 2.4)))
+
+(defsubst circe-w3-contrast-relative-luminance (rgb)
+  (apply '+
+         (cl-mapcar (lambda (color coefficient)
+                      (* coefficient
+                         (circe-w3-contrast-c-to-l color)))
+                    rgb
+                    '(0.2126 0.7152 0.0722))))
+
+(defsubst circe-w3-contrast-contrast-ratio (color1 color2)
+  (let ((l1 (+ 0.05 (circe-w3-contrast-relative-luminance color1)))
+        (l2 (+ 0.05 (circe-w3-contrast-relative-luminance color2))))
+    (if (> l1 l2)
+        (/ l1 l2)
+        (/ l2 l1))))
+
+;; generation of 7:1 ratio colors
+
+(defsubst circe-w3-contrast-l-to-c (m)
+  (if (<= m (/ 0.03928 12.92))
+      (* m 12.92)
+      (- (* (expt m (/ 1 2.4))
+            1.055)
+         0.055)))
+
+(defsubst circe-w3-contrast-nn (n)
+  (cond ((< n 0) 0)
+        ((> n 1) 1)
+        (t n)))
+
+(defsubst circe-w3-contrast-color-with-luminance-higher-than (N)
+  (let* ((Rc 0.2126)
+         (Gc 0.7152)
+         (Bc 0.0722)
+
+         (R-min-lum (circe-w3-contrast-nn (/ (- N Gc Bc) Rc)))
+         (R-min-color (circe-w3-contrast-l-to-c R-min-lum))
+         (R-color (+ R-min-color (* (circe-color-nicks-rand) (- 1 R-min-color))))
+         (R-lum (* Rc (circe-w3-contrast-c-to-l R-color)))
+
+         (G-min-lum (circe-w3-contrast-nn (/ (- N R-lum Bc) Gc)))
+         (G-min-color (circe-w3-contrast-l-to-c G-min-lum))
+         (G-color (+ G-min-color (* (circe-color-nicks-rand) (- 1 G-min-color))))
+         (G-lum (* Gc (circe-w3-contrast-c-to-l G-color)))
+         
+         (B-min-lum (circe-w3-contrast-nn (/ (- N R-lum G-lum) Bc)))
+         (B-min-color (circe-w3-contrast-l-to-c B-min-lum))
+         (B-color (+ B-min-color (* (circe-color-nicks-rand) (- 1 B-min-color))))
+         (B-lum (* Bc (circe-w3-contrast-c-to-l B-color))))
+    (list R-color G-color B-color)))
+
+(defsubst circe-w3-contrast-color-with-luminance-lower-than (N)
+  (let* ((Rc 0.2126)
+         (Gc 0.7152)
+         (Bc 0.0722)
+
+         (R-max-lum (circe-w3-contrast-nn (/ N Rc)))
+         (R-max-color (circe-w3-contrast-l-to-c R-max-lum))
+         (R-color (* R-max-color (circe-color-nicks-rand)))
+         (R-lum (* Rc (circe-w3-contrast-c-to-l R-color)))
+
+         (G-max-lum (circe-w3-contrast-nn (/ (- N R-lum) Gc)))
+         (G-max-color (circe-w3-contrast-l-to-c G-max-lum))
+         (G-color (* G-max-color (circe-color-nicks-rand)))
+         (G-lum (* Gc (circe-w3-contrast-c-to-l G-color)))
+
+         (B-max-lum (circe-w3-contrast-nn (/ (- N R-lum G-lum) Bc)))
+         (B-max-color (circe-w3-contrast-l-to-c B-max-lum))
+         (B-color (* B-max-color (circe-color-nicks-rand)))
+         (B-lum (* Bc (circe-w3-contrast-c-to-l B-color))))
+    (list R-color G-color B-color)))
+
+(defsubst circe-w3-contrast-generate-contrast-color (color ratio)
+  (let ((color-lum (circe-w3-contrast-relative-luminance color)))
+    (if (< color-lum (- (/ 1.0 ratio) 0.05))
+        (circe-w3-contrast-color-with-luminance-higher-than (+ (* (+ color-lum 0.05) ratio) 0.05))
+        (circe-w3-contrast-color-with-luminance-lower-than (- (/ (+ color-lum 0.05) ratio) 0.05)))))
+
+(defun circe-w3-nick-color (nick)
+  (let* ((bg-color-srgb (color-name-to-rgb (face-background 'default)))
+         (fg-color-srgb (color-name-to-rgb (face-foreground 'default)))
+         (color-srgb (circe-w3-contrast-generate-contrast-color
+                      bg-color-srgb
+                      circe-color-nicks-min-contrast-ratio))
+         (color (circe-color-from-values color-srgb)))
+    (if (> (color-cie-de2000 (apply 'color-srgb-to-lab fg-color-srgb)
+                             (apply 'color-srgb-to-lab color-srgb))
+           10)
+        (progn (puthash nick color circe-nick-color-mapping)
+               color)
+      (circe-w3-nick-color nick))))
+
 
 (defvar circe-nick-color-mapping (make-hash-table :test 'equal)
   "Hash-map mapping nicks to color names.")
-
-(defcustom circe-color-nicks-everywhere nil
-  "Whether nicks should be colored in message bodies too."
-  :group 'circe)
 
 (defun circe-color-nicks ()
   "Color nicks on this lui output line."
@@ -135,8 +236,7 @@ Similarity is computed with `circe-color-distance'"
           (when (not (circe-server-my-nick-p nick))
             (let ((color (gethash nick circe-nick-color-mapping)))
               (when (not color)
-                (setq color (circe-generate-nick-color))
-                (puthash nick color circe-nick-color-mapping))
+                (setq color (circe-w3-nick-color nick)))
               (put-text-property nickstart nickend 'face `(:foreground ,color)))))))
     (when circe-color-nicks-everywhere
       (let ((body (text-property-any (point-min) (point-max)
