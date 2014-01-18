@@ -897,8 +897,6 @@ See `circe-network-options' for a list of common options."
           (dolist (var unknown-variables)
             (circe-server-message (format "Unknown variable %s, re-check your configuration."
                                           var))))
-        (when circe-server-use-tls
-          (require 'tls))
         (circe-reconnect)
         (switch-to-buffer server-buffer)))))
 
@@ -969,51 +967,36 @@ See `circe-server-max-reconnect-attempts'.")
         (with-current-buffer buf
           (circe-server-message "Connecting...")))
       (cond
-        (circe-server-use-tls
-         (require 'tls)
-         ;; `open-tls-stream' is using gnutls/openssl to connect via
-         ;; SSL. This requires some different handling than the normal
-         ;; network process. The main annoyance is that the process
-         ;; spams its associated buffer with status output. We ask it
-         ;; to use a temporary buffer so those status messages go to
-         ;; the temporary buffer instead of the server buffer, and
-         ;; only connect the process to our buffer later.
-         (setq circe-server-process
-               (open-tls-stream circe-server-name
-                                nil ;; Use temp buffer
-                                circe-server-name
-                                circe-server-service))
-         (if (not circe-server-process)
-             ;; Connection error. We call the sentinel as if we got an
-             ;; error, but pass the buffer as we have no process. We
-             ;; also claim the error was connection refused. Oh, and
-             ;; we do this using a timer so we don't use up stack
-             ;; frames, as the sentinel calls `circe-reconnect'.
-             (run-at-time 0 nil 'circe-server-sentinel
-                          (current-buffer) "failed with code 111\n")
-           (set-process-filter circe-server-process
-                               #'circe-server-filter-function)
-           (set-process-sentinel circe-server-process
-                                 #'circe-server-sentinel)
-           (set-process-coding-system circe-server-process
-                                      'raw-text-dos 'raw-text-dos)
-           (set-process-query-on-exit-flag circe-server-process nil)
-           (set-process-buffer circe-server-process (current-buffer))
-           (circe-server-sentinel circe-server-process "open")))
-        (t
-         (setq circe-server-process
-               (make-network-process :name circe-server-name
-                                     :buffer (current-buffer)
-                                     :host circe-server-name
-                                     :service circe-server-service
-                                     :coding 'raw-text-dos
-                                     :nowait circe-nowait-on-connect
-                                     :noquery t
-                                     :filter #'circe-server-filter-function
-                                     :sentinel #'circe-server-sentinel
-                                     :keepalive t))
-         (when (not circe-nowait-on-connect)
-           (circe-server-sentinel circe-server-process "open")))))))
+       (circe-server-use-tls
+        (require 'circe-tls)
+        ;; `circe-tls-make-stream' is using gnutls/openssl to connect
+        ;; via SSL. This requires some different handling than the
+        ;; normal network process.
+        (circe-tls-make-stream :name circe-server-name
+                               :buffer (current-buffer)
+                               :host circe-server-name
+                               :service circe-server-service
+                               :coding 'raw-text-dos
+                               :filter #'circe-server-filter-function
+                               :sentinel #'circe-server-sentinel
+                               :query-on-exit-flag nil
+                               :success-func #'(lambda (process)
+                                                 (setq circe-server-process process))
+                               :nowait circe-nowait-on-connect))
+       (t
+        (setq circe-server-process
+              (make-network-process :name circe-server-name
+                                    :buffer (current-buffer)
+                                    :host circe-server-name
+                                    :service circe-server-service
+                                    :coding 'raw-text-dos
+                                    :nowait circe-nowait-on-connect
+                                    :noquery t
+                                    :filter #'circe-server-filter-function
+                                    :sentinel #'circe-server-sentinel
+                                    :keepalive t))
+        (when (not circe-nowait-on-connect)
+          (circe-server-sentinel circe-server-process "open")))))))
 
 (defun circe-reconnect-all ()
   "Reconnect all Circe connections."
