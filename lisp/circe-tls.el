@@ -74,12 +74,13 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
       (if (not nowait)
           (open-tls-stream name nil host service)
         (circe-tls-open-stream
+         buffer
          name
          host
          service
          #'(lambda (process)
-             (if (buffer-live-p buffer)
-                 ;; our buffer is still there
+             (if (and (buffer-live-p buffer) (not (get-buffer-process buffer)))
+                 ;; our buffer is still there, and it's still ours
                  (with-current-buffer buffer
                    (funcall success-func process)
                    (when filter
@@ -97,7 +98,8 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
                      (set-process-buffer process buffer))
                    (when sentinel
                      (funcall sentinel process "open")))
-               ;; there's no buffer, kill the process and that's it
+               ;; there's no buffer, or it has a proccess attached to it;
+               ;; kill the current process and that's it
                (when process
                  (delete-process process))))
          #'(lambda ()
@@ -111,12 +113,13 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
                    (funcall fail-thunk))))))))))
 
 
-(defun circe-tls-open-stream (name host port success-func fail-thunk)
+(defun circe-tls-open-stream (buffer name host port success-func fail-thunk)
   "Tweaked `open-tls-stream', this one is non-blocking.
 
-Arguments: name, host, port, success-func, fail-thunk."
+Arguments: buffer, name, host, port, success-func, fail-thunk."
   (message "Opening TLS connection to `%s'..." host)
-  (circe-tls-try-different-commands tls-program
+  (circe-tls-try-different-commands buffer
+                                    tls-program
                                     name
                                     host
                                     port
@@ -125,19 +128,21 @@ Arguments: name, host, port, success-func, fail-thunk."
 
 
 (defun circe-tls-try-different-commands
-  (cmds name host port success-func fail-thunk)
+  (buffer cmds name host port success-func fail-thunk)
   "Tries different commands to connect.
 
-Arguments: list of commands, name, host, port, success-func,
+Arguments: buffer, list of commands, name, host, port, success-func,
 fail-thunk."
   (if cmds
       (circe-tls-try-single-command
+       buffer
        (car cmds)
        name
        host
        port
        success-func
        (lambda () (circe-tls-try-different-commands
+                   buffer
                    (cdr cmds)
                    name
                    host
@@ -148,10 +153,10 @@ fail-thunk."
 
 
 (defun circe-tls-try-single-command
-  (cmd name host port success-func fail-thunk)
+  (buffer cmd name host port success-func fail-thunk)
   "Tries to connect with a single command.
 
-Arguments: command, name, host, port, success-func, fail-thunk."
+Arguments: buffer, command, name, host, port, success-func, fail-thunk."
   (let ((process-connection-type tls-process-connection-type)
         (formatted-cmd
          (format-spec
@@ -170,6 +175,7 @@ Arguments: command, name, host, port, success-func, fail-thunk."
         (progn
           (set-process-filter process
                               (circe-tls-make-connection-awaiting-filter
+                               buffer
                                host
                                formatted-cmd
                                success-func
@@ -177,6 +183,7 @@ Arguments: command, name, host, port, success-func, fail-thunk."
                                ""))
           (set-process-sentinel process
                                 (circe-tls-make-connection-awaiting-sentinel
+                                 buffer
                                  host
                                  formatted-cmd
                                  success-func
@@ -186,11 +193,11 @@ Arguments: command, name, host, port, success-func, fail-thunk."
 
 
 (defun circe-tls-make-connection-awaiting-filter
-  (host formatted-cmd success-func fail-thunk acc)
+  (buffer host formatted-cmd success-func fail-thunk acc)
   "A process filter generator: returned filter waits for success
 or failure, and then calls success-func or fail-thunk.
 
-Arguments: host, formatted cmd, success-func, fail-thunk,
+Arguments: buffer, host, formatted cmd, success-func, fail-thunk,
 accumulator."
   (lambda (process output)
     (if (and process
@@ -232,6 +239,7 @@ accumulator."
               ;; wait more
               (set-process-filter process
                                   (circe-tls-make-connection-awaiting-filter
+                                   buffer
                                    host
                                    formatted-cmd
                                    success-func
@@ -240,23 +248,28 @@ accumulator."
       ;; process is dead
       (when (and process
                  (memq (process-status process) '(open run)))
-        (delete-process process))
-      (message "Opening TLS connection with `%s'... failed" formatted-cmd)
-      (funcall fail-thunk))))
+        (delete-process process)))))
 
 (defun circe-tls-make-connection-awaiting-sentinel
-  (host formatted-cmd success-func fail-thunk acc)
+  (buffer host formatted-cmd success-func fail-thunk acc)
   "A process filter generator: returned filter waits for success
 or failure, and then calls success-func or fail-thunk.
 
-Arguments: host, formatted cmd, success-func, fail-thunk,
+Arguments: buffer, host, formatted cmd, success-func, fail-thunk,
 accumulator."
   (lambda (process change)
-    (when (not (and process
-                    (memq (process-status process) '(open run))))
-      ;; process is dead
-      (message "Opening TLS connection with `%s'... failed" formatted-cmd)
-      (funcall fail-thunk))))
+    (if (get-buffer-process buffer)
+        ;; the buffer is occupied, stop connecting
+        (progn (message "Opening TLS connection with `%s'... interrupted"
+                        formatted-cmd)
+               (when process
+                 (set-process-sentinel process nil)
+                 (delete-process process)))
+      (when (not (and process
+                      (memq (process-status process) '(open run))))
+        ;; process is dead
+        (message "Opening TLS connection with `%s'... failed" formatted-cmd)
+        (funcall fail-thunk)))))
 
 (defun circe-tls-make-information-skipping-filter
   (host formatted-cmd success-func fail-thunk acc)
