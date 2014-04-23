@@ -50,6 +50,13 @@ The default is what GnuTLS's \"gnutls-cli\" or OpenSSL's
   :group 'circe)
 
 
+(defsubst circe-tls-buffer-occupied-p (buffer)
+  "Checks if the buffer is occupied by a process"
+  (let ((proc (get-buffer-process buffer)))
+    (and proc
+         (process-live-p proc))))
+
+
 (defun circe-tls-make-stream (&rest properties)
   "Open a TLS connection, tries to mimic make-network-process.
 Wraps `circe-tls-open-stream' and `open-tls-stream'.
@@ -79,7 +86,8 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
          host
          service
          #'(lambda (process)
-             (if (and (buffer-live-p buffer) (not (get-buffer-process buffer)))
+             (if (and (buffer-live-p buffer)
+                      (not (circe-tls-buffer-occupied-p buffer)))
                  ;; our buffer is still there, and it's still ours
                  (with-current-buffer buffer
                    (funcall success-func process)
@@ -258,7 +266,7 @@ or failure, and then calls success-func or fail-thunk.
 Arguments: buffer, host, formatted cmd, success-func, fail-thunk,
 accumulator."
   (lambda (process change)
-    (if (get-buffer-process buffer)
+    (if (circe-tls-buffer-occupied-p buffer)
         ;; the buffer is occupied, stop connecting
         (progn (message "Opening TLS connection with `%s'... interrupted"
                         formatted-cmd)
