@@ -2423,9 +2423,9 @@ Arguments are IGNORED."
     (unwind-protect
         (let* ((circe-current-message (list nick user host command args))
                (circe-message-option-cache (make-hash-table :test 'equal)))
+          (circe-server-handle-message nick user host command args)
           (when (not (circe-message-option 'dont-display))
-            (circe-server-display-message nick user host command args))
-          (circe-server-handle-message nick user host command args))
+            (circe-server-display-message nick user host command args)))
       (circe-server-handle-message-internal nick user host command args))))
 
 (defun circe-server-parse-line (line)
