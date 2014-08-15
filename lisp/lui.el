@@ -50,6 +50,7 @@
 (require 'help-mode)
 (require 'ispell)
 (require 'ring)
+(require 'thingatpt)
 
 (require 'tracking)
 
@@ -161,18 +162,7 @@ is then associated with the match."
   :group 'lui)
 
 (defcustom lui-buttons-list
-  `((,(rx (or (and (or "http"
-                       "https"
-                       "ftp"
-                       "irc")
-                   "://"
-                   (* (not (any "()<> \n")))
-                   (any "a-zA-Z0-9/"))
-              (and "www."
-                   (* (any "a-zA-Z0-9./?~-"))
-                   (any "a-zA-Z0-9/"))))
-     0 browse-url 0)
-    ("`\\([A-Za-z0-9+=*/-]+\\)'" 1 lui-button-elisp-symbol 1)
+  `(("`\\([A-Za-z0-9+=*/-]+\\)'" 1 lui-button-elisp-symbol 1)
     ("RFC ?\\([0-9]+\\)" 0 lui-button-rfc 1)
     ("SRFI[- ]?\\([0-9]+\\)" 0 lui-button-srfi 1)
     ("PEP[- ]?\\([0-9]+\\)" 0 lui-button-pep 1))
@@ -553,6 +543,22 @@ This uses `lui-buttons-list'."
                      'lui-button-argument
                      (match-string-no-properties arg-match))))))
 
+(defun lui-buttonize-urls ()
+  "Buttonize URLs in the current message."
+  (let ((regex (regexp-opt thing-at-point-uri-schemes)))
+    (goto-char (point-min))
+    (while (re-search-forward regex nil t)
+      (let ((bounds (bounds-of-thing-at-point 'url)))
+        (when bounds
+          (make-button (car bounds)
+                       (cdr bounds)
+                       'type 'lui-button
+                       'action 'lui-button-activate
+                       'lui-button-function 'browse-url
+                       'lui-button-argument
+                       (buffer-substring-no-properties (car bounds)
+                                                       (cdr bounds))))))))
+
 (defun lui-button-activate (button)
   "Activate BUTTON.
 This calls the function stored in the `lui-button-function'
@@ -798,6 +804,7 @@ of the buffer."
          (run-hooks 'lui-pre-output-hook)
          (lui-highlight-keywords)
          (lui-buttonize)
+         (lui-buttonize-urls)
          (lui-fill)
          (lui-time-stamp)
          (goto-char (point-min))
