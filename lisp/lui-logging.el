@@ -103,6 +103,28 @@ logs to disk."
   (remove-hook 'lui-pre-output-hook 'lui-logging t)
   (lui-logging-flush))
 
+(defun enable-lui-logging-globally ()
+  "Enable lui logging for all Lui buffers.
+
+This affects current as well as future buffers."
+  (interactive)
+  (add-hook 'lui-mode-hook 'enable-lui-logging)
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when lui-input-marker
+        (enable-lui-logging)))))
+
+(defun disable-lui-logging-globally ()
+  "Disable logging in all future Lui buffers.
+
+This affects current as well as future buffers."
+  (interactive)
+  (remove-hook 'lui-mode-hook 'enable-lui-logging)
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when lui-input-marker
+        (disable-lui-logging)))))
+
 (defun lui-logging-make-directory ()
   "Create the log directory belonging to the current buffer's log
 filename."
