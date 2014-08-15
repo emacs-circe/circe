@@ -104,6 +104,23 @@ list, rather than to the end."
   :type 'boolean
   :group 'tracking)
 
+(defcustom tracking-buffer-added-hook nil
+  "Hook run when a buffer has some activity.
+
+The functions are run in the context of the buffer.
+
+This can also happen when the buffer is already tracked. Check if the
+buffer name is in `tracking-buffers' if you want to see if it was
+added before."
+  :type 'hook
+  :group 'tracking)
+
+(defcustom tracking-buffer-removed-hook nil
+  "Hook run when a buffer becomes active and is removed.
+
+The functions are run in the context of the buffer."
+  :type 'hook
+  :group 'tracking)
 
 ;;; Internal variables
 (defvar tracking-buffers nil
@@ -189,6 +206,8 @@ and the current face of the buffer, if any, is used. Priority is
 decided according to `tracking-faces-priorities'."
   (when (and (not (get-buffer-window buffer tracking-frame-behavior))
              (not (tracking-ignored-p buffer faces)))
+    (with-current-buffer buffer
+      (run-hooks 'tracking-buffer-added-hook))
     (let* ((entry (member (buffer-name buffer)
                           tracking-buffers)))
       (if entry
@@ -209,6 +228,10 @@ decided according to `tracking-faces-priorities'."
 ;;;###autoload
 (defun tracking-remove-buffer (buffer)
   "Remove BUFFER from being tracked."
+  (when (member (buffer-name buffer)
+                tracking-buffers)
+    (with-current-buffer buffer
+      (run-hooks 'tracking-buffer-removed-hook)))
   (setq tracking-buffers (delete (buffer-name buffer)
                                  tracking-buffers))
   (setq tracking-mode-line-buffers (tracking-status))
@@ -235,6 +258,9 @@ decided according to `tracking-faces-priorities'."
                    (current-buffer)))
       (setq tracking-start-buffer (current-buffer)))
     (let ((new (car tracking-buffers)))
+      (when (buffer-live-p (get-buffer new))
+        (with-current-buffer new
+          (run-hooks 'tracking-buffer-removed-hook)))
       (setq tracking-buffers (cdr tracking-buffers)
             tracking-mode-line-buffers (tracking-status))
       (if (buffer-live-p (get-buffer new))
