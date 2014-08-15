@@ -2606,10 +2606,26 @@ as arguments."
    ;; If we didn't get our nick yet...
    ((and (not circe-server-registered-p)
          (or (string= command "433")   ; ERR_NICKNAMEINUSE
-             (string= command "437"))) ; ERRL_UNAVAILRESOURCE
+             (string= command "437"))) ; ERR_UNAVAILRESOURCE
     (circe-server-send (format "NICK %s" (funcall circe-nick-next-function
-                                                  (cadr args))))))
+                                                  (cadr args)))))
+   ;; The nick we're trying to use is not valid
+   ((and (not circe-server-registered-p)
+         (string= command "432"))  ; ERR_ERRONEOUSNICKNAME
+    (circe-server-send (format "NICK %s" (circe-generate-nick)))))
   (circe-channel-message-handler nick user host command args))
+
+(defun circe-generate-nick ()
+  "Generate a valid nick name for the current user.
+
+Valid nick names are at least (RFC 1459):
+
+<nick>       ::= <letter> { <letter> | <number> | <special> }
+<special>    ::= '-' | '[' | ']' | '\' | '`' | '^' | '{' | '}'"
+  (let ((nick (user-login-name)))
+    (if (string-match "^[a-zA-Z][a-zA-Z0-9]*$" nick)
+        nick
+      "circeuser")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Accessing Display Handlers ;;;
