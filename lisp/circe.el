@@ -3254,16 +3254,21 @@ NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (with-current-buffer (or (circe-server-get-chat-buffer (cadr args))
                            (circe-server-last-active-buffer))
-    (let ((time (string-to-number (nth 3 args))))
+    (let* ((time (string-to-number (nth 3 args)))
+           (timestring (if (> time 0)
+                           (format "on %s (%s ago)"
+                                   (current-time-string (seconds-to-time time))
+                                   (circe-duration-string (- (float-time)
+                                                             time)))
+                         "at the beginning of time"))
+           (prefix (if (circe-server-get-chat-buffer (cadr args))
+                       ""
+                     (format "[%s] " (cadr args)))))
       (circe-server-message
-       (format "%sTopic set by %s on %s (%s ago)"
-               (if (circe-server-get-chat-buffer (cadr args))
-                   ""
-                 (format "[%s] " (cadr args)))
+       (format "%sTopic set by %s %s"
+               prefix
                (nth 2 args)
-               (current-time-string (seconds-to-time time))
-               (circe-duration-string (- (float-time)
-                                         time)))))))
+               timestring)))))
 
 (circe-set-display-handler "317" 'circe-display-317)
 (defun circe-display-317 (nick user host command args)
