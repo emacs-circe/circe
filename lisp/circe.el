@@ -162,6 +162,8 @@ Common options:
 
   :host - The host name of the server to connect to.
   :service - The service name or port for the server.
+  :buffer-name - The name of the buffer talking to the network
+                 (defaults to host:service)
   :tls - A boolean indicating as to whether to use TLS or
          not (defaults to nil). If you set this, you'll likely
          have to set :service as well.
@@ -805,6 +807,8 @@ OPTIONS is a property list with keyword options. See
         (cond
          ((eq keyword :host)
           (setq variable 'circe-server-name))
+         ((eq keyword :buffer-name)
+          (setq variable 'circe-server-buffer-name))
          ((memq keyword '(:service :port))
           (setq variable 'circe-server-service))
          ((memq keyword '(:tls :use-tls))
@@ -882,7 +886,8 @@ See `circe-network-options' for a list of common options."
                             port)))
         (setq service 6667))
       (puthash 'circe-server-service service variables))
-    (let* ((buffer-name (format "%s:%s" host service))
+    (let* ((buffer-name (or (gethash 'circe-server-buffer-name variables)
+						 (format "%s:%s" host service)))
            (server-buffer (generate-new-buffer buffer-name)))
       (with-current-buffer server-buffer
         (circe-server-mode)
