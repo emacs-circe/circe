@@ -1325,6 +1325,29 @@ It is always possible to use the mynick or target formats."
                 entry)))
             keywords)))
 
+(defun circe-list-connected-network ()
+  "Return a list of network currently connected."
+  (mapcar
+   (lambda (buffer)
+	 (with-current-buffer
+		 buffer
+	   circe-server-network)
+	 )
+   (circe-server-buffers)))
+
+(defun circe-jump-network (network)
+  "Jump to a network buffer by name. It may be more user friendly
+  is some situations than the actual buffer name that is
+  associated to the internet address of the network."
+  (interactive
+   (list
+	(completing-read "Network: " (circe-list-connected-network))))
+  (catch 'return
+    (dolist (buffer (circe-server-buffers))
+	  (when (with-current-buffer buffer (string= network circe-server-network))
+		(pop-to-buffer buffer)
+		(throw 'return t)))))
+
 ;; There really ought to be a hook for this!
 (defadvice select-window (after circe-server-track-select-window
                                 (window &optional norecord))
