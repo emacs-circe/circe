@@ -159,6 +159,8 @@ Common options:
   :realname - The real name to use (defaults to `circe-default-realname')
   :channels - A plist of channels to join
               (see `circe-server-auto-join-channels').
+  :server-buffer-name - Format to be used for the server buffer name
+                        (see `circe-server-buffer-name')
 
   :host - The host name of the server to connect to.
   :service - The service name or port for the server.
@@ -597,6 +599,18 @@ strings."
   :type 'string
   :group 'circe-format)
 
+(defcustom circe-server-buffer-name "{host}:{service}"
+  "The format for the server buffer name.
+
+The following format arguments are available:
+
+  network  - The name of the network
+  host     - The host name of the server
+  service  - The service or port number
+  port     - Alias for service"
+  :type 'string
+  :group 'circe-format)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private variables ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -882,7 +896,14 @@ See `circe-network-options' for a list of common options."
                             port)))
         (setq service 6667))
       (puthash 'circe-server-service service variables))
-    (let* ((buffer-name (format "%s:%s" host service))
+    (let* ((buffer-name-format (or (gethash 'circe-server-buffer-name
+                                            variables)
+                                   circe-server-buffer-name))
+           (buffer-name (lui-format buffer-name-format
+                                    :network network-or-server
+                                    :host host
+                                    :service service
+                                    :port service))
            (server-buffer (generate-new-buffer buffer-name)))
       (with-current-buffer server-buffer
         (circe-server-mode)
