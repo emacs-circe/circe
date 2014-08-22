@@ -1,8 +1,8 @@
 ;;; tracking.el --- Buffer modification tracking
 
-;; Copyright (C) 2006, 2012 - 2013  Jorgen Schaefer
+;; Copyright (C) 2006, 2012 - 2014  Jorgen Schaefer
 
-;; Version: 1.4
+;; Version: 1.5
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe/wiki/Tracking
 ;; Package-Requires: ((shorten "0.1"))

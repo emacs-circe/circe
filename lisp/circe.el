@@ -1,8 +1,8 @@
 ;;; circe.el --- Client for IRC in Emacs
 
-;; Copyright (C) 2005 - 2013  Jorgen Schaefer
+;; Copyright (C) 2005 - 2014  Jorgen Schaefer
 
-;; Version: 1.3
+;; Version: 1.4
 ;; Keywords: IRC, chat
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe
@@ -38,7 +38,7 @@
 
 ;;; Code:
 
-(defvar circe-version "1.3"
+(defvar circe-version "1.4"
   "Circe version string.")
 
 (require 'ring)
