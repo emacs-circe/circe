@@ -31,6 +31,7 @@
 ;;; Code:
 
 (require 'lui-format)
+(require 'url-util)
 
 (defgroup lui-logging nil
   "Logging support."
@@ -75,6 +76,14 @@ cost of a little bit of safety."
 This can be used to extend the formatting possibilities of the
 file name for lui applications.")
 (make-variable-buffer-local 'lui-logging-format-arguments)
+
+(defvar lui-logging-file-name-unreserved-chars
+  ;; All but '/' is fine actually, but also omit '%' because otherwise there's
+  ;; ambiguity between one introduced by encoding and a literal one.
+  '(?! ?\" ?# ?$ ?& ?` ?\( ?\) ?* ?+ ?,?: ?\; ?< ?= ?> ?? ?@?\[ ?\\ ?\] ?^ ?`
+       ?\{ ?| ?\})
+  "A list of characters that should not be percent-encoded by
+`url-hexify-string' while generating a logging file name.")
 
 (defvar lui-pending-logs
   (make-hash-table :test 'equal)
@@ -135,12 +144,17 @@ filename."
 
 (defun lui-logging-file-name ()
   "Create the name of the log file based on `lui-logging-file-format'."
-  (concat lui-logging-directory "/"
-          (downcase
-           (apply 'lui-format
-                  (format-time-string lui-logging-file-format)
-                  :buffer (buffer-name (current-buffer))
-                  lui-logging-format-arguments))))
+  (let* ((time-formatted (format-time-string lui-logging-file-format))
+         (fully-formatted (apply 'lui-format
+                                 time-formatted
+                                 :buffer (buffer-name (current-buffer))
+                                 lui-logging-format-arguments))
+         (downcased (downcase fully-formatted))
+         (filename (let ((url-unreserved-chars
+                          (append url-unreserved-chars
+                                  lui-logging-file-name-unreserved-chars)))
+                     (url-hexify-string downcased))))
+    (concat lui-logging-directory "/" filename)))
 
 (defun lui-logging-flush ()
   "Flush out the lui-logging queue, and clear the timer set by
