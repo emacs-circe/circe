@@ -221,7 +221,7 @@ decided according to `tracking-faces-priorities'."
                   (nconc tracking-buffers
                          (list (tracking-faces-merge (buffer-name buffer)
                                                      faces)))))))
-    (setq tracking-mode-line-buffers (tracking-status))
+    (setq tracking-mode-line-buffers (tracking--status-for-mode-line))
     (sit-for 0) ;; Update mode line
     ))
 
@@ -234,7 +234,7 @@ decided according to `tracking-faces-priorities'."
       (run-hooks 'tracking-buffer-removed-hook)))
   (setq tracking-buffers (delete (buffer-name buffer)
                                  tracking-buffers))
-  (setq tracking-mode-line-buffers (tracking-status))
+  (setq tracking-mode-line-buffers (tracking--status-for-mode-line))
   (sit-for 0) ;; Update mode line
   )
 
@@ -262,12 +262,12 @@ decided according to `tracking-faces-priorities'."
         (with-current-buffer new
           (run-hooks 'tracking-buffer-removed-hook)))
       (setq tracking-buffers (cdr tracking-buffers)
-            tracking-mode-line-buffers (tracking-status))
+            tracking-mode-line-buffers (tracking--status-for-mode-line))
       (if (buffer-live-p (get-buffer new))
           (switch-to-buffer new)
         (message "Buffer %s does not exist anymore" new)
         (ding)
-        (setq tracking-mode-line-buffers (tracking-status))))
+        (setq tracking-mode-line-buffers (tracking--status-for-mode-line))))
     (setq tracking-last-buffer (current-buffer))
     ;; Update mode line. See `force-mode-line-update' for the idea for
     ;; this code. Using `sit-for' can be quite inefficient for larger
@@ -308,12 +308,33 @@ to be ignored."
             (throw 'return entry))))))
     nil))
 
-(defun tracking-status ()
+(defun tracking--status-for-mode-line ()
   "Return the current track status."
-  (let ((shortened (tracking-shorten tracking-buffers)))
-    (if shortened
-        (concat " [" (mapconcat #'identity shortened ",") "] ")
-      "")))
+  (cond
+   (tracking-buffers
+    (let* ((buffers tracking-buffers)
+           (shortened-names (tracking-shorten buffers))
+           (retval '()))
+      (while buffers
+        (let ((buffer (pop buffers))
+              (short (pop shortened-names)))
+          (push " " retval)
+          (push `(:propertize
+                  ,short
+                  face ,(get-text-property 0 'face buffer )
+                  keymap ,(let ((map (make-sparse-keymap)))
+                            (define-key map [mode-line down-mouse-1]
+                              ;; FIXME, maybe: faking lexical binding.
+                              `(lambda ()
+                                 (interactive)
+                                 (pop-to-buffer ,buffer)))
+                            map)
+                  mouse-face mode-line-highlight
+                  help-echo ,(format "New stuff in the %s buffer\nmouse-1: pop to it"
+                                     buffer))
+                retval)))
+      retval))
+   (t "")))
 
 (defun tracking-remove-visible-buffers ()
   "Remove visible buffers from the tracked buffers.
@@ -325,7 +346,7 @@ This is usually called via `window-configuration-changed-hook'."
                 (get-buffer-window buffer
                                    tracking-frame-behavior))
         (tracking-remove-buffer buffer))))
-  (setq tracking-mode-line-buffers (tracking-status)))
+  (setq tracking-mode-line-buffers (tracking--status-for-mode-line)))
 
 ;;; Helper functions
 (defun tracking-shorten (buffers)
