@@ -170,7 +170,8 @@ Common options:
 
   :nickserv-nick - The nick to authenticate with to nickserv, if configured.
                    (defaults to the value of :nick)
-  :nickserv-password - The password to use for nickserv authentication."
+  :nickserv-password - The password to use for nickserv authentication or a function
+                       to fetch it."
   :type '(alist :key-type string :value-type plist)
   :group 'circe)
 
@@ -3943,6 +3944,9 @@ pass an argument to the `circe' function for this.")
 (defvar circe-nickserv-password nil
   "The password we use for nickserv on this network.
 
+Can be either a string or a unary function of the nick returning
+a string.
+
 Do not set this variable directly. Use `circe-network-options' or
 pass an argument to the `circe' function for this.")
 (make-variable-buffer-local 'circe-nickserv-password)
@@ -3956,7 +3960,10 @@ pass an argument to the `circe' function for this.")
                circe-nickserv-password)
       (circe-server-send (lui-format circe-nickserv-identify-command
                                      :nick circe-nickserv-nick
-                                     :password circe-nickserv-password)))))
+                                     :password (if (functionp circe-nickserv-password)
+                                                   (funcall circe-nickserv-password
+                                                            circe-nickserv-nick)
+                                                 circe-nickserv-password))))))
 
 (defun circe-nickserv-ghost ()
   "Regain/reclaim/ghost your nick if necessary."
