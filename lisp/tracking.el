@@ -309,11 +309,35 @@ to be ignored."
     nil))
 
 (defun tracking-status ()
-  "Return the current track status."
-  (let ((shortened (tracking-shorten tracking-buffers)))
-    (if shortened
-        (concat " [" (mapconcat #'identity shortened ",") "] ")
-      "")))
+  "Return the current track status.
+
+This returns a list suitable for `mode-line-format'."
+  (if (not tracking-buffers)
+      ""
+    (let* ((buffer-names tracking-buffers)
+           (shortened-names (tracking-shorten tracking-buffers))
+           (result (list " [")))
+      (while buffer-names
+        (push `(:propertize
+                ,(car shortened-names)
+                face ,(get-text-property 0 'face (car buffer-names))
+                keymap ,(let ((map (make-sparse-keymap)))
+                          (define-key map [mode-line down-mouse-1]
+                            `(lambda ()
+                               (interactive)
+                               (pop-to-buffer ,(car buffer-names))))
+                          map)
+                mouse-face mode-line-highlight
+                help-echo ,(format (concat "New activity in %s\n"
+                                           "mouse-1: pop to the buffer")
+                                   (car buffer-names)))
+              result)
+        (setq buffer-names (cdr buffer-names)
+              shortened-names (cdr shortened-names))
+        (when buffer-names
+          (push "," result)))
+      (push "] " result)
+      (nreverse result))))
 
 (defun tracking-remove-visible-buffers ()
   "Remove visible buffers from the tracked buffers.
