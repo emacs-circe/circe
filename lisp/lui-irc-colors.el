@@ -27,6 +27,7 @@
 ;; ^B - Bold
 ;; ^_ - Underline
 ;; ^V - Inverse
+;; ^] - Italic
 ;; ^O - Return to normal
 ;; ^C1,2 - Colors
 
@@ -227,7 +228,7 @@
   :group 'lui-irc-colors)
 
 (defvar lui-irc-colors-regex
-  "\\(\x02\\|\x1F\\|\x16\\|\x0F\\|\x03\\)"
+  "\\(\x02\\|\x1F\\|\x16\\|\x1D\\|\x0F\\|\x03\\)"
   "A regular expression matching IRC control codes.")
 
 ;;;###autoload
@@ -248,12 +249,13 @@ This is an appropriate function for `lui-pre-output-hook'."
   (let ((start (point))
         (boldp nil)
         (inversep nil)
+        (italicp nil)
         (underlinep nil)
         (fg nil)
         (bg nil))
     (while (re-search-forward lui-irc-colors-regex nil t)
       (lui-irc-propertize start (point)
-                          boldp inversep underlinep
+                          boldp inversep italicp underlinep
                           fg bg)
       (let ((code (match-string 1)))
         (replace-match "")
@@ -263,11 +265,14 @@ This is an appropriate function for `lui-pre-output-hook'."
           (setq boldp (not boldp)))
          ((string= code "")
           (setq inversep (not inversep)))
+         ((string= code "")
+          (setq italicp (not italicp)))
          ((string= code "")
           (setq underlinep (not underlinep)))
          ((string= code "")
           (setq boldp nil
                 inversep nil
+                italicp nil
                 underlinep nil
                 fg nil
                 bg nil))
@@ -278,7 +283,7 @@ This is an appropriate function for `lui-pre-output-hook'."
                       bg (if (match-string 2)
                              (string-to-number (match-string 3))
                            bg))
-                (setq fg (if (and fg (not (= fg 99))) (mod fg 16) nil)          
+                (setq fg (if (and fg (not (= fg 99))) (mod fg 16) nil)
                       bg (if (and bg (not (= bg 99))) (mod bg 16) nil))
                 (replace-match ""))
             (setq fg nil
@@ -286,9 +291,9 @@ This is an appropriate function for `lui-pre-output-hook'."
          (t
           (error "lui-irc-colors: Can't happen!")))))
     (lui-irc-propertize (point) (point-max)
-                        boldp inversep underlinep fg bg)))
+                        boldp inversep italicp underlinep fg bg)))
 
-(defun lui-irc-propertize (start end boldp inversep underlinep fg bg)
+(defun lui-irc-propertize (start end boldp inversep italicp underlinep fg bg)
   "Propertize the region between START and END."
   (font-lock-prepend-text-property
    start end
@@ -297,6 +302,9 @@ This is an appropriate function for `lui-pre-output-hook'."
                    nil)
                  (if inversep
                      '(lui-irc-colors-inverse-face)
+                   nil)
+                 (if italicp
+                     '(italic)
                    nil)
                  (if underlinep
                      '(underline)
