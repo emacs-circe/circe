@@ -83,11 +83,11 @@ replace it with the resulting URL."
   (let ((url-request-method "POST")
         (url-request-extra-headers
          '(("Content-Type" . "application/x-www-form-urlencoded")
-           ("Referer" . "http://bpaste.net")))
-        (url-request-data (format "code=%s&language=text&webpage=&private=on"
+           ("Referer" . "https://bpaste.net")))
+        (url-request-data (format "code=%s&lexer=text&expiry=1month"
                                   (url-hexify-string text)))
         (url-http-attempt-keepalives nil))
-    (let ((buf (url-retrieve-synchronously "http://bpaste.net/")))
+    (let ((buf (url-retrieve-synchronously "https://bpaste.net/")))
       (unwind-protect 
           (with-current-buffer buf
             (goto-char (point-min))
