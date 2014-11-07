@@ -165,7 +165,8 @@ is then associated with the match."
   `(("`\\([A-Za-z0-9+=*/-]+\\)'" 1 lui-button-elisp-symbol 1)
     ("RFC ?\\([0-9]+\\)" 0 lui-button-rfc 1)
     ("SRFI[- ]?\\([0-9]+\\)" 0 lui-button-srfi 1)
-    ("PEP[- ]?\\([0-9]+\\)" 0 lui-button-pep 1))
+    ("PEP[- ]?\\([0-9]+\\)" 0 lui-button-pep 1)
+    ("xkcd[ #]*\\([0-9]+\\)" 0 lui-button-xkcd 1))
   "The list of buttons to buttonize.
 This consists of lists of four elements each:
 
@@ -609,6 +610,10 @@ Otherwise, we move to the next button."
   "Browse the PEP NUMBER."
   (browse-url (format "https://www.python.org/dev/peps/pep-%04i"
                       (string-to-number number))))
+
+(defun lui-button-pep (number)
+  "Browse the xkcd NUMBER."
+  (browse-url (format "https://xkcd.com/%s" number)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
