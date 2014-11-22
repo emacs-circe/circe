@@ -189,9 +189,9 @@ line. The user can cycle through them using
               'tracking-remove-visible-buffers))
    (t
     (setq mode-line-misc-info (delq 'tracking-mode-line-buffers
-                                    mode-line-misc-info)
-          mode-line-format (delq 'tracking-mode-line-buffers
-                                 mode-line-format))
+                                    mode-line-misc-info))
+    (setq-default mode-line-format (delq 'tracking-mode-line-buffers
+                                         (default-value 'mode-line-format)))
     (remove-hook 'window-configuration-change-hook
                  'tracking-remove-visible-buffers))))
 
