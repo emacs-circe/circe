@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2005 - 2014  Jorgen Schaefer
 
-;; Version: 1.4
+;; Version: 1.5
 ;; Keywords: IRC, chat
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe
@@ -38,7 +38,7 @@
 
 ;;; Code:
 
-(defvar circe-version "1.4"
+(defvar circe-version "1.5"
   "Circe version string.")
 
 (require 'ring)
