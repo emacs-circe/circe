@@ -144,18 +144,19 @@ Similarity is computed with `circe-color-distance'"
             (nicks '())
             (regex nil))
         (when body
-          (maphash (lambda (nick _)
-                     (when (not (circe-server-my-nick-p nick))
-                       (setq nicks (cons nick nicks))))
-                   circe-nick-color-mapping)
-          (setq regex (regexp-opt nicks 'words))
-          (goto-char body)
-          (while (re-search-forward regex nil t)
-            (put-text-property (match-beginning 0)
-                               (match-end 0)
-                               'face `(:foreground
-                                       ,(gethash (match-string-no-properties 0)
-                                                 circe-nick-color-mapping)))))))))
+          (with-syntax-table circe-nick-syntax-table
+            (maphash (lambda (nick _)
+                       (when (not (circe-server-my-nick-p nick))
+                         (setq nicks (cons nick nicks))))
+                     circe-nick-color-mapping)
+            (setq regex (regexp-opt nicks 'words))
+            (goto-char body)
+            (while (re-search-forward regex nil t)
+              (put-text-property (match-beginning 0)
+                                 (match-end 0)
+                                 'face `(:foreground
+                                         ,(gethash (match-string-no-properties 0)
+                                                   circe-nick-color-mapping))))))))))
 
 (provide 'circe-color-nicks)
 ;;; circe-color-nicks.el ends here
