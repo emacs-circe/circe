@@ -146,7 +146,8 @@ Similarity is computed with `circe-color-distance'"
         (when body
           (with-syntax-table circe-nick-syntax-table
             (maphash (lambda (nick _)
-                       (when (not (circe-server-my-nick-p nick))
+                       (when (and (not (circe-server-my-nick-p nick))
+                                  (gethash nick circe-channel-users))
                          (setq nicks (cons nick nicks))))
                      circe-nick-color-mapping)
             (setq regex (regexp-opt nicks 'words))
