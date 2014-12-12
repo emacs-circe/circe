@@ -123,6 +123,11 @@ Similarity is computed with `circe-color-distance'"
   "Whether nicks should be colored in message bodies too."
   :group 'circe)
 
+(defcustom circe-color-nicks-message-blacklist nil
+  "Blacklist for nicks that shall never be highlighted inside
+  images."
+  :group 'circe)
+
 (defun circe-color-nicks ()
   "Color nicks on this lui output line."
   (when (eq major-mode 'circe-channel-mode)
@@ -147,7 +152,8 @@ Similarity is computed with `circe-color-distance'"
           (with-syntax-table circe-nick-syntax-table
             (maphash (lambda (nick _)
                        (when (and (not (circe-server-my-nick-p nick))
-                                  (gethash nick circe-channel-users))
+                                  (gethash nick circe-channel-users)
+                                  (not (member nick circe-color-nicks-message-blacklist)))
                          (setq nicks (cons nick nicks))))
                      circe-nick-color-mapping)
             (setq regex (regexp-opt nicks 'words))
