@@ -121,11 +121,13 @@ Similarity is computed with `circe-color-distance'"
 
 (defcustom circe-color-nicks-everywhere nil
   "Whether nicks should be colored in message bodies too."
+  :type 'boolean
   :group 'circe)
 
 (defcustom circe-color-nicks-message-blacklist nil
   "Blacklist for nicks that shall never be highlighted inside
   images."
+  :type '(repeat string)
   :group 'circe)
 
 (defun circe-color-nicks ()
