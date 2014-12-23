@@ -160,12 +160,13 @@ Similarity is computed with `circe-color-distance'"
                      circe-nick-color-mapping)
             (setq regex (regexp-opt nicks 'words))
             (goto-char body)
-            (while (re-search-forward regex nil t)
-              (put-text-property (match-beginning 0)
-                                 (match-end 0)
-                                 'face `(:foreground
-                                         ,(gethash (match-string-no-properties 0)
-                                                   circe-nick-color-mapping))))))))))
+            (let (case-fold-search)
+              (while (re-search-forward regex nil t)
+                (put-text-property (match-beginning 0)
+                                   (match-end 0)
+                                   'face `(:foreground
+                                           ,(gethash (match-string-no-properties 0)
+                                                     circe-nick-color-mapping)))))))))))
 
 (provide 'circe-color-nicks)
 ;;; circe-color-nicks.el ends here
