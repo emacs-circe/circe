@@ -42,7 +42,7 @@ After this, `M-x circe` should work.
 ### Stable Version
 
 Download the latest stable version from
-https://github.com/jorgenschaefer/circe/downloads
+https://github.com/jorgenschaefer/circe/releases
 
 Unpack the tar.gz and add the `circe-X.Y/lisp/` directory to your
 `load-path` like so:
