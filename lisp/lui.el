@@ -64,7 +64,7 @@
   :prefix "lui-"
   :group 'applications)
 
-(defcustom lui-scroll-behavior 'post-output
+(defcustom lui-scroll-behavior t
   "Set the behavior lui should exhibit for scrolling.
 
 The following values are possible. If in doubt, use post-output.
@@ -72,12 +72,15 @@ The following values are possible. If in doubt, use post-output.
 nil
   Use default Emacs scrolling.
 
-t, post-command
+post-command
   Keep the input line at the end of the window if point is
   after the input mark.
 
 post-output
   Keep the input line at the end of the window only after output.
+
+t
+  Combine both post-command and post-output.
 
 post-scroll
   Keep the input line at the end of the window on every scroll
@@ -462,16 +465,19 @@ See `lui-scroll-behavior' for how to customize this."
 This is called from `post-command-hook'.
 
 See `lui-scroll-behavior' for how to customize this."
-  (when (and lui-input-marker
-             (or (eq lui-scroll-behavior t)
-                 (eq lui-scroll-behavior 'post-command)))
-    ;; Code from ERC's erc-goodies.el. I think this was originally
-    ;; mine anyhow, not sure though.
-    (save-restriction
-      (when (>= (point) lui-input-marker)
-        (save-excursion
-          (goto-char (point-max))
-          (recenter -1))))))
+  (condition-case err
+      (when (and lui-input-marker
+                 (memq lui-scroll-behavior '(t post-command)))
+        ;; Code from ERC's erc-goodies.el. I think this was originally
+        ;; mine anyhow, not sure though.
+        (save-restriction
+          (when (>= (point) lui-input-marker)
+            (save-excursion
+              (goto-char (point-max))
+              (recenter -1)))))
+    (error
+     (message "Error in l-s-p-c: %S" err)
+     )))
 
 (defun lui-scroll-post-output ()
   "Scroll the input line to the bottom of the window.
@@ -479,8 +485,7 @@ See `lui-scroll-behavior' for how to customize this."
 This is called when lui output happens.
 
 See `lui-scroll-behavior' for how to customize this."
-  (when (memq lui-scroll-behavior '(post-output
-                                    post-command))
+  (when (memq lui-scroll-behavior '(t post-output))
     (let ((resize-mini-windows nil))
       (dolist (window (get-buffer-window-list (current-buffer) nil t))
         (when (or (>= (point) lui-input-marker)
