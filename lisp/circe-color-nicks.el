@@ -144,7 +144,7 @@ Similarity is computed with `circe-color-distance'"
               (when (not color)
                 (setq color (circe-generate-nick-color))
                 (puthash nick color circe-nick-color-mapping))
-              (put-text-property nickstart nickend 'face `(:foreground ,color)))))))
+              (add-face-text-property nickstart nickend `(:foreground ,color)))))))
     (when circe-color-nicks-everywhere
       (let ((body (text-property-any (point-min) (point-max)
                                      'lui-format-argument 'body))
@@ -162,11 +162,11 @@ Similarity is computed with `circe-color-distance'"
             (goto-char body)
             (let (case-fold-search)
               (while (re-search-forward regex nil t)
-                (put-text-property (match-beginning 0)
-                                   (match-end 0)
-                                   'face `(:foreground
-                                           ,(gethash (match-string-no-properties 0)
-                                                     circe-nick-color-mapping)))))))))))
+                (add-face-text-property (match-beginning 0)
+                                        (match-end 0)
+                                        `(:foreground
+                                          ,(gethash (match-string-no-properties 0)
+                                                    circe-nick-color-mapping)))))))))))
 
 (provide 'circe-color-nicks)
 ;;; circe-color-nicks.el ends here
