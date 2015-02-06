@@ -137,8 +137,10 @@ Similarity is computed with `circe-color-distance'"
                                         'lui-format-argument 'nick)))
       (when nickstart
         (goto-char nickstart)
-        (let* ((nickend (next-property-change nickstart))
-               (nick (buffer-substring-no-properties nickstart nickend)))
+        (let ((nickend (next-property-change nickstart))
+              (nick (plist-get (plist-get (text-properties-at nickstart)
+                                          'lui-keywords)
+                               :nick)))
           (when (not (circe-server-my-nick-p nick))
             (let ((color (gethash nick circe-nick-color-mapping)))
               (when (not color)
