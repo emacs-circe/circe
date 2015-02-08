@@ -3632,12 +3632,15 @@ Possible options:
 
 :immediate - Immediately after registering on the server
 :after-auth - After nickserv authentication succeeded
+:after-cloak - After we have acquired a cloaked host name
 :after-nick - After we regained our preferred nick. See
               `circe-nickserv-ghost-style'.
+
 
 See `circe-server-auto-join-channels' for more details."
   :type '(choice (const :tag "Immediately" :immediate)
                  (const :tag "After Authentication" :after-auth)
+                 (const :tag "After Cloaking" :after-cloak)
                  (const :tag "After Nick Regain" :after-nick))
   :group 'circe)
 
@@ -3657,6 +3660,7 @@ Possible keyword options are:
 
 :immediate - Immediately after registering on the server
 :after-auth - After nickserv authentication succeeded
+:after-cloak - After we have acquired a cloaked host name
 :after-nick - After we regained our preferred nick. See
               `circe-nickserv-ghost-style'.
 
@@ -3742,6 +3746,7 @@ used."
 
 ;;;;;;;;;;;;;;;;;;;
 ;;; Topic Handling
+
 (defvar circe-channel-topic ""
   "The current topic of the channel.")
 (make-variable-buffer-local 'circe-channel-topic)
@@ -3951,7 +3956,6 @@ Do not set this variable directly. Use `circe-network-options' or
 pass an argument to the `circe' function for this.")
 (make-variable-buffer-local 'circe-nickserv-password)
 
-
 (defun circe-nickserv-identify ()
   "Authenticate with nickserv."
   (with-circe-server-buffer
@@ -4035,6 +4039,11 @@ we're waiting for our nick change."
              (string= (car args) circe-nickserv-nick))
     (setq circe-auto-regain-awaiting-nick-change nil)
     (run-hooks 'circe-acquired-preferred-nick-hook)))
+
+(circe-add-message-handler "396" 'circe-handle-396)
+(defun circe-handle-396 (nick user host command args)
+  "Handle 396 RPL_HOSTHIDDEN messages."
+  (circe-auto-join :after-cloak))
 
 (provide 'circe)
 ;;; circe.el ends here
