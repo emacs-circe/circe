@@ -2139,9 +2139,11 @@ See `minibuffer-completion-table' for details."
                                       completions))))))
        ;; In a channel buffer, only complete nicks in this channel
        ((eq major-mode 'circe-channel-mode)
-        (setq completions (append (mapcar (lambda (nick)
-                                            (concat nick nick-suffix))
-                                          (circe-channel-nicks))
+        (setq completions (append (delete (concat (circe-server-nick)
+                                                  nick-suffix)
+                                          (mapcar (lambda (nick)
+                                                    (concat nick nick-suffix))
+                                                  (circe-channel-nicks)))
                                   completions)))
        ;; In a query buffer, only complete this query partner
        ((eq major-mode 'circe-query-mode)
