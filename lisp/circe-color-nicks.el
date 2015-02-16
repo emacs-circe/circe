@@ -131,7 +131,7 @@ Similarity is computed with `circe-color-distance'"
   :group 'circe)
 
 ;;; Pre-24.4 compatibility.
-(when (null (symbol-function 'add-face-text-property))
+(when (null (fboundp 'add-face-text-property))
   (defun add-face-text-property (start end face)
     (save-excursion
       (goto-char start)
