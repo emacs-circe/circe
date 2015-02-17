@@ -49,6 +49,13 @@ The default is what GnuTLS's \"gnutls-cli\" or OpenSSL's
   :type 'regexp
   :group 'circe)
 
+(defvar circe-tls-single-method nil
+  "A single method to use for TLS connections. If nil, Circe
+  picks a working method from `tls-program', and sets it
+  buffer-locally.")
+
+(make-variable-buffer-local 'circe-tls-single-method)
+
 
 (defsubst circe-tls-buffer-occupied-p (buffer)
   "Checks if the buffer is occupied by a process"
@@ -126,13 +133,22 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
 
 Arguments: buffer, name, host, port, success-func, fail-thunk."
   (message "Opening TLS connection to `%s'..." host)
-  (circe-tls-try-different-commands buffer
-                                    tls-program
-                                    name
-                                    host
-                                    port
-                                    success-func
-                                    fail-thunk))
+  (if circe-tls-single-method
+      (circe-tls-try-single-command
+       buffer
+       circe-tls-single-method
+       name
+       host
+       port
+       success-func
+       fail-thunk)
+    (circe-tls-try-different-commands buffer
+                                      tls-program
+                                      name
+                                      host
+                                      port
+                                      success-func
+                                      fail-thunk)))
 
 
 (defun circe-tls-try-different-commands
@@ -174,6 +190,9 @@ Arguments: buffer, command, name, host, port, success-func, fail-thunk."
            ?p (if (integerp port)
                   (int-to-string port)
                 port))))
+        (wrapped-success-func #'(lambda (process)
+                                  (setq circe-tls-single-method cmd)
+                                  (funcall success-func process)))
         process)
     (message "Opening TLS connection with `%s'..." formatted-cmd)
     (setq process (start-process
@@ -186,7 +205,7 @@ Arguments: buffer, command, name, host, port, success-func, fail-thunk."
                                buffer
                                host
                                formatted-cmd
-                               success-func
+                               wrapped-success-func
                                fail-thunk
                                ""))
           (set-process-sentinel process
@@ -194,7 +213,7 @@ Arguments: buffer, command, name, host, port, success-func, fail-thunk."
                                  buffer
                                  host
                                  formatted-cmd
-                                 success-func
+                                 wrapped-success-func
                                  fail-thunk
                                  "")))
       (funcall fail-thunk))))
@@ -260,8 +279,9 @@ accumulator."
 
 (defun circe-tls-make-connection-awaiting-sentinel
   (buffer host formatted-cmd success-func fail-thunk acc)
-  "A process filter generator: returned filter waits for success
-or failure, and then calls success-func or fail-thunk.
+  "A process sentinel generator: returned sentinel handles
+failures that could happen during connection, and then calls
+fail-thunk or cleans up.
 
 Arguments: buffer, host, formatted cmd, success-func, fail-thunk,
 accumulator."
