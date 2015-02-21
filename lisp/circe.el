@@ -224,8 +224,10 @@ argument is given to /PART."
   "How new buffers should be treated.
 
   'display  - Show them, but don't select them
-  'switch   - Switch to that buffer
-  'ignore   - Just open it
+  'switch   - Switch input to that buffer
+  'ignore   - Open them in the background
+
+This does NOT affect buffers created with /join or /query.
 
 Also see `circe-new-buffer-behavior-ignore-auto-joins'."
   :type '(choice (const :tag "Display" display)
@@ -2249,19 +2251,17 @@ message separated by a space."
 (defun circe-command-QUERY (who)
   "Open a query with WHO."
   (interactive "sQuery with: ")
-  (let* ((who (when (string-match "[^ ]+" who)
-                (match-string 0 who)))
-         (circe-new-buffer-behavior 'ignore) ; We do this manually
-         (buf (circe-server-get-chat-buffer who 'circe-query-mode))
-         (window (get-buffer-window buf)))
-    (if window
-        (select-window window)
-      (switch-to-buffer buf))))
+  (let ((circe-new-buffer-behavior 'switch)
+        (who (string-trim who)))
+    (circe-server-get-chat-buffer 'circe-query-mode)))
 
 (defun circe-command-JOIN (channel)
   "Join CHANNEL. This can also contain a key."
   (interactive "sChannel: ")
-  (circe-server-send (format "JOIN %s" channel)))
+  (let ((circe-new-buffer-behavior 'switch)
+        (channel (string-trim channel)))
+    (circe-server-get-chat-buffer channel 'circe-channel-mode)
+    (circe-server-send (format "JOIN %s" channel))))
 
 (defun circe-command-PART (reason)
   "Part the current channel because of REASON."
@@ -3619,6 +3619,17 @@ number, it shows the missing people due to that split."
     (when (not (consp handler))
       (error "Handler of command %s is not a list" command))
     (setcar handler target)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Helper Functions ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+(when (not (fboundp 'string-trim))
+  (defun string-trim (string)
+    "Remove leading and trailing whitespace from STRING."
+    (if (string-match "\\` *\\(.*[^[:space:]]\\) *\\'" string)
+        (match-string 1 string)
+      string)))
 
 ;;;;;;;;;;;;;;;;;;
 ;;; Extensions ;;;
