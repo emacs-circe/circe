@@ -984,11 +984,10 @@ See `circe-server-max-reconnect-attempts'.")
           ;; Remove the sentinel to avoid it reconnecting when we kill
           ;; it.
           (set-process-sentinel proc nil)
-          ;; A tls connection would spam the server buffer, so bind
-          ;; the process to a temp buffer
-          (with-temp-buffer
-            (set-process-buffer proc (current-buffer))
-            (delete-process proc))))
+          ;; Also, ignore all output after killing it. This is usually
+          ;; the TLS program emitting some status info, if anything
+          (set-process-filter proc (lambda (proc output) nil))
+          (delete-process proc)))
       (setq circe-server-registered-p nil
             circe-server-filter-data nil
             circe-server-flood-queue nil)
