@@ -733,15 +733,21 @@ This is either a channel or a nick name.")
 This is not entirely accurate, as exact chars constituting a nick
 can vary between networks.")
 
+(defvar circe-base-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map lui-mode-map)
+    (define-key map (kbd "C-c C-j") 'circe-command-JOIN)
+    (define-key map (kbd "C-c C-r") 'circe-reconnect)
+    map)
+  "The base keymap for all Circe modes (server, channel, query)")
+
 ;;;;;;;;;;;;;;;;;;;
 ;;; Server Mode ;;;
 ;;;;;;;;;;;;;;;;;;;
 
 (defvar circe-server-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-j") 'circe-command-JOIN)
-    (define-key map (kbd "C-c C-r") 'circe-reconnect)
-    (set-keymap-parent map lui-mode-map)
+    (set-keymap-parent map circe-base-mode-map)
     map)
   "The key map for server mode buffers.")
 
@@ -1498,6 +1504,12 @@ initialize a new buffer if none exists."
 ;;; Chat Buffers ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
+(defvar circe-chat-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map circe-base-mode-map)
+    map)
+  "Base key map for all Circe chat buffers (channel, query).")
+
 (defvar circe-chat-mode-hook nil
   "The hook run after `circe-chat-mode' is initialized.")
 
@@ -1616,11 +1628,9 @@ will also call `lui-flyspell-check-word-p'."
 
 (defvar circe-channel-mode-map
   (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map circe-chat-mode-map)
     (define-key map (kbd "C-c C-n") 'circe-command-NAMES)
     (define-key map (kbd "C-c C-t") 'circe-command-CHTOPIC)
-    (define-key map (kbd "C-c C-j") 'circe-command-JOIN)
-    (define-key map (kbd "C-c C-r") 'circe-reconnect)
-    (set-keymap-parent map lui-mode-map)
     map)
   "The key map for channel mode buffers.")
 
@@ -1967,9 +1977,7 @@ and no other nicks are."
 
 (defvar circe-query-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-j") 'circe-command-JOIN)
-    (define-key map (kbd "C-c C-r") 'circe-reconnect)
-    (set-keymap-parent map lui-mode-map)
+    (set-keymap-parent map circe-chat-mode-map)
     map)
   "The key map for query mode buffers.")
 
