@@ -101,7 +101,6 @@ a queue.")
   "Enable lui logging for this buffer. Also create the log
 file's directory, should it not exist."
   (interactive)
-  (lui-logging-make-directory)
   (add-hook 'lui-pre-output-hook 'lui-logging
             nil t))
 
@@ -134,26 +133,18 @@ This affects current as well as future buffers."
       (when lui-input-marker
         (disable-lui-logging)))))
 
-(defun lui-logging-make-directory ()
-  "Create the log directory belonging to the current buffer's log
-filename."
-  (let* ((file (lui-logging-file-name))
-         (dir (file-name-directory file)))
-    (when (not (file-directory-p dir))
-      (make-directory dir t))))
-
 (defun lui-logging-file-name ()
   "Create the name of the log file based on `lui-logging-file-format'."
   (let* ((time-formatted (format-time-string lui-logging-file-format))
-         (fully-formatted (apply 'lui-format
-                                 time-formatted
-                                 :buffer (buffer-name (current-buffer))
-                                 lui-logging-format-arguments))
-         (downcased (downcase fully-formatted))
-         (filename (let ((url-unreserved-chars
-                          (append url-unreserved-chars
-                                  lui-logging-file-name-unreserved-chars)))
-                     (url-hexify-string downcased))))
+         (buffer (let ((url-unreserved-chars
+                        (append url-unreserved-chars
+                                lui-logging-file-name-unreserved-chars))
+                       (downcased (downcase (buffer-name (current-buffer)))))
+                   (url-hexify-string downcased)))
+         (filename (apply 'lui-format
+                          time-formatted
+                          :buffer buffer
+                          lui-logging-format-arguments)))
     (concat lui-logging-directory "/" filename)))
 
 (defun lui-logging-flush ()
@@ -166,7 +157,10 @@ filename."
 
 (defun lui-logging-write-to-log (file-name content)
   "Actually perform a write to the logfile."
-  (let ((coding-system-for-write 'raw-text))
+  (let ((coding-system-for-write 'raw-text)
+        (dir (file-name-directory file-name)))
+    (when (not (file-directory-p dir))
+      (make-directory dir t))
     (write-region content nil file-name t 'nomessage)))
 
 (defun lui-logging-flush-file (file-name queue)
