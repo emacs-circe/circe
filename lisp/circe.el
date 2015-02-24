@@ -2260,7 +2260,7 @@ message separated by a space."
   (interactive "sQuery with: ")
   (let ((circe-new-buffer-behavior 'switch)
         (who (string-trim who)))
-    (circe-server-get-chat-buffer 'circe-query-mode)))
+    (circe-server-get-chat-buffer who 'circe-query-mode)))
 
 (defun circe-command-JOIN (channel)
   "Join CHANNEL. This can also contain a key."
