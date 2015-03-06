@@ -1,3 +1,0 @@
-(define-package "lui" "$VERSION"
-                "Linewise User Interface"
-                '((tracking "0")))

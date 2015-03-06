@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2013  John J Foerch <jjfoerch@earthlink.net>
 
-;; Version: 0.3
+;; Version: 1.6
 ;; Keywords: extensions
 ;; Author: John J Foerch <jjfoerch@earthlink.net>
 ;; URL: https://github.com/jorgenschaefer/circe/blob/master/lisp/shorten.el
