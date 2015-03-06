@@ -2258,16 +2258,18 @@ message separated by a space."
 (defun circe-command-QUERY (who)
   "Open a query with WHO."
   (interactive "sQuery with: ")
-  (let ((circe-new-buffer-behavior 'switch)
+  (let ((circe-new-buffer-behavior 'ignore)
         (who (string-trim who)))
-    (circe-server-get-chat-buffer who 'circe-query-mode)))
+    (pop-to-buffer
+     (circe-server-get-chat-buffer who 'circe-query-mode))))
 
 (defun circe-command-JOIN (channel)
   "Join CHANNEL. This can also contain a key."
   (interactive "sChannel: ")
-  (let ((circe-new-buffer-behavior 'switch)
+  (let ((circe-new-buffer-behavior 'ignore)
         (channel (string-trim channel)))
-    (circe-server-get-chat-buffer channel 'circe-channel-mode)
+    (pop-to-buffer
+     (circe-server-get-chat-buffer channel 'circe-channel-mode))
     (circe-server-send (format "JOIN %s" channel))))
 
 (defun circe-command-PART (reason)
