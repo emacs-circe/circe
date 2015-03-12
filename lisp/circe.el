@@ -3722,7 +3722,7 @@ See `circe-server-auto-join-channels' for details on TYPE."
   (dolist (channel (circe-auto-join-channels type))
     (unless (circe-server-get-chat-buffer channel)
       (add-to-list 'circe-auto-joins (downcase channel)))
-    (circe-command-JOIN channel)))
+    (circe-server-send (format "JOIN %s" channel))))
 
 (defun circe-auto-join-channels (type)
   "Return a list of channels as configured for auto-join type TYPE.
