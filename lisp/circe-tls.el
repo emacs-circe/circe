@@ -119,7 +119,7 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
                    (when buffer
                      (set-process-buffer process buffer))
                    (when sentinel
-                     (funcall sentinel process "open")))
+                     (funcall sentinel process "open\n")))
                ;; there's no buffer, or it has a proccess attached to it;
                ;; kill the current process and that's it
                (when process
@@ -130,7 +130,7 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
              (when (buffer-live-p buffer)
                (with-current-buffer buffer
                  (when sentinel
-                   (funcall sentinel buffer "failed"))
+                   (funcall sentinel buffer "failed with unknown error\n"))
                  (when fail-thunk
                    (funcall fail-thunk))))))))))
 
