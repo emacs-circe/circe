@@ -69,7 +69,7 @@ The default is what GnuTLS's \"gnutls-cli\" or OpenSSL's
 Wraps `circe-tls-open-stream' and `open-tls-stream'.
 
 Accepts a plist with keywords.
-Required properties are: host, service, success-func.
+Required properties are: host, service
 Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
   (let* ((host (plist-get properties :host))
          (name (or (plist-get properties :name) host))
@@ -82,9 +82,8 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
          (sentinel (plist-get properties :sentinel))
          (query-on-exit-flag (plist-get properties :query-on-exit-flag))
          (nowait (plist-get properties :nowait)))
-    (if (not (and host service success-func))
-        (message (concat "circe-tls-make-stream: host, "
-                         "service and success-func are required"))
+    (if (not (and host service))
+        (error "circe-tls-make-stream: host and service are required")
       (if (not nowait)
           (open-tls-stream name nil host service)
         (circe-tls-open-stream
@@ -97,7 +96,8 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
                       (not (circe-tls-buffer-occupied-p buffer)))
                  ;; our buffer is still there, and it's still ours
                  (with-current-buffer buffer
-                   (funcall success-func process)
+                   (when success-func
+                     (funcall success-func process))
                    (when filter
                      (set-process-filter process filter))
                    (when sentinel
