@@ -81,7 +81,8 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
          (filter (plist-get properties :filter))
          (sentinel (plist-get properties :sentinel))
          (query-on-exit-flag (plist-get properties :query-on-exit-flag))
-         (nowait (plist-get properties :nowait)))
+         (nowait (plist-get properties :nowait))
+         (plist (plist-get properties :plist)))
     (if (not (and host service))
         (error "circe-tls-make-stream: host and service are required")
       (if (not nowait)
@@ -109,6 +110,10 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
                    (when query-on-exit-flag
                      (set-process-query-on-exit-flag process
                                                      query-on-exit-flag))
+                   (when plist
+                     (set-process-plist process
+                                        (append (process-plist process)
+                                                plist)))
                    (when buffer
                      (set-process-buffer process buffer))
                    (when sentinel
