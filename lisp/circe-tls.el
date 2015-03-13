@@ -104,9 +104,11 @@ Other properties: nowait, name, fail-thunk, buffer, coding, filter, sentinel."
                    (when sentinel
                      (set-process-sentinel process sentinel))
                    (when coding
-                     (set-process-coding-system process
-                                                coding
-                                                coding))
+                     (if (consp coding)
+                         (set-process-coding-system process
+                                                    (car coding)
+                                                    (cdr coding))
+                       (set-process-coding-system process coding coding)))
                    (when query-on-exit-flag
                      (set-process-query-on-exit-flag process
                                                      query-on-exit-flag))
