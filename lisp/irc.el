@@ -47,6 +47,10 @@
 (defvar irc-version "0.1"
   "The version of irc.el")
 
+;; TODO:
+;; - Tests for existing functionality.
+;; - Only then, further code.
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Connection function
 
@@ -461,6 +465,8 @@ Connection options set:
 ;; irc-string-equal-p conn s1 s2 => nil|t
 ;; irc-channel-name-p conn string
 
+;; ISUPPORT message is CHANTYPES=# EXCEPTS INVEX CHANMODES=eIbq,k,flj,....
+;; So split at space, then at =, and leave it at that
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Current nick tracking
@@ -553,13 +559,25 @@ Connection options set:
 ;; Options set:
 ;; - :channel-topics
 
+;;;;;;;;;;;;;;;;;;;;;;
+;;; Handler: Auto-Join
+
+;; Connection options used:
+;; - auto-join-after-registration
+;; - auto-join-after-host-hiding
+;; - auto-join-after-nick-acquisition
+
+;; Events caught:
+;; - 001 RPL_WELCOME
+;; - 396 RPL_HOSTHIDDEN
+;; - NICK => When we regain our preferred nick
+
 ;;;;;;;;;;;;;;,;;;;;;
 ;;; Handler: NickServ
 
 ;; Events caught:
 ;; - PRIVMSG, NOTICE => Handle nickserv messages
-;; - NICK => When we regain our preferred nick
-;; - 396 RPL_HOSTHIDDEN => When our host is hidden
+;; - irc.registered => Nick not ours? Send ghost message
 
 ;; Events emitted:
 ;; - nickserv.registered
