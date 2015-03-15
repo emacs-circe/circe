@@ -1,4 +1,11 @@
+.PHONY: all test tar circe lui tracking lcs shorten
+
 VERSION=$(shell sed -ne 's/^;; Version: \(.*\)/\1/p' lisp/circe.el)
+
+all: test
+
+test:
+	cask exec ert-runner -L lisp -L test -l test/*-test.el
 
 tar: clean circe lui tracking lcs shorten
 
