@@ -5,7 +5,8 @@ VERSION=$(shell sed -ne 's/^;; Version: \(.*\)/\1/p' lisp/circe.el)
 all: test
 
 test:
-	cask exec ert-runner -L lisp -L test -l test/*-test.el
+	cask exec ert-runner -L lisp -L test -L ../emacs-buttercup -l test/*-test.el
+	cask exec emacs -batch -L lisp -L test -L ../emacs-buttercup -l buttercup.el -f buttercup-run-discover
 
 tar: clean circe lui tracking lcs shorten
 

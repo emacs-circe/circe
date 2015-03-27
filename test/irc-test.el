@@ -1,5 +1,6 @@
 ;; -*-lexical-binding: t-*-
 
+(require 'buttercup)
 (require 'irc)
 
 (describe "The irc--filter function"
