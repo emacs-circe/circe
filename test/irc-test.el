@@ -228,9 +228,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Event handler table
 
-;; irc-handler-table
-;; irc-handler-add
-;; irc-handler-run
+(describe "The event handler table API"
+  (it "should run an event that was added"
+    (let ((table (irc-handler-table))
+          (called-with nil))
+      (irc-handler-add table "the.event" (lambda (&rest args)
+                                           (setq called-with args)))
+
+      (irc-handler-run table "the.event" 1 2 3)
+
+      (expect called-with :to-equal '(1 2 3)))))
 
 ;;;;;;;;;;;
 ;;; Sending
