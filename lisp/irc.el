@@ -264,7 +264,6 @@ See `irc-send-raw' for the algorithm."
 
 (defun irc-send--internal (conn line)
   "Send LINE to CONN."
-  (message "C: %s" line)
   (process-send-string conn (concat line "\n")))
 
 (defun irc-send-command (conn command &rest args)
