@@ -47,10 +47,6 @@
 (defvar irc-version "0.1"
   "The version of irc.el")
 
-;; TODO:
-;; - Tests for existing functionality.
-;; - Only then, further code.
-
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Connection function
 
@@ -103,7 +99,6 @@ irc.ctcp.VERB conn sender target args... -- A CTCP message was received"
   (process-put conn propname value))
 
 (defun irc--sentinel (proc event)
-  (message "Sentinel: %S %S" proc event)
   (cond
    ((string-match "\\`failed " event)
     (irc-event-emit proc "conn.failed"))
@@ -133,7 +128,6 @@ irc.ctcp.VERB conn sender target args... -- A CTCP message was received"
 
 The command is simply passed to the event handler of the IRC
 connection."
-  (message "S: %s" line)
   (let* ((parsed (irc--parse line))
          (sender (car parsed))
          (command (cadr parsed))
