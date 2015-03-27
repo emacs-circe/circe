@@ -1,3 +1,4 @@
+;; -*-lexical-binding: t-*-
 ;;; Automated tests for circe.el
 
 (require 'ert)
@@ -28,14 +29,16 @@
 
 This broke so often, it got annoying."
   (with-temp-buffer
-    (cl-flet ((test/completion-at-point ()
+    (cl-letf (((symbol-function 'test/completion-at-point)
+               (lambda ()
                  (list (copy-marker (point-min))
                        (copy-marker (point))
-                       'test/completion-table))
-              (test/completion-table (string pred action)
+                       'test/completion-table)))
+              ((symbol-function 'test/completion-table)
+               (lambda (string pred action)
                  (if (eq action 'lambda)
                      nil
-                   "test: ")))
+                   "test: "))))
       (let ((completion-at-point-functions '(test/completion-at-point)))
         (insert "TEST")
         (completion-at-point)
