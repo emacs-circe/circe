@@ -112,16 +112,37 @@ irc.ctcp.VERB conn sender target args... -- A CTCP message was received"
    (t
     (error "Unknown event in IRC sentinel: %S" event))))
 
+(defvar irc--filter-running-p nil
+  "Non-nil when we're currently processing a message.
+
+Yep, this is a mutex. Why would one need a mutex in Emacs, a
+single-threaded application, you ask? Easy!
+
+When, during the execution of a process filter, any piece of code
+waits for process output - e.g. because they started a some
+external program - Emacs will process any input from external
+processes. Including the one for the filter that is currently
+running.
+
+If that process does emit output, the filter is run again, while
+it is already running. If the filter is not careful, this can
+cause data to arrive out of order, or get lost.")
+
 (defun irc--filter (proc data)
   "Handle data from the process."
-  (let ((data (concat (or (irc-connection-get proc :conn-data)
-                          "")
-                      data)))
-    (while (string-match "\\`\\(.*\\)\n\\(\\(:?.\\|\n\\)*\\)\\'" data)
-      (let ((line (match-string 1 data)))
-        (setq data (match-string 2 data))
-        (irc--handle-line proc line)))
-    (irc-connection-put proc :conn-data data)))
+  (irc-connection-put proc :conn-data
+                      (concat (or (irc-connection-get proc :conn-data)
+                                  "")
+                              data))
+  (when (not irc--filter-running-p)
+    (let ((irc--filter-running-p t)
+          (data (irc-connection-get proc :conn-data)))
+      (while (string-match "\\`\\(.*\\)\n\\(\\(:?.\\|\n\\)*\\)\\'" data)
+        (let ((line (match-string 1 data)))
+          (setq data (match-string 2 data))
+          (irc-connection-put proc :conn-data data)
+          (irc--handle-line proc line)
+          (setq data (irc-connection-get proc :conn-data)))))))
 
 (defun irc--handle-line (proc line)
   "Handle a single line from the IRC server.
@@ -266,6 +287,7 @@ See `irc-send-raw' for the algorithm."
 
 (defun irc-send--internal (conn line)
   "Send LINE to CONN."
+  (message "C: %s" line)
   (process-send-string conn (concat line "\n")))
 
 (defun irc-send-command (conn command &rest args)

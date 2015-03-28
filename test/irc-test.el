@@ -140,7 +140,23 @@
 
       (expect 'irc--handle-line
               :to-have-been-called-with
-              proc "line2"))))
+              proc "line2"))
+
+    (it "should not handle a line received while others are processed"
+      ;; If you wonder what this is about, see the docstring of
+      ;; `irc--filter-running-p'
+      (spy-on 'irc--handle-line :and-call-fake
+              (lambda (proc line)
+                (when (equal line "line1")
+                  (irc--filter proc "line3\n"))))
+
+      (irc--filter proc "line1\nline2\n")
+
+      (expect (spy-calls-all-args 'irc--handle-line)
+              :to-equal
+              `((,proc "line1")
+                (,proc "line2")
+                (,proc "line3"))))))
 
 (describe "The `irc--handle-line' function"
   (before-each
