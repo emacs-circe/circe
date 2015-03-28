@@ -46,6 +46,7 @@
 (require 'lui)
 (require 'lui-format)
 (require 'lcs)
+(require 'irc)
 
 ;; Used to be optional. But sorry, we're in the 21st century already.
 (require 'lui-irc-colors)
@@ -379,28 +380,6 @@ Good luck."
   :type 'integer
   :group 'circe)
 
-(defcustom circe-server-flood-margin 10
-  "A margin on how much excess data we send.
-The flood protection algorithm of Circe works like the one
-detailed in RFC 2813, section 5.8 \"Flood control of clients\".
-
-  * If `circe-server-flood-last-message' is less than the current
-    time, set it equal.
-  * While `circe-server-flood-last-message' is less than
-    `circe-server-flood-margin' seconds ahead of the current
-    time, send a message, and increase
-    `circe-server-flood-last-message' by
-    `circe-server-flood-penalty' for each message."
-  :type 'integer
-  :group 'circe)
-
-(defcustom circe-server-flood-penalty 3
-  "How much we penalize a message.
-See `circe-server-flood-margin' for an explanation of the flood
-protection algorithm."
-  :type 'integer
-  :group 'circe)
-
 (defcustom circe-show-server-modes-p nil
   "Whether Circe should show server modes.
 This is disabled by default, since server mode changes are almost
@@ -680,21 +659,6 @@ This is required for reconnecting.")
   "The process of the server connection.")
 (make-variable-buffer-local 'circe-server-process)
 
-(defvar circe-nowait-on-connect
-  (featurep 'make-network-process '(:nowait t))
-  "Whether to use asynchronous connect.
-
-Use `circe-network-options' to set this, by adding
-:nowait-on-connect nil to your options.
-
-Asynchronous connect is not supported by Emacs in certain
-configurations (Windows, most notably). If it causes issues for
-you in other environments, turn this off and file a bug.")
-
-(defvar circe-server-registered-p nil
-  "Non-nil when we have registered with the server.")
-(make-variable-buffer-local 'circe-server-registered-p)
-
 (defvar circe-server-last-active-buffer nil
   "The last active circe buffer.")
 (make-variable-buffer-local 'circe-server-last-active-buffer)
@@ -702,12 +666,6 @@ you in other environments, turn this off and file a bug.")
 (defvar circe-server-chat-buffers nil
   "A hash of chat buffers associated with this server.")
 (make-variable-buffer-local 'circe-server-chat-buffers)
-
-(defvar circe-server-filter-data nil
-  "Cache for the data from the server.
-
-This contains only data that has not been processed yet.")
-(make-variable-buffer-local 'circe-server-filter-data)
 
 (defvar circe-server-processing-p nil
   "Non-nil when we're currently processing a message.
@@ -730,6 +688,16 @@ it.")
 
 (defvar circe-message-handler-table nil
   "A hash table mapping commands to their handler function lists.")
+
+(defvar circe-irc-handler-table nil
+  "The handler table for Circe's IRC connections")
+
+(defun circe-parse-sender (sender)
+  (if (string-match "\\`\\([^!]*\\)!\\([^@]*\\)@\\(.*\\)\\'" sender)
+      (list (match-string 1 sender)
+            (match-string 2 sender)
+            (match-string 3 sender))
+    (list sender nil nil)))
 
 (defvar circe-server-quitting-p nil
   "Non-nil when quitting from the server.
@@ -1001,57 +969,25 @@ See `circe-server-max-reconnect-attempts'.")
                   circe-server-max-reconnect-attempts))
       (setq circe-server-reconnect-attempts (+ circe-server-reconnect-attempts
                                                1))
-      (dolist (proc (list circe-server-process
-                          (get-buffer-process (current-buffer))))
-        (when (and proc
-                   (process-live-p proc))
-          ;; Remove the sentinel to avoid it reconnecting when we kill
-          ;; it.
-          (set-process-sentinel proc nil)
-          ;; Also, ignore all output after killing it. This is usually
-          ;; the TLS program emitting some status info, if anything
-          (set-process-filter proc (lambda (proc output) nil))
-          (delete-process proc)))
-      (setq circe-server-registered-p nil
-            circe-server-filter-data nil
-            circe-server-flood-queue nil)
+      (when (and circe-server-process
+                 (process-live-p circe-server-process))
+        (delete-process circe-server-process))
+      (when (not circe-irc-handler-table)
+        (setq circe-irc-handler-table (circe-irc-handler-table)))
       (circe-server-message "Connecting...")
       (dolist (buf (circe-chat-buffers))
         (with-current-buffer buf
           (circe-server-message "Connecting...")))
-      (cond
-       (circe-server-use-tls
-        (require 'circe-tls)
-        ;; `circe-tls-make-stream' is using gnutls/openssl to connect
-        ;; via SSL. This requires some different handling than the
-        ;; normal network process.
-        (circe-tls-make-stream :name circe-server-name
-                               :buffer (current-buffer)
-                               :host circe-server-name
-                               :service circe-server-service
-                               :family circe-server-ip-family
-                               :coding 'raw-text-dos
-                               :filter #'circe-server-filter-function
-                               :sentinel #'circe-server-sentinel
-                               :query-on-exit-flag nil
-                               :success-func #'(lambda (process)
-                                                 (setq circe-server-process process))
-                               :nowait circe-nowait-on-connect))
-       (t
-        (setq circe-server-process
-              (make-network-process :name circe-server-name
-                                    :buffer (current-buffer)
-                                    :host circe-server-name
-                                    :service circe-server-service
-                                    :family circe-server-ip-family
-                                    :coding 'raw-text-dos
-                                    :nowait circe-nowait-on-connect
-                                    :noquery t
-                                    :filter #'circe-server-filter-function
-                                    :sentinel #'circe-server-sentinel
-                                    :keepalive t))
-        (when (not circe-nowait-on-connect)
-          (circe-server-sentinel circe-server-process "open")))))))
+      (irc-connect
+       :host circe-server-name
+       :service circe-server-service
+       :tls circe-server-use-tls
+       :handler-table circe-irc-handler-table
+       :server-buffer (current-buffer)
+       :nick circe-server-nick
+       :user circe-server-user
+       :mode 8
+       :realname circe-server-realname))))
 
 (defun circe-reconnect-all ()
   "Reconnect all Circe connections."
@@ -1061,146 +997,19 @@ See `circe-server-max-reconnect-attempts'.")
           (call-interactively 'circe-reconnect)
         (circe-reconnect)))))
 
-(defun circe-server-filter-function (process string)
-  "The process filter for the circe server.
-
-PROCESS is the process which we are filtering, and STRING is the
-output we received from there."
-  (with-current-buffer (process-buffer process)
-    ;; If you think this is written in a weird way - please refer to the
-    ;; docstring of `circe-server-processing-p'
-    (if circe-server-processing-p
-        (setq circe-server-filter-data
-              (if circe-server-filter-data
-                  (concat circe-server-filter-data string)
-                string))
-      ;; This will be true even if another process is spawned!
-      (let ((circe-server-processing-p t))
-        (setq circe-server-filter-data (if circe-server-filter-data
-                                           (concat circe-server-filter-data
-                                                   string)
-                                         string))
-        (while (and circe-server-filter-data
-                    (string-match "[\n\r]+" circe-server-filter-data))
-          (let ((line (substring circe-server-filter-data
-                                 0 (match-beginning 0))))
-            (setq circe-server-filter-data
-                  (if (= (match-end 0)
-                         (length circe-server-filter-data))
-                      nil
-                    (substring circe-server-filter-data
-                               (match-end 0))))
-            (circe-server-handler line)))))))
-
-(defun circe-server-sentinel (process event)
-  "The process sentinel for the server.
-
-PROCESS is the process we are watching, and EVENT is the event we
-saw.
-
-PROCESS can also be a buffer, in which case we assume that's a
-Circe server buffer in which EVENT happened."
-  (let ((buffer (cond
-                 ((bufferp process)
-                  process)
-                 ((buffer-live-p (process-buffer process))
-                  (process-buffer process))
-                 (t
-                  nil))))
-    (when buffer
-      (with-current-buffer buffer
-        (cond
-         ((string-match "^open" event)
-          (when circe-server-pass
-            (circe-server-send (format
-                                "PASS %s"
-                                (if (functionp circe-server-pass)
-                                    (funcall circe-server-pass
-                                             circe-server-name)
-                                  circe-server-pass))))
-          (circe-server-send (format "NICK %s" circe-server-nick))
-          (circe-server-send (format "USER %s 8 * :%s"
-                                     circe-server-user
-                                     circe-server-realname)))
-         (t
-          (circe-server-message (format "Disconnected (%s)"
-                                        ;; Events end in a newline. No
-                                        ;; idea why.
-                                        (substring event 0 -1)))
-          (dolist (buf (circe-chat-buffers))
-            (with-current-buffer buf
-              (circe-chat-disconnected)))
-          (when (and (not (string-match "^deleted" event)) ; Buffer kill
-                     (not circe-server-quitting-p))
-            (circe-reconnect))
-          (setq circe-server-quitting-p nil)))))))
-
-(defvar circe-server-flood-last-message 0
-  "When we sent the last message.
-See `circe-server-flood-margin' for an explanation of the flood
-protection algorithm.")
-(make-variable-buffer-local 'circe-server-flood-last-message)
-
-(defvar circe-server-flood-queue nil
-  "The queue of messages waiting to be sent to the server.
-See `circe-server-flood-margin' for an explanation of the flood
-protection algorithm.")
-(make-variable-buffer-local 'circe-server-flood-queue)
-
-(defvar circe-server-flood-timer nil
-  "The timer to resume sending.")
-(make-variable-buffer-local 'circe-server-flood-timer)
-
 (defun circe-server-send (string &optional forcep)
   "Send STRING to the current server.
 If FORCEP is non-nil, no flood protection is done - the string is
 sent directly. This might cause the messages to arrive in a wrong
 order.
 
-See `circe-server-flood-margin' for an explanation of the flood
-protection algorithm."
+See `irc-send-raw' for an explanation of the flood protection
+algorithm."
   (with-circe-server-buffer
-    (let ((str (concat (encode-coding-string string
-                                             (if (consp circe-server-coding-system)
-                                                 (car circe-server-coding-system)
-                                               circe-server-coding-system))
-                       "\n")))
-      (if forcep
-          (progn
-            (setq circe-server-flood-last-message
-                  (+ circe-server-flood-penalty
-                     circe-server-flood-last-message))
-            (process-send-string circe-server-process str))
-        (setq circe-server-flood-queue (append circe-server-flood-queue
-                                               (list str)))
-        (circe-server-send-queue (current-buffer))))))
-
-(defun circe-server-send-queue (buffer)
-  "Send messages in `circe-server-flood-queue' of BUFFER.
-See `circe-server-flood-margin' for an explanation of the flood
-protection algorithm."
-  (when (buffer-live-p buffer)
-    (with-current-buffer buffer
-      (let ((now (float-time)))
-        (when circe-server-flood-timer
-          (cancel-timer circe-server-flood-timer)
-          (setq circe-server-flood-timer nil))
-        (when (< circe-server-flood-last-message
-                 now)
-          (setq circe-server-flood-last-message now))
-        (while (and circe-server-flood-queue
-                    (< circe-server-flood-last-message
-                       (+ now circe-server-flood-margin)))
-          (let ((msg (car circe-server-flood-queue)))
-            (setq circe-server-flood-queue (cdr circe-server-flood-queue)
-                  circe-server-flood-last-message
-                  (+ circe-server-flood-last-message
-                     circe-server-flood-penalty))
-            (process-send-string circe-server-process msg)))
-        (when circe-server-flood-queue
-          (setq circe-server-flood-timer
-                (run-at-time (+ 0.2 circe-server-flood-penalty) ; So we get a free spot
-                             nil #'circe-server-send-queue buffer)))))))
+    (irc-send-raw circe-server-process string
+                  (if forcep
+                      :nowait
+                    nil))))
 
 (defun circe-buffer-killed ()
   "The current buffer is being killed. Do the necessary bookkeeping for circe."
@@ -1223,8 +1032,10 @@ server's chat buffers."
                     "Really kill all buffers of this server? (if not, try `circe-reconnect') "
                   "Really kill the IRC connection? (if not, try `circe-reconnect') ")))
       (error "Buffer not killed as per user request")))
+  (setq circe-server-quitting-p t)
   (ignore-errors
     (circe-server-send (concat "QUIT :" circe-default-quit-message)))
+  (delete-process circe-server-process)
   (when (eq circe-server-killed-confirmation 'ask-and-kill-all)
     (dolist (buf (circe-chat-buffers))
       (let ((circe-channel-killed-confirmation nil))
@@ -2455,73 +2266,52 @@ Arguments are IGNORED."
 ;;; IRC Protocol Handling ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun circe-server-handler (line)
-  "Handle LINE from the server."
-  (let* ((parsed (circe-server-parse-line
-                  (decode-coding-string line
-                                        (if (consp circe-server-coding-system)
-                                            (cdr circe-server-coding-system)
-                                          circe-server-coding-system)
-                                        t)))
-         (nick (aref parsed 0))
-         (user (aref parsed 1))
-         (host (aref parsed 2))
-         (command (aref parsed 3))
-         (args (aref parsed 4)))
-    (when (and (member command '("PRIVMSG" "NOTICE"))
-               (string-match "^\C-a\\([^ ]*\\)\\( \\(.*\\)\\)?\C-a$"
-                             (cadr args)))
-      (setq command (format "CTCP-%s%s"
-                            (match-string 1 (cadr args))
-                            (if (string= command "PRIVMSG")
-                                ""
-                              "-REPLY"))
-            args (list (car args)
-                       (or (match-string 3 (cadr args))
-                           ""))))
-    (unwind-protect
-        (let* ((circe-current-message (list nick user host command args))
-               (circe-message-option-cache (make-hash-table :test 'equal)))
-          (circe-server-handle-message nick user host command args)
-          (when (not (circe-message-option 'dont-display))
-            (circe-server-display-message nick user host command args)))
-      (circe-server-handle-message-internal nick user host command args))))
+(defun circe-irc-handler-table ()
+  (let ((table (irc-handler-table)))
+    (irc-handler-add table nil #'circe-irc-legacy-bridge)
+    (irc-handler-add table "conn.connected" #'circe-irc-conn-connected)
+    (irc-handler-add table "conn.disconnected" #'circe-irc-conn-disconnected)
+    (irc-handle-registration table)
+    (irc-handle-ping-pong table)
+    table))
 
-(defun circe-server-parse-line (line)
-  "Parse LINE as a line sent by the IRC server.
-This returns a vector with five elements: The nick, user, host,
-command, and args of the message."
-  (let ((nick nil)
-        (user nil)
-        (host nil)
-        (command nil)
-        (args nil))
-    (with-temp-buffer
-      (insert line)
-      (goto-char (point-min))
-      (cond
-       ((looking-at "^:\\([^! ]*\\)!\\([^@ ]*\\)@\\([^ ]*\\) ")
-        (setq nick (match-string 1)
-              user (match-string 2)
-              host (match-string 3))
-        (replace-match ""))
-       ((looking-at "^:\\([^ ]*\\) ")
-        (setq nick (match-string 1))
-        (replace-match "")))
-      (when (looking-at "[^ ]*")
-        (setq command (match-string 0))
-        (replace-match ""))
-      (if (re-search-forward " :\\(.*\\)" nil t)
-          (progn
-            (setq args (list (match-string 1)))
-            (replace-match ""))
-        (goto-char (point-max)))
-      (while (re-search-backward " " nil t)
-        (setq args (cons (buffer-substring (+ 1 (point))
-                                           (point-max))
-                         args))
-        (delete-region (point) (point-max))))
-    (vector nick user host command args)))
+(defun circe-irc-conn-connected (conn event)
+  (with-current-buffer (irc-connection-get conn :server-buffer)
+    (setq circe-server-process conn)))
+
+(defun circe-irc-conn-disconnected (conn event)
+  (with-current-buffer (irc-connection-get conn :server-buffer)
+    (dolist (buf (circe-chat-buffers))
+      (with-current-buffer buf
+        (circe-chat-disconnected)))
+
+    (when (not circe-server-quitting-p)
+      (circe-reconnect))
+
+    (setq circe-server-quitting-p nil)))
+
+(defun circe-irc-legacy-bridge (conn event &rest args)
+  (cond
+   ((not event)
+    nil)
+   ((string-match "\\`[0-9][0-9][0-9]\\|[A-Z]+\\'" event)
+    (let* ((sender (circe-parse-sender (or (car args)
+                                           "")))
+           (nick (elt sender 0))
+           (user (elt sender 1))
+           (host (elt sender 2))
+           (command event)
+           (args (cdr args)))
+      (with-current-buffer (irc-connection-get conn :server-buffer)
+        (unwind-protect
+            (let* ((circe-current-message (list nick user host command args))
+                   (circe-message-option-cache (make-hash-table :test 'equal)))
+              (circe-server-handle-message nick user host command args)
+              (when (not (circe-message-option 'dont-display))
+                (circe-server-display-message nick user host command args)))
+          (circe-server-handle-message-internal nick user host command args)))
+      ))))
+
 
 (defun circe-server-display-message (nick user host command args)
   "Display an IRC message.
@@ -2565,8 +2355,8 @@ as arguments."
      (t
       (with-current-buffer (circe-server-last-active-buffer)
         (let ((target (if (circe-server-my-nick-p (car args))
-                         ""
-                       (format " to %s" (car args)))))
+                          ""
+                        (format " to %s" (car args)))))
           (cond
            ((string-match "CTCP-\\(.*\\)-REPLY" command)
             (circe-server-message
@@ -2635,10 +2425,6 @@ This does mandatory client-side bookkeeping of the server state.
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (cond
-   ;; Stay connected. Priority reply.
-   ((string= command "PING")
-    (circe-server-send (format "PONG %s" (car args))
-                       t))
    ;; Remember my nick
    ((and (string= command "NICK")
          (circe-server-my-nick-p nick))
@@ -2659,17 +2445,18 @@ as arguments."
    ;; Initialization
    ((string= command "001")             ; RPL_WELCOME
     (circe-server-set-my-nick (car args))
-    (setq circe-server-registered-p t
-          circe-server-reconnect-attempts 0)
+    (setq circe-server-reconnect-attempts 0)
     (run-hooks 'circe-server-connected-hook))
    ;; If we didn't get our nick yet...
-   ((and (not circe-server-registered-p)
+   ((and (not (eq (irc-connection-state circe-server-process)
+                  'registered))
          (or (string= command "433")   ; ERR_NICKNAMEINUSE
              (string= command "437"))) ; ERR_UNAVAILRESOURCE
     (circe-server-send (format "NICK %s" (funcall circe-nick-next-function
                                                   (cadr args)))))
    ;; The nick we're trying to use is not valid
-   ((and (not circe-server-registered-p)
+   ((and (not (eq (irc-connection-state circe-server-process)
+                  'registered))
          (string= command "432"))  ; ERR_ERRONEOUSNICKNAME
     (circe-server-send (format "NICK %s" (circe-generate-nick)))))
   (circe-channel-message-handler nick user host command args))

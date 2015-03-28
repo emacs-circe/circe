@@ -102,7 +102,9 @@ run sufficiently often with the timer."
   (dolist (buffer (circe-server-buffers))
     (with-current-buffer buffer
       (when (and (eq major-mode 'circe-server-mode)
-                 circe-server-registered-p
+                 circe-server-process
+                 (eq (irc-connection-state circe-server-process)
+                     'registered)
                  (not circe-lagmon-disabled))
         (circe-lagmon-server-check)))))
 
@@ -233,7 +235,9 @@ in the mode-line."
       (dolist (buffer (circe-server-buffers))
         (with-current-buffer buffer
           (setq circe-lagmon-server-lag nil)
-          (when circe-server-registered-p
+          (when (and circe-server-process
+                     (eq (irc-connection-state circe-server-process)
+                         'registered))
             (circe-lagmon-init))))
       (add-hook 'circe-server-connected-hook 'circe-lagmon-init))))
 
