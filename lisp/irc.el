@@ -47,6 +47,9 @@
 (defvar irc-version "0.1"
   "The version of irc.el")
 
+(defcustom irc-debug-log nil
+  "Emit protocol debug info if this is non-nil.")
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Connection function
 
@@ -149,6 +152,7 @@ cause data to arrive out of order, or get lost.")
 
 The command is simply passed to the event handler of the IRC
 connection."
+  (irc-debug-out proc "S: %s" line)
   (let* ((parsed (irc--parse line))
          (sender (car parsed))
          (command (cadr parsed))
@@ -188,6 +192,12 @@ COMMAND arg1 arg2 :arg3 still arg3
 
 (defun irc-event-emit (conn event &rest args)
   "Run the event handlers for EVENT in CONN with ARGS."
+  (irc-debug-out conn
+                 "E: %S %s"
+                 event
+                 (mapconcat (lambda (elt) (format "%S" elt))
+                            args
+                            " "))
   (let ((handler-table (irc-connection-get conn :handler-table)))
     (when handler-table
       (apply #'irc-handler-run handler-table event conn event args)
@@ -287,7 +297,7 @@ See `irc-send-raw' for the algorithm."
 
 (defun irc-send--internal (conn line)
   "Send LINE to CONN."
-  (message "C: %s" line)
+  (irc-debug-out conn "C: %s" line)
   (process-send-string conn (concat line "\n")))
 
 (defun irc-send-command (conn command &rest args)
@@ -358,6 +368,19 @@ MODE should be an integer as per RFC 2812"
 
 ;; irc-send-WHOIS conn target mask-list
 ;; irc-send-WHOWAS conn nickname-list &optional count target
+
+;;;;;;;;;;;;;;;
+;;; Debug stuff
+
+(defun irc-debug-out (conn fmt &rest args)
+  (when irc-debug-log
+    (let ((name (format "*IRC Protocol %s:%s*"
+                        (irc-connection-get conn :host)
+                        (irc-connection-get conn :service))))
+      (with-current-buffer (get-buffer-create name)
+        (save-excursion
+          (goto-char (point-max))
+          (insert (apply #'format fmt args) "\n"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Registration
