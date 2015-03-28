@@ -404,13 +404,166 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Registration
 
-;; This should have a useful abstraction for "server sends A, B, C,
-;; expect client to have sent D, E, F"
+(defun client-messages ()
+  (mapcar #'cadr (spy-calls-all-args 'irc-send-raw)))
 
-;; irc-handle-registration
-;; irc-connection-state
+(describe "The registration handler"
+  (let (proc table)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            table (irc-handler-table))
+      (irc-connection-put proc :handler-table table)
+      (irc-connection-put proc :nick "My_Nick")
+      (irc-connection-put proc :user "username")
+      (irc-connection-put proc :mode 8)
+      (irc-connection-put proc :realname "My Real Name")
+
+      (spy-on 'irc-send-raw)
+
+      (irc-handle-registration table))
+
+    (describe "on conn.connected"
+      (it "should send the standard registration on connect"
+        (irc-event-emit proc "conn.connected")
+
+        (expect (client-messages)
+                :to-equal
+                '("NICK My_Nick"
+                  "USER username 8 * :My Real Name")))
+
+      (it "should set the connection state to connected"
+        (expect (irc-connection-state proc)
+                :not :to-be
+                'connected)
+
+        (irc-event-emit proc "conn.connected")
+
+        (expect (irc-connection-state proc)
+                :to-be
+                'connected))
+
+      (it "should send a PASS message if a password is given"
+        (irc-connection-put proc :pass "top-secret")
+
+        (irc-event-emit proc "conn.connected")
+
+        (expect (client-messages)
+                :to-equal
+                '("PASS top-secret"
+                  "NICK My_Nick"
+                  "USER username 8 * :My Real Name")))
+
+      (it "should send a CAP request if the connection specifies it"
+        (irc-connection-put proc :cap-req '("sasl"))
+
+        (irc-event-emit proc "conn.connected")
+
+        (expect (client-messages)
+                :to-equal
+                '("CAP LS"
+                  "NICK My_Nick"
+                  "USER username 8 * :My Real Name"))))
+
+    (describe "on conn.disconnected"
+      (it "should set the connection state to disconnected"
+        (expect (irc-connection-state proc)
+                :not :to-be
+                'disconnected)
+
+        (irc-event-emit proc "conn.disconnected")
+
+        (expect (irc-connection-state proc)
+                :to-be
+                'disconnected)))
+
+    (describe "on 001 RPL_WELCOME"
+      (it "should set the connection stat to registered"
+        (expect (irc-connection-state proc)
+                :not :to-be
+                'registered)
+
+        (irc-event-emit proc "001" "irc.server" "My_Nick" "Welcome!")
+
+        (expect (irc-connection-state proc)
+                :to-be
+                'registered))
+
+      (it "should emit the irc.registered event"
+        (let ((registered nil))
+          (irc-handler-add table "irc.registered"
+                           (lambda (conn event my-nick)
+                             (setq registered my-nick)))
+
+          (irc-event-emit proc "001" "irc.server" "My_Nick" "Welcome!")
+
+          (expect registered :to-equal "My_Nick"))))
+
+    (describe "on a CAP message"
+      (it "should do the full negotiation"
+        (irc-connection-put proc :cap-req '("multi-prefix"))
+        (irc-event-emit proc "conn.registered")
+        (spy-calls-reset 'irc-send-raw)
+        (irc-event-emit proc "CAP" "irc.server" "*" "LS" "multi-prefix")
+        (irc-event-emit proc "CAP" "irc.server" "*" "ACK" "multi-prefix")
+
+        (expect (client-messages)
+                :to-equal
+                '("CAP REQ multi-prefix"
+                  "CAP END"))))
+
+    (describe "on SASL authentication"
+      (it "should do the full negotiation"
+        (irc-connection-put proc :cap-req '("sasl"))
+        (irc-connection-put proc :sasl-username "my_nick")
+        (irc-connection-put proc :sasl-password "top-secret")
+        (irc-event-emit proc "conn.registered")
+        (spy-calls-reset 'irc-send-raw)
+        (irc-event-emit proc "CAP" "irc.server" "*" "LS" "sasl")
+        (irc-event-emit proc "CAP" "irc.server" "*" "ACK" "sasl")
+        (irc-event-emit proc "AUTHENTICATE" nil "+")
+
+        (expect (client-messages)
+                :to-equal
+                '("CAP REQ sasl"
+                  "AUTHENTICATE PLAIN"
+                  "AUTHENTICATE bXlfbmljawBteV9uaWNrAHRvcC1zZWNyZXQ="
+                  "CAP END"))))))
+
+(describe "The `irc-connection-state' function"
+  (let (proc)
+    (before-each
+      (setq proc (start-process "test" nil "cat")))
+
+    (it "should return the connection state"
+      (irc-connection-put proc :connection-state 'registered)
+
+      (expect (irc-connection-state proc)
+              :to-be
+              'registered))
+
+    (it "should return connecting if nothing was set"
+      (expect (irc-connection-state proc)
+              :to-be
+              'connecting))))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Ping-Pong
 
 ;; irc-handle-ping-pong
+(describe "The registration handler"
+  (let (proc table)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            table (irc-handler-table))
+      (irc-connection-put proc :handler-table table)
+
+      (spy-on 'irc-send-raw)
+
+      (irc-handle-ping-pong table))
+
+    (it "should send PONG on a PING"
+      (irc-event-emit proc "PING" "irc.server" "arg")
+
+      (expect (client-messages)
+              :to-equal
+              '("PONG arg")))))
