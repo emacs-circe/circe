@@ -342,12 +342,64 @@
               (irc-send-command 'proc "PRIVMSG" "#my channel" "Hello"))
             :to-throw)))
 
-;; irc-send-AUTHENTICATE
-;; irc-send-CAP
-;; irc-send-NICK
-;; irc-send-PASS
-;; irc-send-PONG
-;; irc-send-USER
+(describe "The send function"
+  (before-each
+    (spy-on 'irc-send-raw))
+
+  (describe "`irc-send-AUTHENTICATE'"
+    (it "should send an AUTHENTICATE message"
+      (irc-send-AUTHENTICATE 'proc "1234567890abcdef")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "AUTHENTICATE 1234567890abcdef")))
+
+  (describe "`irc-send-CAP'"
+    (it "should send a CAP message"
+      (irc-send-CAP 'proc "LS")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "CAP LS")))
+
+  (describe "`irc-send-NICK'"
+    (it "should send a NICK message"
+      (irc-send-NICK 'proc "New_Nick")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "NICK New_Nick")))
+
+  (describe "`irc-send-PASS'"
+    (it "should send a PASS message"
+      (irc-send-PASS 'proc "top-secret-password")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "PASS top-secret-password")))
+
+  (describe "`irc-send-PONG'"
+    (it "should send a PONG message to a single server"
+      (irc-send-PONG 'proc "server1")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "PONG server1"))
+
+    (it "should send a PONG message to another server"
+      (irc-send-PONG 'proc "server1" "server2")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "PONG server1 server2")))
+
+  (describe "`irc-send-USER'"
+    (it "should send a USER message"
+      (irc-send-USER 'proc "username" 8 "My Real Name (honest)")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "USER username 8 * :My Real Name (honest)"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Registration
