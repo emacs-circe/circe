@@ -321,11 +321,26 @@
              :to-equal
              `(,proc "priority\n")))))
 
-;; irc-send-command
-;; - Should use irc-send-raw (NOT INTERNAL!)
-;; - Should send correctly-formatted command
-;; - Should fail if any argument is not a string
-;; - Should fail if any argument but the last has a space
+(describe "The `irc-send-command'"
+  (before-each
+    (spy-on 'irc-send-raw))
+
+  (it "should send properly-formatted commands"
+    (irc-send-command 'proc "PRIVMSG" "#emacs" "Hello, World!")
+
+    (expect 'irc-send-raw
+            :to-have-been-called-with
+            'proc "PRIVMSG #emacs :Hello, World!"))
+
+  (it "should fail if any argument is not a string"
+    (expect (lambda ()
+              (irc-send-command 'proc "PRIVMSG" 23 "Hi!"))
+            :to-throw))
+
+  (it "should fail if any argument but the last has a space"
+    (expect (lambda ()
+              (irc-send-command 'proc "PRIVMSG" "#my channel" "Hello"))
+            :to-throw)))
 
 ;; irc-send-AUTHENTICATE
 ;; irc-send-CAP

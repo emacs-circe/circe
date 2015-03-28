@@ -270,7 +270,7 @@ See `irc-send-raw' for the algorithm."
 
 (defun irc-send-command (conn command &rest args)
   "Send COMMAND with ARGS to IRC connection CONN."
-  (irc-send--internal conn (apply #'irc--format-command command args)))
+  (irc-send-raw conn (apply #'irc--format-command command args)))
 
 (defun irc--format-command (command &rest args)
   "Format COMMAND and ARGS for IRC.
