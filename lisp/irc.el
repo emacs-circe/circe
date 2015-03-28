@@ -257,10 +257,12 @@ See `irc-send-raw' for the algorithm."
     (irc-connection-put conn :flood-last-message last-message)
     (let ((timer (irc-connection-get conn :flood-timer)))
       (when timer
-        (cancel-timer timer))
-      (irc-connection-put conn
-                          :flood-timer
-                          (run-at-time 1 nil #'irc-send--queue conn)))))
+        (cancel-timer timer)
+        (irc-connection-put conn :flood-timer nil))
+      (when queue
+        (irc-connection-put conn
+                            :flood-timer
+                            (run-at-time 1 nil #'irc-send--queue conn))))))
 
 (defun irc-send--internal (conn line)
   "Send LINE to CONN."

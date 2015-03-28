@@ -242,11 +242,91 @@
 ;;;;;;;;;;;
 ;;; Sending
 
-;; irc-send-raw
-;; ? irc-send--queue
-;; ? irc-send--internal
+(describe "The `irc-send-raw' function"
+  (let (proc current-time)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            current-time (float-time))
+      (spy-on 'process-send-string)
+      (spy-on 'run-at-time)
+      (spy-on 'float-time :and-call-fake (lambda ()
+                                           current-time)))
+
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
+
+   (it "should send single messages immediately"
+     (irc-send-raw proc "the line")
+
+     (expect 'process-send-string
+             :to-have-been-called-with
+             proc "the line\n"))
+
+   (it "should not create a timer for a single message"
+     (irc-send-raw proc "the line")
+
+     (expect 'run-at-time
+             :not :to-have-been-called))
+
+   (it "should prevent flooding"
+     (dolist (line '("line1" "line2" "line3"
+                     "line4" "line5" "line6"))
+       (irc-send-raw proc line))
+
+     (expect (spy-context-args
+              (spy-calls-most-recent 'process-send-string))
+             :to-equal
+             `(,proc "line4\n")))
+
+   (it "should continue sending after a delay"
+     (dolist (line '("line1" "line2" "line3"
+                     "line4" "line5" "line6"))
+       (irc-send-raw proc line))
+     (expect 'run-at-time
+             :to-have-been-called)
+
+     ;; Two minutes later
+     (setq current-time (+ current-time 120))
+     (irc-send--queue proc)
+
+     (expect (spy-context-args
+              (spy-calls-most-recent 'process-send-string))
+             :to-equal
+             `(,proc "line6\n")))
+
+   (it "should drop lines if the flood queue is full and :drop is given"
+     (dolist (line '("line1" "line2" "line3"
+                     "line4" "line5" "line6"))
+       (irc-send-raw proc line))
+
+     (irc-send-raw proc "dropped" :drop)
+     (setq current-time (+ current-time 120))
+     (irc-send--queue proc)
+
+     (expect (spy-context-args
+              (spy-calls-most-recent 'process-send-string))
+             :to-equal
+             `(,proc "line6\n")))
+
+   (it "should send items immediately if :nowait is given"
+     (dolist (line '("line1" "line2" "line3"
+                     "line4" "line5" "line6"))
+       (irc-send-raw proc line))
+
+     (irc-send-raw proc "priority" :nowait)
+
+     (expect (spy-context-args
+              (spy-calls-most-recent 'process-send-string))
+             :to-equal
+             `(,proc "priority\n")))))
+
 ;; irc-send-command
-;; ? irc--format-command
+;; - Should use irc-send-raw (NOT INTERNAL!)
+;; - Should send correctly-formatted command
+;; - Should fail if any argument is not a string
+;; - Should fail if any argument but the last has a space
+
 ;; irc-send-AUTHENTICATE
 ;; irc-send-CAP
 ;; irc-send-NICK
