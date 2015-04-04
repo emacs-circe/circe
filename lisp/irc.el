@@ -388,7 +388,7 @@ MODE should be an integer as per RFC 2812"
 ;;; Handler: Registration
 
 (defun irc-handle-registration (table)
-  "Add command handlers to CONN to handle registration.
+  "Add command handlers to TABLE to handle registration.
 
 This will send the usual startup messages after we are connected.
 
@@ -540,9 +540,40 @@ Connection options set:
 ;;;;;;;;;;;;;;;;;
 ;;; Handler: CTCP
 
+(defun irc-handle-ctcp (table)
+  "Add command handlers to TABLE to handle the CTCP protocol.
+
+Events emitted:
+
+\"irc.message\" sender target body -- A non-CTCP PRIVMSG
+\"irc.notice\" sender target body -- A non-CTCP NOTICE
+\"irc.ctcp\" sender target argument -- A CTCP request. ARGUMENT
+  can be nil if there was no argument, or the empty string if the
+  argument was empty.
+\"irc.ctcpreply\" sender target argument -- A CTCP reply.
+  ARGUMENT is similar to above."
+  (irc-handler-add table "PRIVMSG"
+                   #'irc-handle-ctcp--privmsg)
+  (irc-handler-add table "NOTICE"
+                   #'irc-handle-ctcp--notice))
+
+(defun irc-handle-ctcp--privmsg (conn event sender target body)
+  (if (string-match "\\`\x01\\([^ ]+\\)\\(?: \\(.*\\)\\)?\x01\\'"
+                    body)
+      (irc-event-emit conn "irc.ctcp" sender target
+                      (match-string 1 body)
+                      (match-string 2 body))
+    (irc-event-emit conn "irc.message" sender target body)))
+
+(defun irc-handle-ctcp--notice (conn event sender target body)
+  (if (string-match "\\`\x01\\([^ ]+\\)\\(?: \\(.*\\)\\)?\x01\\'"
+                    body)
+      (irc-event-emit conn "irc.ctcpreply" sender target
+                      (match-string 1 body)
+                      (match-string 2 body))
+    (irc-event-emit conn "irc.notice" sender target body)))
+
 ;; Events caught:
-;; - PRIVMSG
-;; - NOTICE
 ;; - irc.ctcp.CLIENTINFO
 ;; - irc.ctcp.PING
 ;; - irc.ctcp.SOURCE
@@ -551,11 +582,7 @@ Connection options set:
 ;; - irc.ctcp.VERSION
 
 ;; Events emitted:
-;; - irc.message
-;; - irc.notice
-;; - irc.ctcp
 ;; - irc.ctcp.VERB
-;; - irc.ctcpreply
 ;; - irc.ctcpreply.VERB
 
 ;; Connection options used:

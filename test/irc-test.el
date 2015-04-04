@@ -567,7 +567,7 @@
 ;;; Handler: Ping-Pong
 
 ;; irc-handle-ping-pong
-(describe "The registration handler"
+(describe "The ping-pong handler"
   (let (proc table)
     (before-each
       (setq proc (start-process "test" nil "cat")
@@ -584,3 +584,77 @@
       (expect (client-messages)
               :to-equal
               '("PONG arg")))))
+
+;;;;;;;;;;;;;;;;;
+;;; Handler: CTCP
+
+(describe "The CTCP handler"
+  (let (proc table last-message last-ctcp last-notice last-ctcpreply)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            table (irc-handler-table)
+            last-message nil
+            last-ctcp nil
+            last-notice nil
+            last-ctcpreply nil)
+      (irc-connection-put proc :handler-table table)
+      (irc-handle-ctcp table)
+
+      (irc-handler-add table "irc.message"
+                       (lambda (proc &rest event)
+                         (setq last-message event)))
+      (irc-handler-add table "irc.notice"
+                       (lambda (proc &rest event)
+                         (setq last-notice event)))
+      (irc-handler-add table "irc.ctcp"
+                       (lambda (proc &rest event)
+                         (setq last-ctcp event)))
+      (irc-handler-add table "irc.ctcpreply"
+                       (lambda (proc &rest event)
+                         (setq last-ctcpreply event))))
+
+    (it "should send irc.message on a normal PRIVMSG"
+      (irc-event-emit proc "PRIVMSG" "alice" "bob" "Hi")
+
+      (expect last-message
+              :to-equal
+              (list "irc.message" "alice" "bob" "Hi")))
+
+    (it "should send irc.ctcp on a CTCP request with no arguments"
+      (irc-event-emit proc "PRIVMSG" "alice" "bob" "\x01VERSION\x01")
+
+      (expect last-message :to-be nil)
+      (expect last-ctcp
+              :to-equal
+              (list "irc.ctcp" "alice" "bob" "VERSION" nil)))
+
+    (it "should send irc.ctcp on a CTCP request with arguments"
+      (irc-event-emit proc "PRIVMSG" "alice" "bob" "\x01PING foo\x01")
+
+      (expect last-message :to-be nil)
+      (expect last-ctcp
+              :to-equal
+              (list "irc.ctcp" "alice" "bob" "PING" "foo")))
+
+    (it "should send irc.notice on a normal NOTICE"
+      (irc-event-emit proc "NOTICE" "alice" "bob" "Hi")
+
+      (expect last-notice
+              :to-equal
+              (list "irc.notice" "alice" "bob" "Hi")))
+
+    (it "should send irc.ctcpreply on a CTCP reply with no arguments"
+      (irc-event-emit proc "NOTICE" "alice" "bob" "\x01VERSION\x01")
+
+      (expect last-notice :to-be nil)
+      (expect last-ctcpreply
+              :to-equal
+              (list "irc.ctcpreply" "alice" "bob" "VERSION" nil)))
+
+    (it "should send irc.ctcpreply on a CTCP reply with arguments"
+      (irc-event-emit proc "NOTICE" "alice" "bob" "\x01PING foo\x01")
+
+      (expect last-notice :to-be nil)
+      (expect last-ctcpreply
+              :to-equal
+              (list "irc.ctcpreply" "alice" "bob" "PING" "foo")))))
