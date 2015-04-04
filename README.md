@@ -1,5 +1,7 @@
 # Circe, a Client for IRC in Emacs
 
+[![Build Status](https://api.travis-ci.org/jorgenschaefer/circe.png?branch=master)](https://travis-ci.org/jorgenschaefer/circe)
+
 Project homepage: https://github.com/jorgenschaefer/circe/wiki
 
 Sources: https://github.com/jorgenschaefer/circe
