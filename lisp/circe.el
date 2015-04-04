@@ -2274,6 +2274,7 @@ Arguments are IGNORED."
     (irc-handler-add table "conn.disconnected" #'circe-irc-conn-disconnected)
     (irc-handle-registration table)
     (irc-handle-ping-pong table)
+    (irc-handle-ctcp table)
     table))
 
 (defun circe-irc-conn-connected (conn event)
@@ -2291,29 +2292,46 @@ Arguments are IGNORED."
 
     (setq circe-server-quitting-p nil)))
 
-(defun circe-irc-legacy-bridge (conn event &rest args)
-  (cond
-   ((not event)
-    nil)
-   ((let ((case-fold-search nil))
-      (string-match "\\`[0-9][0-9][0-9]\\|[A-Z]+\\'" event))
-    (let* ((sender (circe-parse-sender (or (car args)
-                                           "")))
-           (nick (elt sender 0))
-           (user (elt sender 1))
-           (host (elt sender 2))
-           (command event)
-           (args (cdr args)))
-      (with-current-buffer (irc-connection-get conn :server-buffer)
-        (unwind-protect
-            (let* ((circe-current-message (list nick user host command args))
-                   (circe-message-option-cache (make-hash-table :test 'equal)))
-              (circe-server-handle-message nick user host command args)
-              (when (not (circe-message-option 'dont-display))
-                (circe-server-display-message nick user host command args)))
-          (circe-server-handle-message-internal nick user host command args)))
-      ))))
-
+(defun circe-irc-legacy-bridge (conn event &optional sender &rest args)
+  (let ((case-fold-search nil))
+    (cond
+     ;; Ignore PRIVMSG and NOTICE
+     ((member event '("PRIVMSG" "NOTICE"))
+      (setq event nil))
+     ;; because we handle the irc events directly
+     ((equal event "irc.message")
+      (setq event "PRIVMSG"))
+     ((equal event "irc.notice")
+      (setq event "NOTICE"))
+     ((equal event "irc.ctcp")
+      (setq event (format "CTCP-%s" (elt args 1))
+            args (list (elt args 0)
+                       (or (elt args 2)
+                           ""))))
+     ((equal event "irc.ctcpreply")
+      (setq event (format "CTCP-%s-REPLY" (elt args 1))
+            args (list (elt args 0)
+                       (or (elt args 2)
+                           "")))))
+    (when (and event
+               (string-match "\\`[0-9][0-9][0-9]\\|[A-Z-]+\\'" event))
+      (let* ((sender (circe-parse-sender (or sender "")))
+             (nick (elt sender 0))
+             (user (elt sender 1))
+             (host (elt sender 2))
+             (command event))
+        (with-current-buffer (irc-connection-get conn :server-buffer)
+          (unwind-protect
+              (let* ((circe-current-message (list nick user host command args))
+                     (circe-message-option-cache (make-hash-table
+                                                  :test 'equal)))
+                (circe-server-handle-message nick user host
+                                             command args)
+                (when (not (circe-message-option 'dont-display))
+                  (circe-server-display-message nick user host
+                                                command args)))
+            (circe-server-handle-message-internal nick user host
+                                                  command args)))))))
 
 (defun circe-server-display-message (nick user host command args)
   "Display an IRC message.
