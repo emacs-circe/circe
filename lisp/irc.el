@@ -222,11 +222,13 @@ COMMAND arg1 arg2 :arg3 still arg3
 (defun irc-handler-run (table event &rest args)
   "Run the handlers for EVENT in TABLE, passing ARGS to each."
   (dolist (handler (gethash event table))
-    (condition-case err
+    (if debug-on-error
         (apply handler args)
-      (error
-       (message "Error running event %S handler %S: %s"
-                event handler err)))))
+      (condition-case err
+          (apply handler args)
+        (error
+         (message "Error running event %S handler %S: %s"
+                  event handler err))))))
 
 ;;;;;;;;;;;
 ;;; Sending

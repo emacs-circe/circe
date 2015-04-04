@@ -254,7 +254,29 @@
 
       (irc-handler-run table "the.event" 1 2 3)
 
-      (expect called-with :to-equal '(1 2 3)))))
+      (expect called-with :to-equal '(1 2 3))))
+
+  (it "should not throw an error if a handler throws one"
+    (let ((table (irc-handler-table))
+          (debug-on-error nil))
+      (spy-on 'message)
+
+      (irc-handler-add table "the.event" (lambda (&rest args)
+                                           (error "Oops!")))
+
+      (expect (lambda ()
+                (irc-handler-run table "the.event"))
+              :not :to-throw)))
+
+  (it "should not throw an error if a handler throws one and debug-on-error"
+    (let ((table (irc-handler-table))
+          (debug-on-error t))
+      (irc-handler-add table "the.event" (lambda (&rest args)
+                                           (error "Oops!")))
+
+      (expect (lambda ()
+                (irc-handler-run table "the.event"))
+              :to-throw))))
 
 ;;;;;;;;;;;
 ;;; Sending
