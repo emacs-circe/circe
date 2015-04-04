@@ -146,6 +146,19 @@ See `circe-fool-list'."
   :type 'string
   :group 'circe)
 
+(defcustom circe-default-ip-family nil
+  "Default IP family to use.
+
+  'nil  - Use either IPv4 or IPv6.
+
+  'ipv4 - Use IPv4
+
+  'ipv6 - Use IPv6"
+  :type '(choice (const :tag "Both" nil)
+                 (const :tag "IPv4" ipv4)
+                 (const :tag "IPv6" ipv6))
+  :group 'circe)
+
 (defcustom circe-network-options nil
   "Network options.
 
@@ -167,6 +180,8 @@ Common options:
   :tls - A boolean indicating as to whether to use TLS or
          not (defaults to nil). If you set this, you'll likely
          have to set :service as well.
+  :family - Option to enforce a specific IP version
+            (defaults to `circe-default-ip-family')
 
   :nickserv-nick - The nick to authenticate with to nickserv, if configured.
                    (defaults to the value of :nick)
@@ -633,6 +648,11 @@ The following format arguments are available:
   "The network name of the server we're currently connected to.")
 (make-variable-buffer-local 'circe-server-network)
 
+(defvar circe-server-ip-family nil
+  "The IP family in use.
+See `make-network-process' and :family for valid values.")
+(make-variable-buffer-local 'circe-server-ip-family)
+
 (defvar circe-server-nick nil
   "Our current nick.")
 (make-variable-buffer-local 'circe-server-nick)
@@ -832,6 +852,8 @@ OPTIONS is a property list with keyword options. See
           (setq variable 'circe-server-service))
          ((memq keyword '(:tls :use-tls))
           (setq variable 'circe-server-use-tls))
+         ((eq keyword :family)
+          (setq variable 'circe-server-ip-family))
          ((eq keyword :channels)
           (setq variable 'circe-server-auto-join-channels))
          ((memq keyword '(:pass :nick :user :realname :network))
@@ -857,6 +879,8 @@ OPTIONS is a property list with keyword options. See
       (puthash 'circe-server-user circe-default-user variables))
     (when (not (gethash 'circe-server-realname variables))
       (puthash 'circe-server-realname circe-default-realname variables))
+    (when (not (gethash 'circe-server-ip-family variables))
+      (puthash 'circe-server-ip-family circe-default-ip-family variables))
     ;; Default values that depend on other variables
     (let ((service (gethash 'circe-server-service variables))
           (use-tls (gethash 'circe-server-use-tls variables)))
@@ -1005,6 +1029,7 @@ See `circe-server-max-reconnect-attempts'.")
                                :buffer (current-buffer)
                                :host circe-server-name
                                :service circe-server-service
+                               :family circe-server-ip-family
                                :coding 'raw-text-dos
                                :filter #'circe-server-filter-function
                                :sentinel #'circe-server-sentinel
@@ -1018,6 +1043,7 @@ See `circe-server-max-reconnect-attempts'.")
                                     :buffer (current-buffer)
                                     :host circe-server-name
                                     :service circe-server-service
+                                    :family circe-server-ip-family
                                     :coding 'raw-text-dos
                                     :nowait circe-nowait-on-connect
                                     :noquery t
