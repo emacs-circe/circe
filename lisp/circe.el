@@ -2295,7 +2295,8 @@ Arguments are IGNORED."
   (cond
    ((not event)
     nil)
-   ((string-match "\\`[0-9][0-9][0-9]\\|[A-Z]+\\'" event)
+   ((let ((case-fold-search nil))
+      (string-match "\\`[0-9][0-9][0-9]\\|[A-Z]+\\'" event))
     (let* ((sender (circe-parse-sender (or (car args)
                                            "")))
            (nick (elt sender 0))
