@@ -1039,7 +1039,8 @@ server's chat buffers."
   (setq circe-server-quitting-p t)
   (ignore-errors
     (circe-server-send (concat "QUIT :" circe-default-quit-message)))
-  (delete-process circe-server-process)
+  (ignore-errors
+    (delete-process circe-server-process))
   (when (eq circe-server-killed-confirmation 'ask-and-kill-all)
     (dolist (buf (circe-chat-buffers))
       (let ((circe-channel-killed-confirmation nil))
