@@ -18,6 +18,7 @@
     (expect 'make-network-process
             :to-have-been-called-with
             :name "irc.local" :host "irc.local" :service 6667
+            :family nil
             :coding '(undecided . utf-8) :nowait t :noquery t
             :filter #'irc--filter :sentinel #'irc--sentinel
             :plist '(:host "irc.local" :service 6667) :keepalive t))

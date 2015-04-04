@@ -982,6 +982,7 @@ See `circe-server-max-reconnect-attempts'.")
        :host circe-server-name
        :service circe-server-service
        :tls circe-server-use-tls
+       :ip-family circe-server-ip-family
        :handler-table circe-irc-handler-table
        :server-buffer (current-buffer)
        :nick circe-server-nick

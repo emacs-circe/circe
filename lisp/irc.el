@@ -62,6 +62,7 @@ Supported keyword arguments:
 :host HOST -- The host to connect to
 :service SERVICE -- The service or port to connect to
 :tls BOOL -- Whether to use TLS
+:family IP-FAMILY -- Force using of ipv4 or ipv6
 :handler-table HANDLER -- The event handler table to send events to.
 
 The following events are supported:
@@ -83,6 +84,7 @@ irc.ctcp.VERB conn sender target args... -- A CTCP message was received"
                      (error "Must specify a :host to connect to"))
            :service (or (plist-get keywords :service)
                         (error "Must specify a :service to connect to"))
+           :family (plist-get keywords :family)
            :coding '(undecided . utf-8)
            :nowait t
            :noquery t
