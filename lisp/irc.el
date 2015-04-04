@@ -499,18 +499,124 @@ Connection options set:
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: ISUPPORT
 
-;; Events aught:
-;; - 005 RPL_ISUPPORT => Store isupport info
+(defun irc-handle-isupport (table)
+  "Add command handlers to track 005 RPL_ISUPPORT capabilities."
+  (irc-handler-add table "005" #'irc-handle-isupport--005))
 
-;; Connection options set:
-;; - :isupport
+(defun irc-handle-isupport--005 (conn event sender target text)
+  (irc-connection-put
+   conn :isupport
+   (append (irc-connection-get conn :isupport)
+           (irc-handle-isupport--capabilities-to-alist text))))
 
-;; irc-isupport conn type => string | t | nil
-;; irc-string-equal-p conn s1 s2 => nil|t
-;; irc-channel-name-p conn string
+(defun irc-handle-isupport--capabilities-to-alist (capabilities)
+  (mapcar (lambda (cap)
+            (if (string-match "\\`\\([^=]+\\)=\\(.*\\)\\'" cap)
+                (cons (match-string 1 cap)
+                      (match-string 2 cap))
+              (cons cap t)))
+          (split-string capabilities " ")))
 
-;; ISUPPORT message is CHANTYPES=# EXCEPTS INVEX CHANMODES=eIbq,k,flj,....
-;; So split at space, then at =, and leave it at that
+(defun irc-isupport (conn capability)
+  "Return the value of CAPABILITY of CONN.
+
+These capabilities are set when the server sends a 005
+RPL_ISUPPORT message. The return value is either the value of the
+capability, or t if it is a boolean capability that is present.
+If the capability is not present, the return value is nil."
+  (cdr (assoc capability
+              (irc-connection-get conn :isupport))))
+
+(defun irc-string-equal-p (conn s1 s2)
+  "Compare S1 to S2 case-insensitively.
+
+What case means is defined by the server of CONN."
+  (equal (irc-isupport--translate-string conn s1)
+         (irc-isupport--translate-string conn s2)))
+
+(defvar irc-isupport--ascii-table
+  (let ((table (make-string 128 0))
+        (char 0))
+    (while (<= char 127)
+      (if (<= ?A char ?Z)
+          (aset table char (+ char (- ?a ?A)))
+        (aset table char char))
+      (setq char (1+ char)))
+    table)
+  "A case mapping table for the ascii CASEMAPPING.")
+
+(defvar irc-isupport--rfc1459-table
+  (let ((table (concat irc-isupport--ascii-table)))  ; copy string
+    (aset table ?\[ ?\{)
+    (aset table ?\] ?\})
+    (aset table ?\\ ?\|)
+    (aset table ?^ ?\~)
+    table)
+  "A case mapping table for the rfc1459 CASEMAPPING.")
+
+(defvar irc-isupport--rfc1459-strict-table
+  (let ((table (concat irc-isupport--ascii-table)))  ; copy string
+    (aset table ?\[ ?\{)
+    (aset table ?\] ?\})
+    (aset table ?\\ ?\|)
+    table)
+  "A case mapping table for the rfc1459-strict CASEMAPPING.")
+
+(defun irc-isupport--translate-string (conn s)
+  "Translate S to be a lower-case.
+
+This uses the case mapping defined by the IRC server for CONN."
+  (with-temp-buffer
+    (insert s)
+    (let ((mapping (or (irc-isupport conn "CASEMAPPING")
+                       "rfc1459")))
+      (cond
+       ((equal mapping "rfc1459")
+        (translate-region (point-min)
+                          (point-max)
+                          irc-isupport--rfc1459-table))
+       ((equal mapping "ascii")
+        (translate-region (point-min)
+                          (point-max)
+                          irc-isupport--ascii-table))
+       ((equal mapping "rfc1459-strict")
+        (translate-region (point-min)
+                          (point-max)
+                          irc-isupport--rfc1459-strict-table))))
+    (buffer-string)))
+
+(defun irc-channel-name-p (conn string)
+  "True iff STRING is a valid channel name for CONN.
+
+This depends on the CHANTYPES setting set by the server of CONN."
+  (let ((chantypes (string-to-list
+                    (or (irc-isupport conn "CHANTYPES")
+                        "#"))))
+    (if (and (> (length string) 0)
+             (member (aref string 0) chantypes))
+        t
+      nil)))
+
+(defun irc-nick-without-prefix (conn nick)
+  "Return NICK without any mode prefixes.
+
+For example, a user with op status might be shown as @Nick. This
+function would return Nick without the prefix. This uses the 005
+RPL_ISUPPORT setting of PREFIX set by the IRC server for CONN."
+  (let ((prefixes (irc-connection-get conn :nick-prefixes)))
+    (when (not prefixes)
+      (let ((prefix-string (or (irc-isupport conn "PREFIX")
+                               "(qaohv)~&@%+"))
+            prefix)
+        (setq prefixes (string-to-list
+                        (if (string-match "(.*)\\(.*\\)" prefix-string)
+                            (match-string 1 prefix-string)
+                          "~&@%+")))
+        (irc-connection-put conn :nick-prefixes prefixes)))
+    (while (and (> (length nick) 0)
+                (member (aref nick 0) prefixes))
+      (setq nick (substring nick 1)))
+    nick))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Current nick tracking

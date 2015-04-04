@@ -588,7 +588,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Ping-Pong
 
-;; irc-handle-ping-pong
 (describe "The ping-pong handler"
   (let (proc table)
     (before-each
@@ -606,6 +605,91 @@
       (expect (client-messages)
               :to-equal
               '("PONG arg")))))
+
+;;;;;;;;;;;;;;;;;;;;;
+;;; Handler: ISUPPORT
+
+(describe "The 005 RPL_ISUPPORT handler"
+  (let (proc)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            table (irc-handler-table))
+      (irc-connection-put proc :handler-table table)
+
+      (irc-handle-isupport table))
+
+    (it "should set the :isupport connection option"
+      (irc-event-emit proc "005" "irc.server" "mynick" "WITHARG=# NOARG")
+
+      (expect (irc-isupport proc "WITHARG")
+              :to-equal
+              "#")
+      (expect (irc-isupport proc "NOARG")
+              :to-equal
+              t)
+      (expect (irc-isupport proc "SOMETHINGELSE")
+              :to-equal
+              nil))
+
+    (describe "string comparison function"
+      (it "should compare with rfc1459 by default"
+        (expect (irc-string-equal-p proc
+                                    "FOO[]\\^"
+                                    "foo{}|~")
+                :to-be t))
+
+      (it "should compare with rfc1459 if CASEMAPPING is rfc1459"
+        (irc-event-emit proc "005" "irc.server" "mynick"
+                        "CASEMAPPING=rfc1459")
+
+        (expect (irc-string-equal-p proc
+                                    "FOO[]\\^"
+                                    "foo{}|~")
+                :to-be t))
+
+      (it "should compare with ascii mapping if casemapping is ascii"
+        (irc-event-emit proc "005" "irc.server" "mynick"
+                        "CASEMAPPING=ascii")
+        (expect (irc-string-equal-p proc
+                                    "FOO[]\\^"
+                                    "foo[]\\^")
+                :to-be t)
+        (expect (irc-string-equal-p proc
+                                    "FOO[]\\^"
+                                    "foo{}|~")
+                :not :to-be t))
+
+      (it "should compare with rfc1459-strict mapping if casemapping is that"
+        (irc-event-emit proc "005" "irc.server" "mynick"
+                        "CASEMAPPING=rfc1459-strict")
+
+        (expect (irc-string-equal-p proc
+                                    "FOO[]\\"
+                                    "foo{}|")
+                :to-be t)
+        (expect (irc-string-equal-p proc
+                                    "FOO[]\\^"
+                                    "foo{}|~")
+                :not :to-be t)))
+
+    (describe "the channel name identification"
+      (it "should identify a channel name"
+        (irc-event-emit proc "005" "irc.server" "mynick"
+                        "CHANTYPES=#+")
+
+        (expect (irc-channel-name-p proc "#foo") :to-be t)
+        (expect (irc-channel-name-p proc "&foo") :not :to-be t)
+        (expect (irc-channel-name-p proc "!foo") :not :to-be t)
+        (expect (irc-channel-name-p proc "+foo") :to-be t)))
+
+    (describe "the `irc-nick-without-prefix' function"
+      (it "should remove a prefix"
+        (irc-event-emit proc "005" "irc.server" "mynick"
+                        "PREFIX=(ov)@+")
+
+        (expect (irc-nick-without-prefix proc "@nick") :to-equal "nick")
+        (expect (irc-nick-without-prefix proc "+nick") :to-equal "nick")
+        (expect (irc-nick-without-prefix proc "%nick") :to-equal "%nick")))))
 
 ;;;;;;;;;;;;;;;;;
 ;;; Handler: CTCP
