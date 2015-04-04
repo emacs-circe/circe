@@ -186,8 +186,11 @@ Common options:
 
   :nickserv-nick - The nick to authenticate with to nickserv, if configured.
                    (defaults to the value of :nick)
-  :nickserv-password - The password to use for nickserv authentication or a function
-                       to fetch it."
+  :nickserv-password - The password to use for nickserv
+                       authentication or a function to fetch it.
+
+  :sasl-username - The username for SASL authentication.
+  :sasl-password - The password for SASL authentication."
   :type '(alist :key-type string :value-type plist)
   :group 'circe)
 
@@ -647,9 +650,19 @@ See `make-network-process' and :family for valid values.")
 (defvar circe-server-pass nil
   "The password for the current server or a function to recall it.
 
-If a function is set it will be called with the value of `circe-server-name'.
-This is required for reconnecting.")
+If a function is set it will be called with the value of `circe-server-name'.")
 (make-variable-buffer-local 'circe-server-pass)
+
+(defvar circe-sasl-username nil
+  "The username for SASL authentication.")
+(make-variable-buffer-local 'circe-sasl-username)
+
+(defvar circe-sasl-password nil
+  "The password for SASL authentication.
+
+If a function is set it will be called with the value of
+`circe-server-name'.")
+(make-variable-buffer-local 'circe-sasl-password)
 
 (defvar circe-server-use-tls nil
   "If non-nil, use `open-tls-stream' to connect to the server.")
@@ -991,7 +1004,16 @@ See `circe-server-max-reconnect-attempts'.")
        :realname circe-server-realname
        :pass (if (functionp circe-server-pass)
                  (funcall circe-server-pass circe-server-name)
-               circe-server-pass)))))
+               circe-server-pass)
+       :cap-req (when (and circe-sasl-username
+                           circe-sasl-password)
+                  '("sasl"))
+       :sasl-username circe-sasl-username
+       :sasl-password (if (functionp circe-sasl-password)
+                          (funcall circe-sasl-password
+                                   circe-server-name)
+                        circe-sasl-password)
+       ))))
 
 (defun circe-reconnect-all ()
   "Reconnect all Circe connections."
@@ -1714,7 +1736,8 @@ Return DEFAULT if no option is set or the nick is not known."
   "Parse the NAMES reply in NAME-STRING.
 This uses `circe-server-nick-prefixes'."
   (with-circe-server-buffer
-    (mapcar #'irc-nick-without-prefix
+    (mapcar (lambda (nick)
+              (irc-nick-without-prefix circe-server-process nick))
             (split-string name-string))))
 
 (defun circe-user-channels (nick)
@@ -2937,17 +2960,12 @@ as arguments."
 ;;; Display Handlers ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-(circe-set-display-handler "PING" 'circe-display-PING)
-(defun circe-display-PING (nick user host command args)
-  "(Don't) Show a PING message.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  t)
-
-(circe-set-display-handler "PONG" 'circe-display-PONG)
-(defun circe-display-PONG (nick user host command args)
-  "(Don't) show a PONG message.
+(circe-set-display-handler "PING" 'circe-display-ignore)
+(circe-set-display-handler "PONG" 'circe-display-ignore)
+(circe-set-display-handler "CAP" 'circe-display-ignore)
+(circe-set-display-handler "AUTHENTICATE" 'circe-display-ignore)
+(defun circe-display-ignore (nick user host command args)
+  "Don't show a this message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
@@ -3445,7 +3463,9 @@ number, it shows the missing people due to that split."
                ("671" active "{1-}")
                ("728" 1 "Quiet mask: {3}")
                ("729" 1 "{3-}")
-               ))
+               ;; Freenode SASL auth
+               ("900" active "SASL: {3-}")
+               ("903" active "{1-}")))
   (circe-set-display-handler (car fmt) (cdr fmt)))
 
 (defun circe-set-message-target (command target)
