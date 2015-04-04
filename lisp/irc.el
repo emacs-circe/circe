@@ -629,6 +629,7 @@ Events emitted:
 
 ;; Options set:
 ;; - :channel-topics
+;;   - Or rather, re-use :irc-channels
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Auto-Join
