@@ -988,7 +988,10 @@ See `circe-server-max-reconnect-attempts'.")
        :nick circe-server-nick
        :user circe-server-user
        :mode 8
-       :realname circe-server-realname))))
+       :realname circe-server-realname
+       :pass (if (functionp circe-server-pass)
+                 (funcall circe-server-pass circe-server-name)
+               circe-server-pass)))))
 
 (defun circe-reconnect-all ()
   "Reconnect all Circe connections."
