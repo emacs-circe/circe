@@ -24,6 +24,14 @@
   (should (equal (circe-duration-string 0)
                  "a moment")))
 
+;; Workaround for 24.3, which throws an error if these are not
+;; defined.
+(defun test/completion-at-point ()
+  nil)
+
+(defun test/completion-table ()
+  nil)
+
 (ert-deftest emacs-completion-system ()
   "Tests for Emacs' completion code.
 
