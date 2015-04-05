@@ -42,9 +42,11 @@
   (interactive "sMode change: ")
   (cond
    ((not (string-match "^[+-]" mode))
-    (circe-server-send (format "MODE %s" mode)))
+    (irc-send-raw (circe-server-process)
+                  (format "MODE %s" mode)))
    ((eq major-mode 'circe-channel-mode)
-    (circe-server-send (format "MODE %s %s" circe-chat-target mode)))
+    (irc-send-raw (circe-server-process)
+                  (format "MODE %s %s" circe-chat-target mode)))
    (t
     (circe-server-message "Not in a channel buffer."))))
 
@@ -52,7 +54,8 @@
   "Show channel bans"
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
-    (circe-server-send (format "MODE %s +b" circe-chat-target))))
+    (irc-server-raw (circe-server-process)
+                    (format "MODE %s +b" circe-chat-target))))
 
 (defun circe-command-KICK (nick &optional reason)
   "Kick WHO from the current channel with optional REASON."
@@ -64,24 +67,28 @@
           (setq reason (match-string 2 nick)
                 nick (match-string 1 nick))
         (setq reason "-")))
-    (circe-server-send (format "KICK %s %s :%s"
-                               circe-chat-target nick reason))))
+    (irc-send-raw (circe-server-process)
+                  (format "KICK %s %s :%s"
+                          circe-chat-target nick reason))))
 
 (defun circe-command-GETOP (&optional ignored)
   "Ask chanserv for op on the current channel."
   (interactive)
   (if (not (eq major-mode 'circe-channel-mode))
       (circe-server-message "Not in a channel buffer.")
-    (circe-server-send (format "PRIVMSG chanserv :op %s" circe-chat-target))))
+    (irc-send-PRIVMSG (circe-server-process)
+                      "chanserv"
+                      (format "op %s" circe-chat-target))))
 
 (defun circe-command-DROPOP (&optional ignored)
   "Lose op mode on the current channel."
   (interactive)
   (if (not (eq major-mode 'circe-channel-mode))
       (circe-server-message "Not in a channel buffer.")
-    (circe-server-send (format "MODE %s -o %s"
-                               circe-chat-target
-                               (circe-server-nick)))))
+    (irc-send-raw (circe-server-process)
+                  (format "MODE %s -o %s"
+                          circe-chat-target
+                          (circe-server-nick)))))
 
 ;; For KICKBAN (requested by Riastradh), we'd need a callback on a
 ;; USERHOST command.
