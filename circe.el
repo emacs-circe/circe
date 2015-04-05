@@ -1043,7 +1043,10 @@ server's chat buffers."
 
 (defun circe-server-nick ()
   "Return our current nick."
-  (irc-current-nick (circe-server-process)))
+  (let ((proc (circe-server-process)))
+    (if proc
+        (irc-current-nick proc)
+      nil)))
 
 (defun circe-nick-next (oldnick)
   "Return a new nick to try for OLDNICK."
