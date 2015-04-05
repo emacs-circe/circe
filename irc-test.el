@@ -998,4 +998,118 @@
       (expect last-notice :to-be nil)
       (expect last-ctcpreply
               :to-equal
-              (list "irc.ctcpreply" "alice" "bob" "PING" "foo")))))
+              (list "irc.ctcpreply" "alice" "bob" "PING" "foo")))
+
+    (it "should send irc.ctcp.VERB for a CTCP request without argument"
+      (let ((last-event nil))
+        (irc-handler-add table "irc.ctcp.PING"
+                         (lambda (proc &rest event)
+                           (setq last-event event)))
+        (irc-event-emit proc "PRIVMSG" "alice" "bob" "\x01PING\x01")
+
+        (expect last-event
+                :to-equal
+                (list "irc.ctcp.PING" "alice" "bob" nil))))
+
+    (it "should send irc.ctcp.VERB for a CTCP request with argument"
+      (let ((last-event nil))
+        (irc-handler-add table "irc.ctcp.PING"
+                         (lambda (proc &rest event)
+                           (setq last-event event)))
+        (irc-event-emit proc "PRIVMSG" "alice" "bob" "\x01PING foo\x01")
+
+        (expect last-event
+                :to-equal
+                (list "irc.ctcp.PING" "alice" "bob" "foo"))))
+
+    (it "should send irc.ctcpreply.VERB for a CTCP reply without argument"
+      (let ((last-event nil))
+        (irc-handler-add table "irc.ctcpreply.PING"
+                         (lambda (proc &rest event)
+                           (setq last-event event)))
+        (irc-event-emit proc "NOTICE" "alice" "bob" "\x01PING\x01")
+
+        (expect last-event
+                :to-equal
+                (list "irc.ctcpreply.PING" "alice" "bob" nil))))
+
+    (it "should send irc.ctcpreply.VERB for a CTCP reply with argument"
+      (let ((last-event nil))
+        (irc-handler-add table "irc.ctcpreply.PING"
+                         (lambda (proc &rest event)
+                           (setq last-event event)))
+        (irc-event-emit proc "NOTICE" "alice" "bob" "\x01PING foo\x01")
+
+        (expect last-event
+                :to-equal
+                (list "irc.ctcpreply.PING" "alice" "bob" "foo"))))
+
+    (describe "`irc-send-ctcp' function"
+      (before-each
+        (spy-on 'irc-send-raw))
+
+      (it "should send a CTCP request"
+        (irc-send-ctcp proc "alice" "VERSION" "test version 1.0")
+
+        (expect 'irc-send-raw
+                :to-have-been-called-with
+                proc
+                "PRIVMSG alice :\x01VERSION test version 1.0\x01")))
+
+    (describe "`irc-send-ctcpreply' function"
+      (before-each
+        (spy-on 'irc-send-raw))
+
+      (it "should send a CTCP reply that is dropped on flooding"
+        (irc-send-ctcpreply proc "alice" "VERSION" "test version 1.0")
+
+        (expect 'irc-send-raw
+                :to-have-been-called-with
+                proc
+                "NOTICE alice :\x01VERSION test version 1.0\x01"
+                :drop)))
+
+    (describe "default CTCP handlers"
+      (before-each
+        (spy-on 'irc-send-ctcpreply))
+
+      (it "should respond with :ctcp-version to CTCP VERSION"
+        (irc-connection-put proc :ctcp-version "test version 1.0")
+        (irc-event-emit proc "irc.ctcp.VERSION" "alice" "bob" nil)
+
+        (expect 'irc-send-ctcpreply
+                :to-have-been-called-with
+                proc "alice" "VERSION" "test version 1.0"))
+
+      (it "should respond with :ctcp-clientinfo to CTCP CLIENTINFO"
+        (irc-connection-put proc :ctcp-clientinfo "FOO BAR BAZ")
+        (irc-event-emit proc "irc.ctcp.CLIENTINFO" "alice" "bob" nil)
+
+        (expect 'irc-send-ctcpreply
+                :to-have-been-called-with
+                proc "alice" "CLIENTINFO" "FOO BAR BAZ"))
+
+      (it "should respond with :ctcp-source to CTCP SOURCE"
+        (irc-connection-put proc :ctcp-source "https://website/")
+        (irc-event-emit proc "irc.ctcp.SOURCE" "alice" "bob" nil)
+
+        (expect 'irc-send-ctcpreply
+                :to-have-been-called-with
+                proc "alice" "SOURCE" "https://website/"))
+
+      (it "should respond with the argument to CTCP PING"
+        (irc-event-emit proc "irc.ctcp.PING" "alice" "bob" "12345")
+
+        (expect 'irc-send-ctcpreply
+                :to-have-been-called-with
+                proc "alice" "PING" "12345"))
+
+      (it "should respond with the current time to CTCP TIME"
+        (spy-on 'current-time-string :and-return-value "Test current time")
+        (irc-event-emit proc "irc.ctcp.TIME" "alice" "bob" nil)
+
+        (expect 'irc-send-ctcpreply
+                :to-have-been-called-with
+                proc "alice" "TIME" "Test current time"))
+
+      )))

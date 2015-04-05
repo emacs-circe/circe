@@ -68,9 +68,7 @@ conn.failed conn -- The connection could not be established
 conn.disconnected conn -- A previously established connection was lost
 
 NNN conn sender args... -- A numeric reply from IRC was received
-COMMAND conn sender args... -- An IRC command message was received
-irc.ctcp conn sender target verb args... -- A CTCP message was received
-irc.ctcp.VERB conn sender target args... -- A CTCP message was received"
+COMMAND conn sender args... -- An IRC command message was received"
   (funcall (if (plist-get keywords :tls)
                #'make-tls-process
              #'make-network-process)
@@ -757,19 +755,44 @@ Valid nick names are at least (RFC 1459):
 (defun irc-handle-ctcp (table)
   "Add command handlers to TABLE to handle the CTCP protocol.
 
+Connection options used:
+
+:ctcp-version -- The response to a CTCP VERSION request.
+:ctcp-clientinfo -- The response to a CTCP CLIENTINFO request.
+:ctcp-source -- The response to a CTCP SOURCE request.
+
 Events emitted:
 
 \"irc.message\" sender target body -- A non-CTCP PRIVMSG
 \"irc.notice\" sender target body -- A non-CTCP NOTICE
-\"irc.ctcp\" sender target argument -- A CTCP request. ARGUMENT
+\"irc.ctcp\" sender target verb argument -- A CTCP request. ARGUMENT
   can be nil if there was no argument, or the empty string if the
   argument was empty.
-\"irc.ctcpreply\" sender target argument -- A CTCP reply.
-  ARGUMENT is similar to above."
+\"irc.ctcpreply\" sender target verb argument -- A CTCP reply.
+  ARGUMENT is similar to above.
+\"irc.ctcp.VERB\" sender target argument -- A CTCP request of
+  this specific type.
+\"irc.ctcpreply.VERB\" sender target argument -- A CTCP reply of
+  this specific type."
   (irc-handler-add table "PRIVMSG"
                    #'irc-handle-ctcp--privmsg)
+  (irc-handler-add table "irc.ctcp"
+                   #'irc-handle-ctcp--ctcp)
   (irc-handler-add table "NOTICE"
-                   #'irc-handle-ctcp--notice))
+                   #'irc-handle-ctcp--notice)
+  (irc-handler-add table "irc.ctcpreply"
+                   #'irc-handle-ctcp--ctcpreply)
+  (irc-handler-add table "irc.ctcp.VERSION"
+                   #'irc-handle-ctcp--ctcp-version)
+  (irc-handler-add table "irc.ctcp.CLIENTINFO"
+                   #'irc-handle-ctcp--ctcp-clientinfo)
+  (irc-handler-add table "irc.ctcp.SOURCE"
+                   #'irc-handle-ctcp--ctcp-source)
+  (irc-handler-add table "irc.ctcp.PING"
+                   #'irc-handle-ctcp--ctcp-ping)
+  (irc-handler-add table "irc.ctcp.TIME"
+                   #'irc-handle-ctcp--ctcp-time)
+  )
 
 (defun irc-handle-ctcp--privmsg (conn event sender target body)
   (if (string-match "\\`\x01\\([^ ]+\\)\\(?: \\(.*\\)\\)?\x01\\'"
@@ -779,6 +802,13 @@ Events emitted:
                       (match-string 2 body))
     (irc-event-emit conn "irc.message" sender target body)))
 
+(defun irc-handle-ctcp--ctcp (conn event sender target verb argument)
+  (irc-event-emit conn
+                  (format "irc.ctcp.%s" (upcase verb))
+                  sender
+                  target
+                  argument))
+
 (defun irc-handle-ctcp--notice (conn event sender target body)
   (if (string-match "\\`\x01\\([^ ]+\\)\\(?: \\(.*\\)\\)?\x01\\'"
                     body)
@@ -787,30 +817,71 @@ Events emitted:
                       (match-string 2 body))
     (irc-event-emit conn "irc.notice" sender target body)))
 
-;; Events caught:
-;; - irc.ctcp.CLIENTINFO
-;; - irc.ctcp.PING
-;; - irc.ctcp.SOURCE
-;; - irc.ctcp.TIME
-;; - irc.ctcp.USERINFO
-;; - irc.ctcp.VERSION
+(defun irc-handle-ctcp--ctcpreply (conn event sender target verb argument)
+  (irc-event-emit conn
+                  (format "irc.ctcpreply.%s" (upcase verb))
+                  sender
+                  target
+                  argument))
 
-;; Events emitted:
-;; - irc.ctcp.VERB
-;; - irc.ctcpreply.VERB
+(defun irc-handle-ctcp--ctcp-version (conn event sender target argument)
+  (let ((version (irc-connection-get conn :ctcp-version)))
+    (when version
+      (irc-send-ctcpreply conn
+                          (irc-userstring-nick sender)
+                          "VERSION"
+                          version))))
 
-;; Connection options used:
-;; - :ctcp-clientinfo (list of supported CTCP commands)
-;; - :ctcp-source
-;; - :ctcp-time
-;; - :ctcp-userinfo
-;; - :ctcp-version
+(defun irc-handle-ctcp--ctcp-clientinfo (conn event sender target argument)
+  (let ((clientinfo (irc-connection-get conn :ctcp-clientinfo)))
+    (when clientinfo
+      (irc-send-ctcpreply conn
+                          (irc-userstring-nick sender)
+                          "CLIENTINFO"
+                          clientinfo))))
 
-;; irc-send-ctcp conn target verb &optional argument
-;; irc-send-ctcp-PING conn target
-;; irc-send-ctcp-reply conn target verb &optional argument
-;; irc-send-ctcp-reply-PING conn target argument
-;; irc-send-ctcp-reply-VERSION conn target argument
+(defun irc-handle-ctcp--ctcp-source (conn event sender target argument)
+  (let ((source (irc-connection-get conn :ctcp-source)))
+    (when source
+      (irc-send-ctcpreply conn
+                          (irc-userstring-nick sender)
+                          "SOURCE"
+                          source))))
+
+(defun irc-handle-ctcp--ctcp-ping (conn event sender target argument)
+  (when argument
+    (irc-send-ctcpreply conn
+                        (irc-userstring-nick sender)
+                        "PING"
+                        argument)))
+
+(defun irc-handle-ctcp--ctcp-time (conn event sender target argument)
+  (irc-send-ctcpreply conn
+                      (irc-userstring-nick sender)
+                      "TIME"
+                      (current-time-string)))
+
+(defun irc-send-ctcp (conn target verb &optional argument)
+  "Send a CTCP VERB request to TARGET, optionally with ARGUMENT."
+  (irc-send-PRIVMSG conn
+                    target
+                    (format "\x01%s%s\x01"
+                            verb
+                            (if argument
+                                (concat " " argument)
+                              ""))))
+
+(defun irc-send-ctcpreply (conn target verb &optional argument)
+  "Send a CTCP VERB reply to TARGET, optionally with ARGUMENT."
+  (irc-send-raw conn
+                (irc--format-command "NOTICE"
+                                     target
+                                     (format "\x01%s%s\x01"
+                                             verb
+                                             (if argument
+                                                 (concat " " argument)
+                                               "")))
+                :drop))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Channel and user tracking
