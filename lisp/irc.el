@@ -717,16 +717,43 @@ Connection options set:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Initial nick acquisition
 
-;; Events caught:
-;; - 432 ERR_ERRONEUSNICKNAME
-;; - 437 ERR_UNAVAILRESOURCE
-;; - 433 ERR_NICKNAMEINUSE
-;;   => set alternate nicks when registering
+(defun irc-handle-initial-nick-acquisition (table)
+  "Track the current nick of the user.
 
-;; Connection options used:
-;; - :nick-alternatives => alternative nicks in case the first is not available
-;; - :nick-generator => when alternatives used up, a function to generate
-;;   random nicks
+Connection options used:
+
+:nick-alternatives -- A list of nicks to try if the first attempt
+  does not succeed."
+  (irc-handler-add table "432" ;; ERR_ERRONEUSNICKNAME
+                   #'irc-handle-current-nick-tracking--get-initial-nick)
+  (irc-handler-add table "433" ;; ERR_NICKNAMEINUSE
+                   #'irc-handle-current-nick-tracking--get-initial-nick)
+  (irc-handler-add table "437" ;; ERR_UNAVAILRESOURCE
+                   #'irc-handle-current-nick-tracking--get-initial-nick))
+
+(defun irc-handle-current-nick-tracking--get-initial-nick (conn event sender
+                                                                current-nick
+                                                                attempted-nick
+                                                                reason)
+  (when (equal current-nick "*")
+    (let ((alternatives (irc-connection-get conn :nick-alternatives)))
+      (if (not alternatives)
+          (irc-send-NICK conn (irc-generate-nick))
+        (irc-connection-put conn :nick-alternatives (cdr alternatives))
+        (irc-send-NICK conn (car alternatives))))))
+
+(defun irc-generate-nick ()
+  "Return a random, valid IRC nick name.
+
+Valid nick names are at least (RFC 1459):
+
+<nick>       ::= <letter> { <letter> | <number> | <special> }
+<special>    ::= '-' | '[' | ']' | '\' | '`' | '^' | '{' | '}'"
+  (let ((chars "abcdefghijklmnopqrstuvwxyz"))
+    (mapconcat (lambda (_)
+                 (make-string 1 (aref chars (random (length chars)))))
+               (make-string 9 0)
+               "")))
 
 ;;;;;;;;;;;;;;;;;
 ;;; Handler: CTCP

@@ -858,6 +858,74 @@
               :to-equal
               t))))
 
+(describe "The initial nick acquisition handler"
+  (let (proc table)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            table (irc-handler-table))
+      (irc-connection-put proc :handler-table table)
+      (irc-connection-put proc :nick-alternatives '("alt1" "alt2"))
+      (spy-on 'irc-send-raw)
+
+      (irc-handle-initial-nick-acquisition table))
+
+    (it "should try an alternative nick if the initial nick is bogus"
+      (irc-event-emit proc "432" "irc.server" "*" "bogus"
+                      "Erroneous Nickname")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              proc "NICK alt1")
+      (expect (irc-connection-get proc :nick-alternatives)
+              :to-equal
+              '("alt2")))
+
+    (it "should try an alternative nick if the initial nick is in use"
+      (irc-event-emit proc "433" "irc.server" "*" "inuse"
+                      "Nickname is already in use.")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              proc "NICK alt1")
+      (expect (irc-connection-get proc :nick-alternatives)
+              :to-equal
+              '("alt2")))
+
+    (it "should try an alternative nick if the initial nick unavailable"
+      (irc-event-emit proc "437" "irc.server" "*" "unavail"
+                      "Nickname is unavailable.")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              proc "NICK alt1")
+      (expect (irc-connection-get proc :nick-alternatives)
+              :to-equal
+              '("alt2")))
+
+    (it "should not try an alternative nick if we already registered"
+      (irc-event-emit proc "432" "irc.server" "mynick" "bogus"
+                      "Erroneous Nickname")
+      (irc-event-emit proc "433" "irc.server" "mynick" "inuse"
+                      "Nickname is already in use.")
+      (irc-event-emit proc "437" "irc.server" "mynick" "unavail"
+                      "Nickname is unavailable.")
+
+      (expect 'irc-send-raw :not :to-have-been-called))
+
+    (it "should try a random nick if no alternatives available"
+      (irc-connection-put proc :nick-alternatives nil)
+      (spy-on 'irc-generate-nick :and-return-value "randomnick")
+      (irc-event-emit proc "433" "irc.server" "*" "inuse"
+                      "Nickname is already in use.")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              proc "NICK randomnick"))))
+
+(describe "The `irc-generate-nick' function"
+  (it "should return a random, valid nick"
+    (expect (stringp (irc-generate-nick)))))
+
 ;;;;;;;;;;;;;;;;;
 ;;; Handler: CTCP
 
