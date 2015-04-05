@@ -211,6 +211,17 @@
             :to-equal
             '("sender" "COMMAND" "arg1" "arg2" "arg3 still arg3"))))
 
+(describe "The `irc-userstring-nick' function"
+  (it "should return the nick of a nick!user@host userstring"
+    (expect (irc-userstring-nick "nick!user@host")
+            :to-equal
+            "nick"))
+
+  (it "should return the string verbatim if it's something else"
+    (expect (irc-userstring-nick "nick!usernoathost")
+            :to-equal
+            "nick!usernoathost")))
+
 (describe "The `irc-event-emit' function"
   (let (proc handler-table)
     (before-each
@@ -719,7 +730,7 @@
 ;;; Handler: ISUPPORT
 
 (describe "The 005 RPL_ISUPPORT handler"
-  (let (proc)
+  (let (proc table)
     (before-each
       (setq proc (start-process "test" nil "cat")
             table (irc-handler-table))
@@ -799,6 +810,46 @@
         (expect (irc-nick-without-prefix proc "@nick") :to-equal "nick")
         (expect (irc-nick-without-prefix proc "+nick") :to-equal "nick")
         (expect (irc-nick-without-prefix proc "%nick") :to-equal "%nick")))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Handler: Current nick tracking
+
+(describe "The current nick tracking handler"
+  (let (proc table)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            table (irc-handler-table))
+      (irc-connection-put proc :handler-table table)
+
+      (irc-handle-current-nick-tracking table))
+
+    (it "should not have a current nick initially"
+      (expect (irc-current-nick proc)
+              :to-equal
+              nil)
+      (expect (irc-current-nick-p proc "foo")
+              :to-be nil))
+
+    (it "should set the nick on 001 RPL_WELCOME"
+      (irc-event-emit proc "001" "irc.server" "new-nick" "Welcome to IRC")
+
+      (expect (irc-current-nick proc)
+              :to-equal
+              "new-nick")
+      (expect (irc-current-nick-p proc "new-nick")
+              :to-equal
+              t))
+
+    (it "should change the nick on NICK"
+      (irc-event-emit proc "001" "irc.server" "initial-nick" "Welcome to IRC")
+      (irc-event-emit proc "NICK" "initial-nick!user@host" "new-nick")
+
+      (expect (irc-current-nick proc)
+              :to-equal
+              "new-nick")
+      (expect (irc-current-nick-p proc "new-nick")
+              :to-equal
+              t))))
 
 ;;;;;;;;;;;;;;;;;
 ;;; Handler: CTCP

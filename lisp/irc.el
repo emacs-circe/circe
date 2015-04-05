@@ -192,6 +192,14 @@ COMMAND arg1 arg2 :arg3 still arg3
               args))
       (cons sender (nreverse args)))))
 
+(defun irc-userstring-nick (userstring)
+  "Return the nick in a given USERSTRING.
+
+USERSTRING is a typical nick!user@host prefix as used by IRC."
+  (if (string-match "\\`\\([^!]+\\)!\\([^@]+\\)@\\(.*\\)\\'" userstring)
+      (match-string 1 userstring)
+    userstring))
+
 (defun irc-event-emit (conn event &rest args)
   "Run the event handlers for EVENT in CONN with ARGS."
   (irc-debug-out conn
@@ -673,6 +681,37 @@ RPL_ISUPPORT setting of PREFIX set by the IRC server for CONN."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Current nick tracking
+
+(defun irc-handle-current-nick-tracking (table)
+  "Track the current nick of the user.
+
+Connection options set:
+
+:current-nick -- The current nick, or nil if not known/set yet."
+  (irc-handler-add table "001" ;; RPL_WELCOME
+                   #'irc-handle-current-nick-tracking--rpl-welcome)
+  (irc-handler-add table "NICK"
+                   #'irc-handle-current-nick-tracking--nick))
+
+(defun irc-handle-current-nick-tracking--rpl-welcome (conn event sender
+                                                           target text)
+  (irc-connection-put conn :current-nick target))
+
+(defun irc-handle-current-nick-tracking--nick (conn event sender new-nick)
+  (when (irc-current-nick-p conn (irc-userstring-nick sender))
+    (irc-connection-put conn :current-nick new-nick)))
+
+(defun irc-current-nick (conn)
+  "Return the current nick on IRC connection CONN, or nil if not set yet."
+  (irc-connection-get conn :current-nick))
+
+(defun irc-current-nick-p (conn nick)
+  "Return t if NICK is our current nick on IRC connection CONN."
+  (let ((current-nick (irc-current-nick conn)))
+    (if (and (stringp nick)
+             (stringp current-nick))
+        (irc-string-equal-p conn current-nick nick)
+      nil)))
 
 ;; Events caught:
 ;; - 001 RPL_WELCOME => set our own nick
