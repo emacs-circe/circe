@@ -54,23 +54,26 @@ This broke so often, it got annoying."
                        "test: "))))))
 
 (ert-deftest circe-completion ()
-  (with-temp-buffer
-    (circe-channel-mode
-     "#test"
-     (with-temp-buffer
-       (circe-server-mode)
-       (setq circe-server-killed-confirmation nil)
-       (current-buffer)))
-    (circe-channel-add-user "test")
-    (goto-char (point-max))
-    (insert "TEST")
-    (completion-at-point)
-    ;; Colon after the first word
-    (should (equal (buffer-substring lui-input-marker (point-max))
-                   "test: "))
-    (delete-region lui-input-marker (point-max))
-    (insert "firstword TEST")
-    (completion-at-point)
-    ;; No colon after the second
-    (should (equal (buffer-substring lui-input-marker (point-max))
-                   "firstword test "))))
+  (cl-letf (((symbol-function 'circe-server-nick)
+             (lambda ()
+               "mynick")))
+    (with-temp-buffer
+      (circe-channel-mode
+       "#test"
+       (with-temp-buffer
+         (circe-server-mode)
+         (setq circe-server-killed-confirmation nil)
+         (current-buffer)))
+      (circe-channel-add-user "test")
+      (goto-char (point-max))
+      (insert "TEST")
+      (completion-at-point)
+      ;; Colon after the first word
+      (should (equal (buffer-substring lui-input-marker (point-max))
+                     "test: "))
+      (delete-region lui-input-marker (point-max))
+      (insert "firstword TEST")
+      (completion-at-point)
+      ;; No colon after the second
+      (should (equal (buffer-substring lui-input-marker (point-max))
+                     "firstword test ")))))
