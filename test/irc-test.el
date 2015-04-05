@@ -492,14 +492,7 @@
 
       (expect 'irc-send-raw
               :to-have-been-called-with
-              'proc "PONG server1"))
-
-    (it "should send a PONG message to another server"
-      (irc-send-PONG 'proc "server1" "server2")
-
-      (expect 'irc-send-raw
-              :to-have-been-called-with
-              'proc "PONG server1 server2")))
+              'proc "PONG server1" :nowait)))
 
   (describe "`irc-send-PRIVMSG'"
     (it "should send a PRIVMSG message"

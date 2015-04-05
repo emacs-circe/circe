@@ -386,11 +386,11 @@ MSGTARGET can be either a nick or a channel."
   "Authenticate to the server using PASSWORD."
   (irc-send-command conn "PASS" password))
 
-(defun irc-send-PONG (conn server &optional server2)
+(defun irc-send-PONG (conn server)
   "Respond to a PING message."
-  (if server2
-      (irc-send-command conn "PONG" server server2)
-    (irc-send-command conn "PONG" server)))
+  (irc-send-raw conn
+                (irc--format-command "PONG" server)
+                :nowait))
 
 (defun irc-send-PRIVMSG (conn msgtarget text-to-be-sent)
   "Send a private message containing TEXT-TO-BE-SENT to MSGTARGET.
