@@ -2,7 +2,6 @@
 
 ;; Copyright (C) 2015  Jorgen Schaefer <contact@jorgenschaefer.de>
 
-;; Version: 0.5
 ;; Author: Jorgen Schaefer <contact@jorgenschaefer.de>
 ;; URL: https://github.com/jorgenschaefer/circe
 
@@ -43,9 +42,6 @@
 ;;; Code:
 
 (require 'make-tls-process)
-
-(defvar irc-version "0.1"
-  "The version of irc.el")
 
 (defcustom irc-debug-log nil
   "Emit protocol debug info if this is non-nil.")

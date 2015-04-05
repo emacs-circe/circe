@@ -4,7 +4,6 @@
 ;;   Copyright (c) 2002-2003 by Shiro Kawai, All rights reserved.
 ;;   Copyright (c) 2006, 2012 by Jorgen Schaefer, All rights reserved.
 
-;; Version: 1.6
 ;; Authors: Alex Shinn, Shiro Kawai
 ;; Maintainer: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe/wiki/lcs

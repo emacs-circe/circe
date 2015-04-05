@@ -2,7 +2,6 @@
 
 ;; Copyright (C) 2005 - 2015  Jorgen Schaefer
 
-;; Version: 1.6
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe/wiki/Lui
 
@@ -41,9 +40,6 @@
 ;; and the 'lui-fool and 'lui-do-not-track text properties
 
 ;;; Code:
-
-(defvar lui-version "1.5"
-  "Lui version string.")
 
 (require 'button)
 (require 'flyspell)
