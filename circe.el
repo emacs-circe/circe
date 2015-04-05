@@ -57,60 +57,41 @@
 ;; These come before the `defcustom's since they are used for some of
 ;; the default values.
 
-(defvar circe-prompt-face 'circe-prompt-face
-  "The face for the Circe prompt.")
 (defface circe-prompt-face
   '((t (:weight bold :foreground "Black" :background "LightSeaGreen")))
   "The face for the Circe prompt."
   :group 'circe)
 
-(defvar circe-server-face 'circe-server-face
-  "The face used to highlight server messages.")
 (defface circe-server-face
   '((((type tty)) :foreground "blue" :weight bold)
     (t (:foreground "SteelBlue")))
   "The face used to highlight server messages."
   :group 'circe)
 
-(defvar circe-highlight-nick-face 'circe-highlight-nick-face
-  "The face used to highlight messages directed to us.")
 (defface circe-highlight-nick-face
   '((((type tty)) (:foreground "cyan" :weight bold))
     (t (:foreground "CadetBlue3" :weight bold)))
   "The face used to highlight messages directed to us."
   :group 'circe)
 
-(defvar circe-my-message-face 'circe-my-message-face
-  "The face used to highlight our own messages.")
 (defface circe-my-message-face '((t))
   "The face used to highlight our own messages."
   :group 'circe)
 
-(defvar circe-originator-face 'circe-originator-face
-  "The face used to highlight the originator of a message.")
 (defface circe-originator-face '((t))
   "The face used to highlight the originator of a message."
   :group 'circe)
 
-(defvar circe-topic-diff-new-face 'circe-topic-diff-new-face
-  "The face used for text added to a topic.
-See the {topic-diff} parameter to `circe-format-server-topic'.")
 (defface circe-topic-diff-new-face '((t (:background "DarkGreen")))
   "The face used for text added to a topic.
 See the {topic-diff} parameter to `circe-format-server-topic'."
   :group 'circe)
 
-(defvar circe-topic-diff-removed-face 'circe-topic-diff-removed-face
-  "The face used for text removed from a topic.
-See the {topic-diff} parameter to `circe-format-server-topic'.")
 (defface circe-topic-diff-removed-face '((t (:background "DarkRed")))
   "The face used for text removed from a topic.
 See the {topic-diff} parameter to `circe-format-server-topic'."
   :group 'circe)
 
-(defvar circe-fool-face 'circe-fool-face
-  "The face used for fools.
-See `circe-fool-list'.")
 (defface circe-fool-face
   '((((type tty)) (:foreground "grey40" :bold t))
     (((type x)) (:foreground "grey40")))
