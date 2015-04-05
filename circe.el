@@ -2279,7 +2279,7 @@ Arguments are IGNORED."
                        (or (elt args 2)
                            "")))))
     (when (and event
-               (string-match "\\`[0-9][0-9][0-9]\\|[A-Z-]+\\'" event))
+               (string-match "\\`[0-9][0-9][0-9]\\'\\|\\`[A-Z-]+\\'" event))
       (let* ((sender (circe-parse-sender (or sender "")))
              (nick (elt sender 0))
              (user (elt sender 1))
