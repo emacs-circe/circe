@@ -455,14 +455,6 @@ server."
   :type 'boolean
   :group 'circe)
 
-(defcustom circe-nick-next-function 'circe-nick-next
-  "A function that maps a nick to a new nick.
-This is used when the initial nicks are not used. The default
-just appends dashes as long as possible, and then generates
-random nicks."
-  :type 'function
-  :group 'circe)
-
 (defcustom circe-receive-message-functions nil
   "Functions called when a message from the IRC server arrives.
 Each function is called with 5 arguments: NICK, USER, HOST,
@@ -999,6 +991,9 @@ See `circe-server-max-reconnect-attempts'.")
        :handler-table circe-irc-handler-table
        :server-buffer (current-buffer)
        :nick circe-server-nick
+       :nick-alternatives (list (circe-nick-next circe-server-nick)
+                                (circe-nick-next
+                                 (circe-nick-next circe-server-nick)))
        :user circe-server-user
        :mode 8
        :realname circe-server-realname
@@ -2462,32 +2457,8 @@ as arguments."
    ;; Initialization
    ((string= command "001")             ; RPL_WELCOME
     (setq circe-server-reconnect-attempts 0)
-    (run-hooks 'circe-server-connected-hook))
-   ;; If we didn't get our nick yet...
-   ((and (not (eq (irc-connection-state circe-server-process)
-                  'registered))
-         (or (string= command "433")   ; ERR_NICKNAMEINUSE
-             (string= command "437"))) ; ERR_UNAVAILRESOURCE
-    (irc-send-NICK circe-server-process (funcall circe-nick-next-function
-                                                 (cadr args))))
-   ;; The nick we're trying to use is not valid
-   ((and (not (eq (irc-connection-state circe-server-process)
-                  'registered))
-         (string= command "432"))  ; ERR_ERRONEOUSNICKNAME
-    (irc-send-NICK circe-server-process (circe-generate-nick))))
+    (run-hooks 'circe-server-connected-hook)))
   (circe-channel-message-handler nick user host command args))
-
-(defun circe-generate-nick ()
-  "Generate a valid nick name for the current user.
-
-Valid nick names are at least (RFC 1459):
-
-<nick>       ::= <letter> { <letter> | <number> | <special> }
-<special>    ::= '-' | '[' | ']' | '\' | '`' | '^' | '{' | '}'"
-  (let ((nick (user-login-name)))
-    (if (string-match "^[a-zA-Z][a-zA-Z0-9]*$" nick)
-        nick
-      "circeuser")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Accessing Display Handlers ;;;
