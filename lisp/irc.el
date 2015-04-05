@@ -331,47 +331,99 @@ they do not contain a space."
                " ")))
 
 (defun irc-send-AUTHENTICATE (conn arg)
-  "Send an AUTHENTICATE message."
+  "Send an AUTHENTICATE message with ARG.
+
+See https://github.com/atheme/charybdis/blob/master/doc/sasl.txt
+for details."
   (irc-send-command conn "AUTHENTICATE" arg))
 
-;; irc-send-AWAY conn &optional text
+(defun irc-send-AWAY (conn &optional reason)
+  "Mark yourself as AWAY with reason REASON, or back if reason is nil."
+  (if reason
+      (irc-send-command conn "AWAY" reason)
+    (irc-send-command conn "AWAY")))
 
 (defun irc-send-CAP (conn &rest args)
-  "Send a CAP message."
+  "Send a CAP message.
+
+See https://tools.ietf.org/html/draft-mitchell-irc-capabilities-01
+for details."
   (apply #'irc-send-command conn "CAP" args))
 
-;; irc-send-INVITE conn nickname channel
-;; irc-send-JOIN conn channel-list &optional key-list
-;; irc-send-NAMES conn &optional channel-list target
+(defun irc-send-INVITE (conn nick channel)
+  "Invite NICK to CHANNEL."
+  (irc-send-command conn "INVITE" nick channel))
+
+(defun irc-send-JOIN (conn channel &optional key)
+  "Join CHANNEL.
+
+If KEY is given, use it to join the password-protected channel."
+  (if key
+      (irc-send-command conn "JOIN" channel key)
+    (irc-send-command conn "JOIN" channel)))
+
+(defun irc-send-NAMES (conn &optional channel)
+  "Retrieve user names from the server, optionally limited to CHANNEL."
+  (if channel
+      (irc-send-command conn "NAMES" channel)
+    (irc-send-command conn "NAMES")))
 
 (defun irc-send-NICK (conn nick)
-  "Send a NICK message."
+  "Change your own nick to NICK."
   (irc-send-command conn "NICK" nick))
 
-;; irc-send-PART conn channel-list part-message
+(defun irc-send-NOTICE (conn msgtarget text-to-be-sent)
+  "Send a private notice containing TEXT-TO-BE-SENT to MSGTARGET.
+
+MSGTARGET can be either a nick or a channel."
+  (irc-send-command conn "NOTICE" msgtarget text-to-be-sent))
+
+(defun irc-send-PART (conn channel reason)
+  "Leave CHANNEL with reason REASON."
+  (irc-send-command conn "PART" channel reason))
 
 (defun irc-send-PASS (conn password)
-  "Send a PASS message."
+  "Authenticate to the server using PASSWORD."
   (irc-send-command conn "PASS" password))
 
 (defun irc-send-PONG (conn server &optional server2)
-  "Send a PONG message."
+  "Respond to a PING message."
   (if server2
       (irc-send-command conn "PONG" server server2)
     (irc-send-command conn "PONG" server)))
 
-;; irc-send-PRIVMSG conn msgtarget text-to-be-sent
-;; irc-send-QUIT conn quit-message
-;; irc-send-TOPIC conn channel &optional topic
+(defun irc-send-PRIVMSG (conn msgtarget text-to-be-sent)
+  "Send a private message containing TEXT-TO-BE-SENT to MSGTARGET.
+
+MSGTARGET can be either a nick or a channel."
+  (irc-send-command conn "PRIVMSG" msgtarget text-to-be-sent))
+
+(defun irc-send-QUIT (conn reason)
+  "Leave IRC with reason REASON."
+  (irc-send-command conn "QUIT" reason))
+
+(defun irc-send-TOPIC (conn channel &optional new-topic)
+  "Retrieve or set the topic of CHANNEL
+
+If NEW-TOPIC is given, set this as the new topic. If it is
+omitted, retrieve the current topic."
+  (if new-topic
+      (irc-send-command conn "TOPIC" channel new-topic)
+    (irc-send-command conn "TOPIC" channel)))
 
 (defun irc-send-USER (conn user mode realname)
-  "Send a USER message.
+  "Send a USER message for registration.
 
 MODE should be an integer as per RFC 2812"
   (irc-send-command conn "USER" user (format "%s" mode) "*" realname))
 
-;; irc-send-WHOIS conn target mask-list
-;; irc-send-WHOWAS conn nickname-list &optional count target
+(defun irc-send-WHOIS (conn target)
+  "Retrieve current whois information on TARGET."
+  (irc-send-command conn "WHOIS" target))
+
+(defun irc-send-WHOWAS (conn target)
+  "Retrieve past whois information on TARGET."
+  (irc-send-command conn "WHOWAS" target))
 
 ;;;;;;;;;;;;;;;
 ;;; Debug stuff

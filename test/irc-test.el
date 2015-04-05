@@ -393,6 +393,21 @@
               :to-have-been-called-with
               'proc "AUTHENTICATE 1234567890abcdef")))
 
+  (describe "`irc-send-AUTHENTICATE'"
+    (it "should send an AWAY message with reason"
+      (irc-send-AWAY 'proc "Away reason")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "AWAY :Away reason"))
+
+    (it "should send an AWAY message without reason to return"
+      (irc-send-AWAY 'proc)
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "AWAY")))
+
   (describe "`irc-send-CAP'"
     (it "should send a CAP message"
       (irc-send-CAP 'proc "LS")
@@ -401,6 +416,44 @@
               :to-have-been-called-with
               'proc "CAP LS")))
 
+  (describe "`irc-send-INVITE'"
+    (it "should send an INVITE message"
+      (irc-send-INVITE 'proc "nick" "#channel")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "INVITE nick #channel")))
+
+  (describe "`irc-send-JOIN'"
+    (it "should send a normal JOIN"
+      (irc-send-JOIN 'proc "#channel")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "JOIN #channel"))
+
+    (it "should send a JOIN with key"
+      (irc-send-JOIN 'proc "#channel" "secret key")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "JOIN #channel :secret key")))
+
+  (describe "`irc-send-NAMES'"
+    (it "should send a NAMES message with no arguments"
+      (irc-send-NAMES 'proc)
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "NAMES"))
+
+    (it "should send a NAMES message with a channel argument"
+      (irc-send-NAMES 'proc "#channel")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "NAMES #channel")))
+
   (describe "`irc-send-NICK'"
     (it "should send a NICK message"
       (irc-send-NICK 'proc "New_Nick")
@@ -408,6 +461,22 @@
       (expect 'irc-send-raw
               :to-have-been-called-with
               'proc "NICK New_Nick")))
+
+  (describe "`irc-send-NOTICE'"
+    (it "should send a NOTICE message"
+      (irc-send-NOTICE 'proc "#channel" "Hello, World")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "NOTICE #channel :Hello, World")))
+
+  (describe "`irc-send-PART'"
+    (it "should send a PART message"
+      (irc-send-PART 'proc "#channel" "the reason")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "PART #channel :the reason")))
 
   (describe "`irc-send-PASS'"
     (it "should send a PASS message"
@@ -432,13 +501,60 @@
               :to-have-been-called-with
               'proc "PONG server1 server2")))
 
+  (describe "`irc-send-PRIVMSG'"
+    (it "should send a PRIVMSG message"
+      (irc-send-PRIVMSG 'proc "#channel" "Hello, World")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "PRIVMSG #channel :Hello, World")))
+
+  (describe "`irc-send-QUIT'"
+    (it "should send a QUIT message"
+      (irc-send-QUIT 'proc "the reason")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "QUIT :the reason")))
+
+  (describe "`irc-send-TOPIC'"
+    (it "should retrieve a TOPIC with no new topic"
+      (irc-send-TOPIC 'proc "#channel")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "TOPIC #channel"))
+
+    (it "should set a TOPIC with new topic argument"
+      (irc-send-TOPIC 'proc "#channel" "new topic")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "TOPIC #channel :new topic")))
+
   (describe "`irc-send-USER'"
     (it "should send a USER message"
       (irc-send-USER 'proc "username" 8 "My Real Name (honest)")
 
       (expect 'irc-send-raw
               :to-have-been-called-with
-              'proc "USER username 8 * :My Real Name (honest)"))))
+              'proc "USER username 8 * :My Real Name (honest)")))
+
+  (describe "`irc-send-WHOIS'"
+    (it "should send a WHOIS message"
+      (irc-send-WHOIS 'proc "user")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "WHOIS user")))
+
+  (describe "`irc-send-WHOWAS'"
+    (it "should send a WHOWAS message"
+      (irc-send-WHOWAS 'proc "user")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "WHOWAS user"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Registration
