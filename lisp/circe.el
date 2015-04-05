@@ -2062,7 +2062,7 @@ parts that each are not longer than `circe-split-line-length'."
                    :nick (circe-server-nick))
     (irc-send-PRIVMSG (circe-server-process)
                       circe-chat-target
-                      (format "\x01ACTION %s\x01" line))))
+                      (format "\C-aACTION %s\C-a" line))))
 
 (defun circe-command-MSG (who &optional what)
   "Send a message.
@@ -2157,7 +2157,7 @@ Arguments are IGNORED."
   (interactive "sWho: ")
   (irc-send-PRIVMSG (circe-server-process)
                     target
-                    (format "\x01PING %s\x01" (float-time))))
+                    (format "\C-aPING %s\C-a" (float-time))))
 
 (defun circe-command-QUOTE (line)
   "Send LINE verbatim to the server."
@@ -2181,7 +2181,7 @@ If ARGUMENT is nil, it is interpreted as no argument."
   (when (not (string= "" command))
     (irc-send-PRIVMSG (circe-server-process)
                       who
-                      (format "\x01%s%s\x01"
+                      (format "\C-a%s%s\C-a"
                               command
                               (if (or (null argument)
                                        (string= argument ""))
@@ -2827,7 +2827,7 @@ as arguments."
     (irc-send-NOTICE
      (circe-server-process)
      nick
-     (format "\x01VERSION Circe: Client for IRC in Emacs, version %s\x01"
+     (format "\C-aVERSION Circe: Client for IRC in Emacs, version %s\C-a"
              circe-version))))
 
 (circe-add-message-handler "CTCP-PING" 'circe-ctcp-PING-handler)
@@ -2839,7 +2839,7 @@ as arguments."
   (when (not (circe-message-option 'dont-reply))
     (irc-send-NOTICE (circe-server-process)
                      nick
-                     (format "\x01PING %x\01" (cadr args)))))
+                     (format "\C-aPING %x\01" (cadr args)))))
 
 (circe-set-display-handler "CTCP-PING" 'circe-ctcp-display-PING)
 (defun circe-ctcp-display-PING (nick user host command args)
@@ -2923,7 +2923,7 @@ as arguments."
                circe-message-handler-table)
       (irc-send-NOTICE (circe-server-process)
                        nick
-                       (format "\x01CLIENTINFO %s\x01"
+                       (format "\C-aCLIENTINFO %s\C-a"
                                (mapconcat #'identity
                                           (sort ctcps #'string<)
                                           " "))))))
@@ -2938,7 +2938,7 @@ as arguments."
   (when (not (circe-message-option 'dont-reply))
     (irc-send-NOTICE (circe-server-process)
                      nick
-                     (format "\x01SOURCE %s\x01"
+                     (format "\C-aSOURCE %s\C-a"
                              circe-source-url))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
