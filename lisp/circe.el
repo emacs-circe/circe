@@ -1077,25 +1077,13 @@ server's chat buffers."
          (setq result (cons buf result)))))
    (nreverse result)))
 
-;; Yes, this does not work for the RFC 1459 encoding, but that is
-;; being phased out. Hopefully. And problems should be rare.
 (defun circe-server-my-nick-p (nick)
   "Return non-nil when NICK is our current nick."
-  (with-circe-server-buffer
-    (eq t
-        (compare-strings nick nil nil
-                         circe-server-nick nil nil
-                         t))))
-
-(defun circe-server-set-my-nick (newnick)
-  "Set our current nick to NEWNICK."
-  (with-circe-server-buffer
-    (setq circe-server-nick newnick)))
+  (irc-current-nick-p (circe-server-process) nick))
 
 (defun circe-server-nick ()
   "Return our current nick."
-  (with-circe-server-buffer
-    circe-server-nick))
+  (irc-current-nick (circe-server-process)))
 
 (defun circe-nick-next (oldnick)
   "Return a new nick to try for OLDNICK."
@@ -1211,46 +1199,48 @@ This is used by Circe to know where to put spurious messages."
   (goto-char (or (text-property-any (point-min) (point-max)
                                     'lui-format-argument 'body)
                  (point-min)))
-  ;; Can't use \<...\> because that won't match for \<forcer-\>
-  ;; We might eventually use \_< ... \_> if we define symbols
-  ;; to be nicks
-  ;; \\= is necessary, because it might be found right where we are,
-  ;; and that might not be the beginning of a line... (We start
-  ;; searching from the beginning of the body)
-  (let ((nick-regex (concat "\\(?:^\\|\\W\\|\\=\\)"
-                            "\\(" (regexp-quote (circe-server-nick)) "\\)"
-                            "\\(?:$\\|\\W\\)")))
-    (cond
-     ((eq circe-highlight-nick-type 'sender)
-      (if (text-property-any (point-min)
-                             (point-max)
-                             'face 'circe-originator-face)
-          (when (re-search-forward nick-regex nil t)
-            (circe-highlight-extend-properties
-             (point-min) (point-max)
-             'face 'circe-originator-face
-             '(face circe-highlight-nick-face)))
-        (let ((circe-highlight-nick-type 'occurrence))
-          (circe-highlight-nick))))
-     ((eq circe-highlight-nick-type 'occurrence)
-      (while (re-search-forward nick-regex nil t)
-        (add-text-properties (match-beginning 1)
-                             (match-end 1)
-                             '(face circe-highlight-nick-face))))
-     ((eq circe-highlight-nick-type 'message)
-      (when (re-search-forward nick-regex nil t)
-        (let* ((start (text-property-any (point-min)
-                                         (point-max)
-                                         'lui-format-argument 'body))
-               (end (when start
-                      (next-single-property-change start 'lui-format-argument))))
-          (when (and start end)
-            (add-text-properties start end '(face circe-highlight-nick-face))))))
-     ((eq circe-highlight-nick-type 'all)
-      (when (re-search-forward nick-regex nil t)
-        (add-text-properties (point-min)
-                             (point-max)
-                             '(face circe-highlight-nick-face)))))))
+  (when (circe-server-nick)
+    ;; Can't use \<...\> because that won't match for \<forcer-\> We
+    ;; might eventually use \_< ... \_> if we define symbols to be
+    ;; nicks \\= is necessary, because it might be found right where we
+    ;; are, and that might not be the beginning of a line... (We start
+    ;; searching from the beginning of the body)
+    (let ((nick-regex (concat "\\(?:^\\|\\W\\|\\=\\)"
+                              "\\(" (regexp-quote (circe-server-nick)) "\\)"
+                              "\\(?:$\\|\\W\\)")))
+      (cond
+       ((eq circe-highlight-nick-type 'sender)
+        (if (text-property-any (point-min)
+                               (point-max)
+                               'face 'circe-originator-face)
+            (when (re-search-forward nick-regex nil t)
+              (circe-highlight-extend-properties
+               (point-min) (point-max)
+               'face 'circe-originator-face
+               '(face circe-highlight-nick-face)))
+          (let ((circe-highlight-nick-type 'occurrence))
+            (circe-highlight-nick))))
+       ((eq circe-highlight-nick-type 'occurrence)
+        (while (re-search-forward nick-regex nil t)
+          (add-text-properties (match-beginning 1)
+                               (match-end 1)
+                               '(face circe-highlight-nick-face))))
+       ((eq circe-highlight-nick-type 'message)
+        (when (re-search-forward nick-regex nil t)
+          (let* ((start (text-property-any (point-min)
+                                           (point-max)
+                                           'lui-format-argument 'body))
+                 (end (when start
+                        (next-single-property-change start
+                                                     'lui-format-argument))))
+            (when (and start end)
+              (add-text-properties start end
+                                   '(face circe-highlight-nick-face))))))
+       ((eq circe-highlight-nick-type 'all)
+        (when (re-search-forward nick-regex nil t)
+          (add-text-properties (point-min)
+                               (point-max)
+                               '(face circe-highlight-nick-face))))))))
 
 (defun circe-highlight-extend-properties (from to prop val properties)
   "Extend property values.
@@ -1725,8 +1715,7 @@ Return DEFAULT if no option is set or the nick is not known."
     nicks))
 
 (defun circe-channel-parse-names (name-string)
-  "Parse the NAMES reply in NAME-STRING.
-This uses `circe-server-nick-prefixes'."
+  "Parse the NAMES reply in NAME-STRING."
   (with-circe-server-buffer
     (mapcar (lambda (nick)
               (irc-nick-without-prefix circe-server-process nick))
@@ -2457,10 +2446,6 @@ This does mandatory client-side bookkeeping of the server state.
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (cond
-   ;; Remember my nick
-   ((and (string= command "NICK")
-         (circe-server-my-nick-p nick))
-    (circe-server-set-my-nick (car args)))
    ;; Quitting
    ((string= command "QUIT")
     (when (circe-server-my-nick-p nick)
@@ -2476,7 +2461,6 @@ as arguments."
                                      'circe-channel-mode))))
    ;; Initialization
    ((string= command "001")             ; RPL_WELCOME
-    (circe-server-set-my-nick (car args))
     (setq circe-server-reconnect-attempts 0)
     (run-hooks 'circe-server-connected-hook))
    ;; If we didn't get our nick yet...
