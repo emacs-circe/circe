@@ -1,1 +1,0 @@
-;; -*-lexical-binding: t-*-
