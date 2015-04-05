@@ -746,7 +746,7 @@
       (irc-handle-isupport table))
 
     (it "should set the :isupport connection option"
-      (irc-event-emit proc "005" "irc.server" "mynick" "WITHARG=# NOARG")
+      (irc-event-emit proc "005" "irc.server" "mynick" "WITHARG=#" "NOARG")
 
       (expect (irc-isupport proc "WITHARG")
               :to-equal

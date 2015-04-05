@@ -558,11 +558,11 @@ Connection options set:
   "Add command handlers to track 005 RPL_ISUPPORT capabilities."
   (irc-handler-add table "005" #'irc-handle-isupport--005))
 
-(defun irc-handle-isupport--005 (conn event sender target text)
+(defun irc-handle-isupport--005 (conn event sender target &rest args)
   (irc-connection-put
    conn :isupport
    (append (irc-connection-get conn :isupport)
-           (irc-handle-isupport--capabilities-to-alist text))))
+           (irc-handle-isupport--capabilities-to-alist args))))
 
 (defun irc-handle-isupport--capabilities-to-alist (capabilities)
   (mapcar (lambda (cap)
@@ -570,7 +570,7 @@ Connection options set:
                 (cons (match-string 1 cap)
                       (match-string 2 cap))
               (cons cap t)))
-          (split-string capabilities " ")))
+          capabilities))
 
 (defun irc-isupport (conn capability)
   "Return the value of CAPABILITY of CONN.
