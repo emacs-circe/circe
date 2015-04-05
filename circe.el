@@ -969,6 +969,10 @@ See `circe-server-max-reconnect-attempts'.")
                           (funcall circe-sasl-password
                                    circe-server-name)
                         circe-sasl-password)
+       :ctcp-version (format "Circe: Client for IRC in Emacs, version %s"
+                             circe-version)
+       :ctcp-source circe-source-url
+       :ctcp-clientinfo "CLIENTINFO PING SOURCE TIME VERSION"
        ))))
 
 (defun circe-reconnect-all ()
@@ -2016,9 +2020,9 @@ parts that each are not longer than `circe-split-line-length'."
     (circe-display 'circe-format-self-action
                    :body line
                    :nick (circe-server-nick))
-    (irc-send-PRIVMSG (circe-server-process)
-                      circe-chat-target
-                      (format "\C-aACTION %s\C-a" line))))
+    (irc-send-ctcp (circe-server-process)
+                   circe-chat-target
+                   "ACTION" line)))
 
 (defun circe-command-MSG (who &optional what)
   "Send a message.
@@ -2111,9 +2115,9 @@ Arguments are IGNORED."
 (defun circe-command-PING (target)
   "Send a CTCP PING request to TARGET."
   (interactive "sWho: ")
-  (irc-send-PRIVMSG (circe-server-process)
-                    target
-                    (format "\C-aPING %s\C-a" (float-time))))
+  (irc-send-ctcp (circe-server-process)
+                 target
+                 "PING" (format "%s" (float-time))))
 
 (defun circe-command-QUOTE (line)
   "Send LINE verbatim to the server."
@@ -2135,14 +2139,12 @@ If ARGUMENT is nil, it is interpreted as no argument."
               who (match-string 1 who))
       (circe-server-message "Usage: /CTCP <who> <what>")))
   (when (not (string= "" command))
-    (irc-send-PRIVMSG (circe-server-process)
-                      who
-                      (format "\C-a%s%s\C-a"
-                              command
-                              (if (or (null argument)
-                                       (string= argument ""))
-                                   ""
-                                 (concat " " argument))))))
+    (irc-send-ctcp (circe-server-process)
+                   who
+                   command
+                   (if (and argument (not (equal argument "")))
+                       argument
+                     nil))))
 
 (defun circe-command-AWAY (reason)
   "Set yourself away with REASON."
@@ -2748,30 +2750,10 @@ ARGS the arguments to the command."
                      :nick nick
                      :body (cadr args)))))
 
-(circe-add-message-handler "CTCP-VERSION" 'circe-ctcp-VERSION-handler)
 (circe-set-display-handler "CTCP-VERSION" 'circe-ctcp-display-general)
-(defun circe-ctcp-VERSION-handler (nick user host command args)
-  "Handle a CTCP VERSION request.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (when (not (circe-message-option 'dont-reply))
-    (irc-send-NOTICE
-     (circe-server-process)
-     nick
-     (format "\C-aVERSION Circe: Client for IRC in Emacs, version %s\C-a"
-             circe-version))))
-
-(circe-add-message-handler "CTCP-PING" 'circe-ctcp-PING-handler)
-(defun circe-ctcp-PING-handler (nick user host command args)
-  "Handle a CTCP PING request.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (when (not (circe-message-option 'dont-reply))
-    (irc-send-NOTICE (circe-server-process)
-                     nick
-                     (format "\C-aPING %x\01" (cadr args)))))
+(circe-set-display-handler "CTCP-TIME" 'circe-ctcp-display-general)
+(circe-set-display-handler "CTCP-CLIENTINFO" 'circe-ctcp-display-general)
+(circe-set-display-handler "CTCP-SOURCE" 'circe-ctcp-display-general)
 
 (circe-set-display-handler "CTCP-PING" 'circe-ctcp-display-PING)
 (defun circe-ctcp-display-PING (nick user host command args)
@@ -2813,65 +2795,6 @@ as arguments."
                                               " from %s (%s@%s): %s"
                                               nick user host
                                               (cadr args))))))))
-
-(circe-add-message-handler "CTCP-TIME" 'circe-ctcp-TIME-handler)
-(circe-set-display-handler "CTCP-TIME" 'circe-ctcp-display-general)
-(defun circe-ctcp-TIME-handler (nick user host command args)
-  "Handle a CTCP TIME request.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (when (not (circe-message-option 'dont-reply))
-    (irc-send-NOTICE
-     (circe-server-process)
-     nick
-     (if (not (= 2 (random 3)))
-         (current-time-string)
-       (condition-case nil
-           (with-temp-buffer
-             (call-process "ddate" nil (current-buffer))
-             (goto-char (point-min))
-             (while (re-search-forward "\n" nil t)
-               (replace-match " "))
-             (buffer-substring (point-min)
-                               (- (point-max)
-                                  1)))
-         (error
-          (current-time-string)))))))
-
-(circe-add-message-handler "CTCP-CLIENTINFO" 'circe-ctcp-CLIENTINFO-handler)
-(circe-set-display-handler "CTCP-CLIENTINFO" 'circe-ctcp-display-general)
-(defun circe-ctcp-CLIENTINFO-handler (nick user host command args)
-  "Handle a CTCP CLIENTINFO request, which replies with a list of
-supported CTCPs.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (when (not (circe-message-option 'dont-reply))
-    (let ((ctcps (list)))
-      (maphash #'(lambda (command _)
-                   (when (string-prefix-p "CTCP-" command)
-                     (push (substring command 5) ctcps)))
-               circe-message-handler-table)
-      (irc-send-NOTICE (circe-server-process)
-                       nick
-                       (format "\C-aCLIENTINFO %s\C-a"
-                               (mapconcat #'identity
-                                          (sort ctcps #'string<)
-                                          " "))))))
-
-(circe-add-message-handler "CTCP-SOURCE" 'circe-ctcp-SOURCE-handler)
-(circe-set-display-handler "CTCP-SOURCE" 'circe-ctcp-display-general)
-(defun circe-ctcp-SOURCE-handler (nick user host command args)
-  "Handle a CTCP SOURCE request, which replies with Circe's github url.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (when (not (circe-message-option 'dont-reply))
-    (irc-send-NOTICE (circe-server-process)
-                     nick
-                     (format "\C-aSOURCE %s\C-a"
-                             circe-source-url))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Display Handlers ;;;
