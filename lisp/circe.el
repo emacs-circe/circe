@@ -1023,19 +1023,10 @@ See `circe-server-max-reconnect-attempts'.")
           (call-interactively 'circe-reconnect)
         (circe-reconnect)))))
 
-(defun circe-server-send (string &optional forcep)
-  "Send STRING to the current server.
-If FORCEP is non-nil, no flood protection is done - the string is
-sent directly. This might cause the messages to arrive in a wrong
-order.
-
-See `irc-send-raw' for an explanation of the flood protection
-algorithm."
+(defun circe-server-process ()
+  "Return the current server process."
   (with-circe-server-buffer
-    (irc-send-raw circe-server-process string
-                  (if forcep
-                      :nowait
-                    nil))))
+    circe-server-process))
 
 (defun circe-buffer-killed ()
   "The current buffer is being killed. Do the necessary bookkeeping for circe."
@@ -1060,7 +1051,7 @@ server's chat buffers."
       (error "Buffer not killed as per user request")))
   (setq circe-server-quitting-p t)
   (ignore-errors
-    (circe-server-send (concat "QUIT :" circe-default-quit-message)))
+    (irc-send-QUIT circe-server-process circe-default-quit-message))
   (ignore-errors
     (delete-process circe-server-process))
   (when (eq circe-server-killed-confirmation 'ask-and-kill-all)
@@ -1436,9 +1427,10 @@ SERVER-BUFFER is the server buffer of this chat buffer."
        (handler
         (funcall handler args))
        (circe-server-send-unknown-command-p
-        (circe-server-send (format "%s %s"
-                                   (upcase command)
-                                   args)))
+        (irc-send-raw (circe-server-process)
+                      (format "%s %s"
+                              (upcase command)
+                              args)))
        (t
         (circe-server-message (format "Unknown command: %s"
                                       command))))))
@@ -1524,10 +1516,10 @@ state."
       (error "Channel not left."))
     (when (circe-channel-user-p (circe-server-nick))
       (ignore-errors
-        (circe-server-send (format "PART %s :%s"
-                                   circe-chat-target
-                                   circe-default-part-message))))
-    (circe-server-remove-chat-buffer circe-chat-target)))
+        (irc-send-PART (circe-server-process)
+                       circe-chat-target
+                       circe-default-part-message))))
+    (circe-server-remove-chat-buffer circe-chat-target))
 
 (defvar circe-channel-receiving-names nil
   "A hash when we're currently receving a NAMES list. nil if not.")
@@ -2048,15 +2040,13 @@ See `minibuffer-completion-table' for details."
       (circe-display 'circe-format-self-say
                      :body line
                      :nick (circe-server-nick))
-      (circe-server-send (format "PRIVMSG %s :%s"
-                                 circe-chat-target
-                                 ;; Some IRC servers give an
-                                 ;; error if there is no text
-                                 ;; after the colon.
-                                 (if (string= line "")
-                                     " "
-                                   line)))
-          )))
+      (irc-send-PRIVMSG (circe-server-process)
+                        circe-chat-target
+                        ;; Some IRC servers give an error if there is
+                        ;; no text at all.
+                        (if (string= line "")
+                            " "
+                          line)))))
 
 (defun circe-split-line (longline)
   "Splits LONGLINE into smaller components.
@@ -2081,8 +2071,9 @@ parts that each are not longer than `circe-split-line-length'."
     (circe-display 'circe-format-self-action
                    :body line
                    :nick (circe-server-nick))
-    (circe-server-send (format "PRIVMSG %s :\C-aACTION %s\C-a"
-                               circe-chat-target line))))
+    (irc-send-PRIVMSG (circe-server-process)
+                      circe-chat-target
+                      (format "\x01ACTION %s\x01" line))))
 
 (defun circe-command-MSG (who &optional what)
   "Send a message.
@@ -2104,7 +2095,8 @@ message separated by a space."
             (ring-insert lui-input-ring what) ; Horrible breakage of abstraction!
             )
         (with-current-buffer (circe-server-last-active-buffer)
-          (circe-server-send (format "PRIVMSG %s :%s" who what))
+          (irc-send-PRIVMSG (circe-server-process)
+                            who what)
           (circe-display 'circe-format-self-message
                          :target who
                          :body what))))))
@@ -2124,63 +2116,64 @@ message separated by a space."
         (channel (string-trim channel)))
     (pop-to-buffer
      (circe-server-get-chat-buffer channel 'circe-channel-mode))
-    (circe-server-send (format "JOIN %s" channel))))
+    (irc-send-JOIN (circe-server-process) channel)))
 
 (defun circe-command-PART (reason)
   "Part the current channel because of REASON."
   (interactive "sReason: ")
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
-    (circe-server-send (format "PART %s :%s"
-                               circe-chat-target
-                               (if (equal "" reason)
-                                   circe-default-part-message
-                                 reason)))))
+    (irc-send-PART (circe-server-process)
+                   circe-chat-target
+                   (if (equal "" reason)
+                       circe-default-part-message
+                     reason))))
 
 (defun circe-command-WHOIS (whom)
   "Request WHOIS information about WHOM."
   (interactive "sWhois: ")
-  (circe-server-send (format "WHOIS %s" whom)))
+  (irc-send-WHOIS (circe-server-process) whom))
 
 (defun circe-command-WHOWAS (whom)
   "Request WHOWAS information about WHOM."
   (interactive "sWhois: ")
-  (circe-server-send (format "WHOWAS %s" whom)))
+  (irc-send-WHOWAS (circe-server-process) whom))
 
 (defun circe-command-WHOAMI (&optional ignored)
   "Request WHOIS information about yourself.
 
 Arguments are IGNORED."
   (interactive "sWhois: ")
-  (circe-server-send (format "WHOIS %s" (circe-server-nick))))
+  (irc-send-WHOIS (circe-server-process)
+                  (circe-server-nick)))
 
 (defun circe-command-NICK (newnick)
   "Change nick to NEWNICK."
   (interactive "sNew nick: ")
-  (circe-server-send (format "NICK %s" newnick)))
+  (irc-send-NICK (circe-server-process) newnick))
 
 (defun circe-command-NAMES (&optional channel)
   "List the names of the current channel or CHANNEL."
   (interactive)
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
-    (circe-server-send (format "NAMES %s"
-                               (if (and channel
-                                        (string-match "[^ ]" channel))
-                                   channel
-                                 circe-chat-target)))))
+    (irc-send-NAMES (circe-server-process)
+                    (if (and channel
+                             (string-match "[^ ]" channel))
+                        channel
+                      circe-chat-target))))
 
 (defun circe-command-PING (target)
   "Send a CTCP PING request to TARGET."
   (interactive "sWho: ")
-  (circe-server-send (format "PRIVMSG %s :\C-aPING %s\C-a"
-                             target
-                             (float-time))))
+  (irc-send-PRIVMSG (circe-server-process)
+                    target
+                    (format "\x01PING %s\x01" (float-time))))
 
 (defun circe-command-QUOTE (line)
   "Send LINE verbatim to the server."
   (interactive "Line: ")
-  (circe-server-send line)
+  (irc-send-raw (circe-server-process) line)
   (with-current-buffer (circe-server-last-active-buffer)
     (circe-server-message (format "Sent to server: %s"
                                   line))))
@@ -2197,10 +2190,11 @@ If ARGUMENT is nil, it is interpreted as no argument."
               who (match-string 1 who))
       (circe-server-message "Usage: /CTCP <who> <what>")))
   (when (not (string= "" command))
-    (circe-server-send (format "PRIVMSG %s :\C-a%s%s\C-a"
-                               who
-                               command
-                               (if (or (null argument)
+    (irc-send-PRIVMSG (circe-server-process)
+                      who
+                      (format "\x01%s%s\x01"
+                              command
+                              (if (or (null argument)
                                        (string= argument ""))
                                    ""
                                  (concat " " argument))))))
@@ -2208,23 +2202,24 @@ If ARGUMENT is nil, it is interpreted as no argument."
 (defun circe-command-AWAY (reason)
   "Set yourself away with REASON."
   (interactive "sReason: ")
-  (circe-server-send (format "AWAY :%s" reason)))
+  (irc-send-AWAY (circe-server-process) reason))
 
 (defun circe-command-BACK (&optional ignored)
   "Mark yourself not away anymore.
 
 Arguments are IGNORED."
   (interactive)
-  (circe-server-send "AWAY"))
+  (irc-send-AWAY (circe-server-process)))
 
 (defun circe-command-QUIT (reason)
   "Quit the current server giving REASON."
   (interactive "sReason: ")
   (with-circe-server-buffer
     (setq circe-server-quitting-p t)
-    (circe-server-send (format "QUIT :%s" (if (equal "" reason)
-                                              circe-default-quit-message
-                                            reason)))))
+    (irc-send-QUIT (circe-server-process)
+                   (if (equal "" reason)
+                       circe-default-quit-message
+                     reason))))
 
 (defun circe-command-GAWAY (reason)
   "Set yourself away on all servers with reason REASON."
@@ -2233,7 +2228,7 @@ Arguments are IGNORED."
     (with-current-buffer buf
       (when (eq (process-status circe-server-process)
                 'open)
-        (circe-command-AWAY reason)))))
+        (irc-send-AWAY circe-server-process reason)))))
 
 (defun circe-command-GQUIT (reason)
   "Quit all servers with reason REASON."
@@ -2242,7 +2237,7 @@ Arguments are IGNORED."
     (with-current-buffer buf
       (when (eq (process-status circe-server-process)
                 'open)
-        (circe-command-QUIT reason)))))
+        (irc-send-QUIT circe-server-process reason)))))
 
 (defun circe-command-INVITE (nick &optional channel)
   "Invite NICK to CHANNEL.
@@ -2255,11 +2250,12 @@ consisting of two words, the nick and the channel."
               nick (match-string 1 nick))
       (when (or (string= "" nick) (null nick))
         (circe-server-message "Usage: /INVITE <nick> <channel>"))))
-  (circe-server-send (format "INVITE %s %s" nick
-                             (if (and (null channel)
-                                      (not (null nick)))
-                                 circe-chat-target
-                               channel))))
+  (irc-send-INVITE (circe-server-process)
+                   nick
+                   (if (and (null channel)
+                            (not (null nick)))
+                       circe-chat-target
+                     channel)))
 
 (defun circe-command-SV (&optional ignored)
   "Tell the current channel about your client and Emacs version.
@@ -2488,13 +2484,13 @@ as arguments."
                   'registered))
          (or (string= command "433")   ; ERR_NICKNAMEINUSE
              (string= command "437"))) ; ERR_UNAVAILRESOURCE
-    (circe-server-send (format "NICK %s" (funcall circe-nick-next-function
-                                                  (cadr args)))))
+    (irc-send-NICK circe-server-process (funcall circe-nick-next-function
+                                                 (cadr args))))
    ;; The nick we're trying to use is not valid
    ((and (not (eq (irc-connection-state circe-server-process)
                   'registered))
          (string= command "432"))  ; ERR_ERRONEOUSNICKNAME
-    (circe-server-send (format "NICK %s" (circe-generate-nick)))))
+    (irc-send-NICK circe-server-process (circe-generate-nick))))
   (circe-channel-message-handler nick user host command args))
 
 (defun circe-generate-nick ()
@@ -2844,11 +2840,11 @@ ARGS the arguments to the command."
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (when (not (circe-message-option 'dont-reply))
-    (circe-server-send
-     (format (concat "NOTICE %s :\C-aVERSION Circe: Client for IRC in Emacs, "
-                     "version %s\C-a")
-             nick circe-version))))
-
+    (irc-send-NOTICE
+     (circe-server-process)
+     nick
+     (format "\x01VERSION Circe: Client for IRC in Emacs, version %s\x01"
+             circe-version))))
 
 (circe-add-message-handler "CTCP-PING" 'circe-ctcp-PING-handler)
 (defun circe-ctcp-PING-handler (nick user host command args)
@@ -2857,8 +2853,9 @@ as arguments."
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (when (not (circe-message-option 'dont-reply))
-    (circe-server-send (format "NOTICE %s :\C-aPING %s\C-a"
-                               nick (cadr args)))))
+    (irc-send-NOTICE (circe-server-process)
+                     nick
+                     (format "\x01PING %x\01" (cadr args)))))
 
 (circe-set-display-handler "CTCP-PING" 'circe-ctcp-display-PING)
 (defun circe-ctcp-display-PING (nick user host command args)
@@ -2909,22 +2906,22 @@ as arguments."
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (when (not (circe-message-option 'dont-reply))
-    (circe-server-send
-     (format "NOTICE %s :\C-aTIME %s\C-a"
-             nick
-             (if (not (= 2 (random 3)))
-                 (current-time-string)
-               (condition-case nil
-                   (with-temp-buffer
-                     (call-process "ddate" nil (current-buffer))
-                     (goto-char (point-min))
-                     (while (re-search-forward "\n" nil t)
-                       (replace-match " "))
-                     (buffer-substring (point-min)
-                                       (- (point-max)
-                                          1)))
-                 (error
-                  (current-time-string))))))))
+    (irc-send-NOTICE
+     (circe-server-process)
+     nick
+     (if (not (= 2 (random 3)))
+         (current-time-string)
+       (condition-case nil
+           (with-temp-buffer
+             (call-process "ddate" nil (current-buffer))
+             (goto-char (point-min))
+             (while (re-search-forward "\n" nil t)
+               (replace-match " "))
+             (buffer-substring (point-min)
+                               (- (point-max)
+                                  1)))
+         (error
+          (current-time-string)))))))
 
 (circe-add-message-handler "CTCP-CLIENTINFO" 'circe-ctcp-CLIENTINFO-handler)
 (circe-set-display-handler "CTCP-CLIENTINFO" 'circe-ctcp-display-general)
@@ -2940,9 +2937,12 @@ as arguments."
                    (when (string-prefix-p "CTCP-" command)
                      (push (substring command 5) ctcps)))
                circe-message-handler-table)
-      (circe-server-send
-       (format "NOTICE %s :\C-aCLIENTINFO %s\C-a"
-               nick (mapconcat #'identity (sort ctcps #'string<) " "))))))
+      (irc-send-NOTICE (circe-server-process)
+                       nick
+                       (format "\x01CLIENTINFO %s\x01"
+                               (mapconcat #'identity
+                                          (sort ctcps #'string<)
+                                          " "))))))
 
 (circe-add-message-handler "CTCP-SOURCE" 'circe-ctcp-SOURCE-handler)
 (circe-set-display-handler "CTCP-SOURCE" 'circe-ctcp-display-general)
@@ -2952,9 +2952,10 @@ as arguments."
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (when (not (circe-message-option 'dont-reply))
-    (circe-server-send
-     (format "NOTICE %s :\C-aSOURCE %s\C-a"
-               nick circe-source-url))))
+    (irc-send-NOTICE (circe-server-process)
+                     nick
+                     (format "\x01SOURCE %s\x01"
+                             circe-source-url))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Display Handlers ;;;
@@ -3568,7 +3569,7 @@ See `circe-server-auto-join-channels' for details on TYPE."
   (dolist (channel (circe-auto-join-channels type))
     (unless (circe-server-get-chat-buffer channel)
       (add-to-list 'circe-auto-joins (downcase channel)))
-    (circe-server-send (format "JOIN %s" channel))))
+    (irc-send-JOIN (circe-server-process) channel)))
 
 (defun circe-auto-join-channels (type)
   "Return a list of channels as configured for auto-join type TYPE.
@@ -3635,11 +3636,11 @@ used."
           channel (match-string 1 channel)))
   (cond
    ((and channel newtopic)
-    (circe-server-send (format "TOPIC %s :%s" channel newtopic)))
+    (irc-send-TOPIC (circe-server-process) channel newtopic))
    (channel
-    (circe-server-send (format "TOPIC %s" channel)))
+    (irc-send-TOPIC (circe-server-process) channel))
    (circe-chat-target
-    (circe-server-send (format "TOPIC %s" circe-chat-target)))
+    (irc-send-TOPIC (circe-server-process) circe-chat-target))
    (t
     (circe-server-message "No channel given, and no default target."))))
 
@@ -3830,12 +3831,14 @@ pass an argument to the `circe' function for this.")
     (when (and circe-nickserv-identify-command
                circe-nickserv-nick
                circe-nickserv-password)
-      (circe-server-send (lui-format circe-nickserv-identify-command
-                                     :nick circe-nickserv-nick
-                                     :password (if (functionp circe-nickserv-password)
-                                                   (funcall circe-nickserv-password
-                                                            circe-nickserv-nick)
-                                                 circe-nickserv-password))))))
+      (irc-send-raw
+       (circe-server-process)
+       (lui-format circe-nickserv-identify-command
+                   :nick circe-nickserv-nick
+                   :password (if (functionp circe-nickserv-password)
+                                 (funcall circe-nickserv-password
+                                          circe-nickserv-nick)
+                               circe-nickserv-password))))))
 
 (defun circe-nickserv-ghost ()
   "Regain/reclaim/ghost your nick if necessary."
@@ -3843,9 +3846,11 @@ pass an argument to the `circe' function for this.")
     (when (and circe-nickserv-ghost-command
                circe-nickserv-nick
                circe-nickserv-password)
-      (circe-server-send (lui-format circe-nickserv-ghost-command
-                                     :nick circe-nickserv-nick
-                                     :password circe-nickserv-password)))))
+      (irc-send-raw
+       (circe-server-process)
+       (lui-format circe-nickserv-ghost-command
+                   :nick circe-nickserv-nick
+                   :password circe-nickserv-password)))))
 
 (defvar circe-auto-regain-awaiting-nick-change nil
   "Set to t when circe is awaiting confirmation for a regain request.")
