@@ -371,19 +371,6 @@ it will try to reconnect forever (not recommended)."
   :type 'integer
   :group 'circe)
 
-(defcustom circe-server-coding-system (if (and (fboundp 'coding-system-p)
-                                               (coding-system-p 'undecided)
-                                               (coding-system-p 'utf-8))
-                                          '(utf-8 . undecided)
-                                        nil)
-  "Coding systems to use for IRC.
-This is either a coding system, which is then used both for
-encoding and decoding, or a cons cell with the encoding in the
-car and the decoding coding system in the cdr."
-  :type '(cons (coding-system :tag "Encoding")
-               (coding-system :tag "Decoding"))
-  :group 'circe)
-
 (defcustom circe-netsplit-delay 60
   "The number of seconds a netsplit may be dormant.
 If anything happens with a netsplit after this amount of time,
