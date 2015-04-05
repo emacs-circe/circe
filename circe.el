@@ -2236,6 +2236,9 @@ Arguments are IGNORED."
     (irc-handler-add table "conn.disconnected" #'circe-irc-conn-disconnected)
     (irc-handle-registration table)
     (irc-handle-ping-pong table)
+    (irc-handle-isupport table)
+    (irc-handle-current-nick-tracking table)
+    (irc-handle-initial-nick-acquisition table)
     (irc-handle-ctcp table)
     table))
 
