@@ -332,6 +332,7 @@ they do not contain a space."
         (error "IRC protocol error: Argument %S must not contain space"
                arg)))
     (when (and last (or (string-match " " (car last))
+                        (string-match "^:" (car last))
                         (equal "" (car last))))
       (setcar last (concat ":" (car last))))
     (mapconcat #'identity
@@ -712,16 +713,6 @@ Connection options set:
              (stringp current-nick))
         (irc-string-equal-p conn current-nick nick)
       nil)))
-
-;; Events caught:
-;; - 001 RPL_WELCOME => set our own nick
-;; - NICK => set our own nick
-
-;; Connection options set:
-;; - :current-nick
-
-;; irc-current-nick conn => current nick
-;; irc-current-nick-p conn string
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Initial nick acquisition

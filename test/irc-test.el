@@ -382,6 +382,13 @@
             :to-have-been-called-with
             'proc "PRIVMSG #emacs :Hello, World!"))
 
+  (it "should quote a final argument if it starts with a colon"
+    (irc-send-command 'proc "PRIVMSG" "#emacs" ":-D")
+
+    (expect 'irc-send-raw
+            :to-have-been-called-with
+            'proc "PRIVMSG #emacs ::-D"))
+
   (it "should fail if any argument is not a string"
     (expect (lambda ()
               (irc-send-command 'proc "PRIVMSG" 23 "Hi!"))
