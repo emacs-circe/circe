@@ -1,6 +1,7 @@
-.PHONY: all test release clean
+.PHONY: all test compile release clean
 
-VERSION=$(shell sed -ne 's/^;; Version: \(.*\)/\1/p' lisp/circe.el)
+EMACS ?= emacs
+VERSION=$(shell sed -ne 's/^;; Version: \(.*\)/\1/p' circe.el)
 
 all: test
 
@@ -8,11 +9,12 @@ test:
 	cask exec ert-runner -L .
 	cask exec buttercup -L .
 
+compile:
+	$(EMACS) -batch -L . -f batch-byte-compile *.el
+
 release: clean test
 	mkdir -p "dist/circe-$(VERSION)"
-	cp lisp/*.el "dist/circe-$(VERSION)/"
-	tar -C "dist" -c "circe-$(VERSION)" > "dist/circe-$(VERSION).tar"
-	rm -rf "dist/circe-$(VERSION)"
+	tar -c *.el README.md --transform "s,^,circe-$(VERSION)/," --transform 's/README.md/README.txt/' > "dist/circe-$(VERSION).tar"
 
 clean:
 	rm -rf dist
