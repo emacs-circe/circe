@@ -612,7 +612,7 @@ Otherwise, we move to the next button."
   (browse-url (format "https://www.python.org/dev/peps/pep-%04i"
                       (string-to-number number))))
 
-(defun lui-button-pep (number)
+(defun lui-button-xkcd (number)
   "Browse the xkcd NUMBER."
   (browse-url (format "https://xkcd.com/%s" number)))
 
