@@ -1317,6 +1317,14 @@ initialize a new buffer if none exists."
     map)
   "Base key map for all Circe chat buffers (channel, query).")
 
+;; Defined here as we use it, but do not necessarily want to use the
+;; full module.
+(defvar lui-logging-format-arguments nil
+  "A list of arguments to be passed to `lui-format'.
+This can be used to extend the formatting possibilities of the
+file name for lui applications.")
+(make-variable-buffer-local 'lui-logging-format-arguments)
+
 (defvar circe-chat-mode-hook nil
   "The hook run after `circe-chat-mode' is initialized.")
 
