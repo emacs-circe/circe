@@ -54,8 +54,8 @@
   "Show channel bans"
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
-    (irc-server-raw (circe-server-process)
-                    (format "MODE %s +b" circe-chat-target))))
+    (irc-send-raw (circe-server-process)
+                  (format "MODE %s +b" circe-chat-target))))
 
 (defun circe-command-KICK (nick &optional reason)
   "Kick WHO from the current channel with optional REASON."
