@@ -43,7 +43,7 @@
 
 (require 'make-tls-process)
 
-(defcustom irc-debug-log nil
+(defvar irc-debug-log nil
   "Emit protocol debug info if this is non-nil.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;
