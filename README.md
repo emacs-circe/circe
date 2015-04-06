@@ -70,7 +70,7 @@ git clone git://github.com/jorgenschaefer/circe.git
 Then add the following to your `.emacs` file:
 
 ```Lisp
-(add-to-list 'load-path "~/.emacs.d/lisp/circe/lisp")
+(add-to-list 'load-path "~/.emacs.d/lisp/circe")
 (require 'circe)
 ```
 
