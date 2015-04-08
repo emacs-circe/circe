@@ -16,3 +16,5 @@ before_install:
   - cask
 script:
   - make test
+notifications:
+  irc: "chat.freenode.net#emacs-circe"
