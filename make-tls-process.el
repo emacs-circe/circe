@@ -25,6 +25,8 @@
 
 ;;; Code:
 
+(require 'tls)
+
 (defvar tls-debug-output nil
   "Non-nil if you want to see lots of debug messages.")
 
