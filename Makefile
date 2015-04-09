@@ -10,12 +10,14 @@ test:
 	cask exec buttercup -L .
 
 test-all: clean cask
+	make test
 	make EMACS=emacs-24.1 test
 	make EMACS=emacs-24.2 test
 	make EMACS=emacs-24.3 test
 	make EMACS=emacs-24.4 test
 
 cask:
+	cask install
 	EMACS=emacs-24.1 cask install
 	EMACS=emacs-24.2 cask install
 	EMACS=emacs-24.3 cask install
@@ -24,8 +26,8 @@ cask:
 compile:
 	$(EMACS) -batch -L . -f batch-byte-compile *.el
 
-release: clean test
-	mkdir -p "dist/circe-$(VERSION)"
+release: clean test-all
+	mkdir -p "dist"
 	tar -c *.el README.md --transform "s,^,circe-$(VERSION)/," --transform 's/README.md/README.txt/' > "dist/circe-$(VERSION).tar"
 
 clean:
