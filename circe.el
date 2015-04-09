@@ -2092,12 +2092,14 @@ message separated by a space."
 (defun circe-command-WHOIS (whom)
   "Request WHOIS information about WHOM."
   (interactive "sWhois: ")
-  (irc-send-WHOIS (circe-server-process) whom))
+  (let ((whom (string-trim whom)))
+    (irc-send-WHOIS (circe-server-process) whom)))
 
 (defun circe-command-WHOWAS (whom)
   "Request WHOWAS information about WHOM."
   (interactive "sWhois: ")
-  (irc-send-WHOWAS (circe-server-process) whom))
+  (let ((whom (string-trim whom)))
+    (irc-send-WHOWAS (circe-server-process) whom)))
 
 (defun circe-command-WHOAMI (&optional ignored)
   "Request WHOIS information about yourself.
@@ -2110,25 +2112,28 @@ Arguments are IGNORED."
 (defun circe-command-NICK (newnick)
   "Change nick to NEWNICK."
   (interactive "sNew nick: ")
-  (irc-send-NICK (circe-server-process) newnick))
+  (let ((newnick (string-trim newnick)))
+    (irc-send-NICK (circe-server-process) newnick)))
 
 (defun circe-command-NAMES (&optional channel)
   "List the names of the current channel or CHANNEL."
   (interactive)
-  (if (not circe-chat-target)
-      (circe-server-message "No target for current buffer")
-    (irc-send-NAMES (circe-server-process)
-                    (if (and channel
-                             (string-match "[^ ]" channel))
-                        channel
-                      circe-chat-target))))
+  (let ((target (when channel
+                  (string-trim channel))))
+    (when (equal target "")
+      (setq target circe-chat-target))
+    (if (not target)
+        (circe-server-message "No target for current buffer")
+      (irc-send-NAMES (circe-server-process)
+                      target))))
 
 (defun circe-command-PING (target)
   "Send a CTCP PING request to TARGET."
   (interactive "sWho: ")
-  (irc-send-ctcp (circe-server-process)
-                 target
-                 "PING" (format "%s" (float-time))))
+  (let ((target (string-trim target)))
+    (irc-send-ctcp (circe-server-process)
+                   target
+                   "PING" (format "%s" (float-time)))))
 
 (defun circe-command-QUOTE (line)
   "Send LINE verbatim to the server."
