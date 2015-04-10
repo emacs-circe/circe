@@ -2120,7 +2120,8 @@ Arguments are IGNORED."
   (interactive)
   (let ((target (when channel
                   (string-trim channel))))
-    (when (equal target "")
+    (when (or (not target)
+              (equal target ""))
       (setq target circe-chat-target))
     (if (not target)
         (circe-server-message "No target for current buffer")
