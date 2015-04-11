@@ -1138,7 +1138,9 @@ which see for an explanation of the argument FUN, BEG, END and
 DELETE."
   (let ((string (funcall fun beg end delete))
         (inhibit-point-motion-hooks t)
-        (inhibit-read-only t))
+        (inhibit-read-only t)
+        ;; Emacs 24.4, 24.5
+        deactivate-mark)
     (with-temp-buffer
       (insert string)
       (let ((start (text-property-any (point-min)
