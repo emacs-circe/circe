@@ -407,6 +407,7 @@ should never be called directly.
 It can be customized for an application by specifying a
 `lui-input-function'."
   (kill-all-local-variables)
+  (auto-fill-mode 0)
   (setq major-mode 'lui-mode
         mode-name "LUI")
   (use-local-map lui-mode-map)
