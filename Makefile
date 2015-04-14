@@ -15,6 +15,7 @@ test-all: clean cask
 	make EMACS=emacs-24.2 test
 	make EMACS=emacs-24.3 test
 	make EMACS=emacs-24.4 test
+	make EMACS=emacs-24.5 test
 
 cask:
 	cask install
@@ -22,6 +23,7 @@ cask:
 	EMACS=emacs-24.2 cask install
 	EMACS=emacs-24.3 cask install
 	EMACS=emacs-24.4 cask install
+	EMACS=emacs-24.5 cask install
 
 compile:
 	$(EMACS) -batch -L . -f batch-byte-compile *.el
