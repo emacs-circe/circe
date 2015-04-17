@@ -19,7 +19,7 @@
             :to-have-been-called-with
             :name "irc.local" :host "irc.local" :service 6667
             :family nil
-            :coding '(undecided . utf-8) :nowait t :noquery t
+            :coding 'no-conversion :nowait t :noquery t
             :filter #'irc--filter :sentinel #'irc--sentinel
             :plist '(:host "irc.local" :service 6667) :keepalive t))
 
@@ -113,6 +113,13 @@
         (delete-process proc)))
 
     (it "should handle single lines"
+      (irc--filter proc "line\r\n")
+
+      (expect 'irc--handle-line
+              :to-have-been-called-with
+              proc "line"))
+
+    (it "should handle single lines even without CR"
       (irc--filter proc "line\n")
 
       (expect 'irc--handle-line
@@ -120,7 +127,7 @@
               proc "line"))
 
     (it "should handle multiple lines at once"
-      (irc--filter proc "line1\nline2\nline3\n")
+      (irc--filter proc "line1\r\nline2\r\nline3\r\n")
 
       (expect (spy-calls-all-args 'irc--handle-line)
               :to-equal
@@ -129,7 +136,7 @@
                 (,proc "line3"))))
 
     (it "should handle partial lines"
-      (irc--filter proc "line1\nli")
+      (irc--filter proc "line1\r\nli")
 
       (expect 'irc--handle-line
               :to-have-been-called-with
@@ -137,7 +144,7 @@
 
       (spy-calls-reset 'irc--handle-line)
 
-      (irc--filter proc "ne2\n")
+      (irc--filter proc "ne2\r\n")
 
       (expect 'irc--handle-line
               :to-have-been-called-with
@@ -149,9 +156,9 @@
       (spy-on 'irc--handle-line :and-call-fake
               (lambda (proc line)
                 (when (equal line "line1")
-                  (irc--filter proc "line3\n"))))
+                  (irc--filter proc "line3\r\n"))))
 
-      (irc--filter proc "line1\nline2\n")
+      (irc--filter proc "line1\r\nline2\r\n")
 
       (expect (spy-calls-all-args 'irc--handle-line)
               :to-equal
@@ -209,7 +216,18 @@
   (it "should parse a command with sender and rest argument"
     (expect (irc--parse ":sender COMMAND arg1 arg2 :arg3 still arg3")
             :to-equal
-            '("sender" "COMMAND" "arg1" "arg2" "arg3 still arg3"))))
+            '("sender" "COMMAND" "arg1" "arg2" "arg3 still arg3")))
+
+  (it "should decode arguments"
+    (expect (irc--parse "PRIVMSG #channel :m\xc3\xb6p")
+            :to-equal
+            '(nil "PRIVMSG" "#channel" "möp")))
+
+  (it "should decode arguments individually"
+    ;; This is utf-16
+    (expect (irc--parse "PRIVMSG #channel :\xff\xfe\x6d\x00\xf6\x00\x70\x00")
+            :to-equal
+            '(nil "PRIVMSG" "#channel" "möp"))))
 
 (describe "The `irc-userstring-nick' function"
   (it "should return the nick of a nick!user@host userstring"
@@ -311,7 +329,7 @@
 
      (expect 'process-send-string
              :to-have-been-called-with
-             proc "the line\n"))
+             proc "the line\r\n"))
 
    (it "should not create a timer for a single message"
      (irc-send-raw proc "the line")
@@ -327,7 +345,7 @@
      (expect (spy-context-args
               (spy-calls-most-recent 'process-send-string))
              :to-equal
-             `(,proc "line4\n")))
+             `(,proc "line4\r\n")))
 
    (it "should continue sending after a delay"
      (dolist (line '("line1" "line2" "line3"
@@ -343,7 +361,7 @@
      (expect (spy-context-args
               (spy-calls-most-recent 'process-send-string))
              :to-equal
-             `(,proc "line6\n")))
+             `(,proc "line6\r\n")))
 
    (it "should drop lines if the flood queue is full and :drop is given"
      (dolist (line '("line1" "line2" "line3"
@@ -357,7 +375,7 @@
      (expect (spy-context-args
               (spy-calls-most-recent 'process-send-string))
              :to-equal
-             `(,proc "line6\n")))
+             `(,proc "line6\r\n")))
 
    (it "should send items immediately if :nowait is given"
      (dolist (line '("line1" "line2" "line3"
@@ -369,7 +387,14 @@
      (expect (spy-context-args
               (spy-calls-most-recent 'process-send-string))
              :to-equal
-             `(,proc "priority\n")))))
+             `(,proc "priority\r\n")))
+
+   (it "should encode strings being sent as utf-8"
+     (irc-send-raw proc "möp")
+
+     (expect 'process-send-string
+             :to-have-been-called-with
+             proc "m\xc3\xb6p\r\n"))))
 
 (describe "The `irc-send-command'"
   (before-each

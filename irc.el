@@ -79,7 +79,7 @@ COMMAND conn sender args... -- An IRC command message was received"
            :service (or (plist-get keywords :service)
                         (error "Must specify a :service to connect to"))
            :family (plist-get keywords :family)
-           :coding '(undecided . utf-8)
+           :coding 'no-conversion
            :nowait t
            :noquery t
            :filter #'irc--filter
@@ -136,7 +136,7 @@ cause data to arrive out of order, or get lost.")
   (when (not irc--filter-running-p)
     (let ((irc--filter-running-p t)
           (data (irc-connection-get proc :conn-data)))
-      (while (string-match "\\`\\(.*\\)\n\\(\\(:?.\\|\n\\)*\\)\\'" data)
+      (while (string-match "\\`\\(.*?\\)\r?\n\\(\\(:?.\\|\n\\)*\\)\\'" data)
         (let ((line (match-string 1 data)))
           (setq data (match-string 2 data))
           (irc-connection-put proc :conn-data data)
@@ -181,8 +181,10 @@ COMMAND arg1 arg2 :arg3 still arg3
         (setq sender (match-string 1))
         (goto-char (match-end 0)))
       (while (re-search-forward ":\\(.*\\)\\|\\([^ ]+\\)" nil t)
-        (push (or (match-string 1)
-                  (match-string 2))
+        (push (decode-coding-string
+               (or (match-string 1)
+                   (match-string 2))
+               'undecided)
               args))
       (cons sender (nreverse args)))))
 
@@ -304,7 +306,9 @@ See `irc-send-raw' for the algorithm."
 (defun irc-send--internal (conn line)
   "Send LINE to CONN."
   (irc-debug-out conn "C: %s" line)
-  (process-send-string conn (concat line "\n")))
+  (process-send-string conn
+                       (concat (encode-coding-string line 'utf-8)
+                               "\r\n")))
 
 (defun irc-send-command (conn command &rest args)
   "Send COMMAND with ARGS to IRC connection CONN."
