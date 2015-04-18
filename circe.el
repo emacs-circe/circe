@@ -134,6 +134,11 @@ See `circe-fool-list'."
                  (const :tag "IPv6" ipv6))
   :group 'circe)
 
+(defcustom circe-default-directory "~/"
+  "The value of `default-directory' for Circe buffers."
+  :type 'string
+  :group 'circe)
+
 (defcustom circe-network-options nil
   "Network options.
 
@@ -718,7 +723,8 @@ to reconnect to the server.
             nil t)
   (setq major-mode 'circe-server-mode
         mode-name "Circe Server"
-        lui-input-function 'circe-chat-input)
+        lui-input-function 'circe-chat-input
+        default-directory (expand-file-name circe-default-directory))
   (use-local-map circe-server-mode-map)
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
@@ -1342,7 +1348,8 @@ SERVER-BUFFER is the server buffer of this chat buffer."
         mode-name "Circe Chat"
         lui-input-function 'circe-chat-input
         circe-chat-target target
-        circe-server-buffer server-buffer)
+        circe-server-buffer server-buffer
+        default-directory (expand-file-name circe-default-directory))
   (set (make-local-variable 'tracking-faces-priorities)
        circe-track-faces-priorities)
   (add-hook 'completion-at-point-functions 'circe-completion-at-point
