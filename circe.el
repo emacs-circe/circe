@@ -944,36 +944,37 @@ See `circe-server-max-reconnect-attempts'.")
       (dolist (buf (circe-chat-buffers))
         (with-current-buffer buf
           (circe-server-message "Connecting...")))
-      (irc-connect
-       :host circe-server-name
-       :service circe-server-service
-       :tls circe-server-use-tls
-       :ip-family circe-server-ip-family
-       :handler-table circe-irc-handler-table
-       :server-buffer (current-buffer)
-       :nick circe-server-nick
-       :nick-alternatives (list (circe-nick-next circe-server-nick)
-                                (circe-nick-next
-                                 (circe-nick-next circe-server-nick)))
-       :user circe-server-user
-       :mode 8
-       :realname circe-server-realname
-       :pass (if (functionp circe-server-pass)
-                 (funcall circe-server-pass circe-server-name)
-               circe-server-pass)
-       :cap-req (when (and circe-sasl-username
-                           circe-sasl-password)
-                  '("sasl"))
-       :sasl-username circe-sasl-username
-       :sasl-password (if (functionp circe-sasl-password)
-                          (funcall circe-sasl-password
-                                   circe-server-name)
-                        circe-sasl-password)
-       :ctcp-version (format "Circe: Client for IRC in Emacs, version %s"
-                             circe-version)
-       :ctcp-source circe-source-url
-       :ctcp-clientinfo "CLIENTINFO PING SOURCE TIME VERSION"
-       ))))
+      (setq circe-server-process
+            (irc-connect
+             :host circe-server-name
+             :service circe-server-service
+             :tls circe-server-use-tls
+             :ip-family circe-server-ip-family
+             :handler-table circe-irc-handler-table
+             :server-buffer (current-buffer)
+             :nick circe-server-nick
+             :nick-alternatives (list (circe-nick-next circe-server-nick)
+                                      (circe-nick-next
+                                       (circe-nick-next circe-server-nick)))
+             :user circe-server-user
+             :mode 8
+             :realname circe-server-realname
+             :pass (if (functionp circe-server-pass)
+                       (funcall circe-server-pass circe-server-name)
+                     circe-server-pass)
+             :cap-req (when (and circe-sasl-username
+                                 circe-sasl-password)
+                        '("sasl"))
+             :sasl-username circe-sasl-username
+             :sasl-password (if (functionp circe-sasl-password)
+                                (funcall circe-sasl-password
+                                         circe-server-name)
+                              circe-sasl-password)
+             :ctcp-version (format "Circe: Client for IRC in Emacs, version %s"
+                                   circe-version)
+             :ctcp-source circe-source-url
+             :ctcp-clientinfo "CLIENTINFO PING SOURCE TIME VERSION"
+             )))))
 
 (defun circe-reconnect-all ()
   "Reconnect all Circe connections."
@@ -2246,7 +2247,6 @@ Arguments are IGNORED."
 (defun circe-irc-handler-table ()
   (let ((table (irc-handler-table)))
     (irc-handler-add table nil #'circe-irc-legacy-bridge)
-    (irc-handler-add table "conn.connected" #'circe-irc-conn-connected)
     (irc-handler-add table "conn.disconnected" #'circe-irc-conn-disconnected)
     (irc-handle-registration table)
     (irc-handle-ping-pong table)
@@ -2255,10 +2255,6 @@ Arguments are IGNORED."
     (irc-handle-initial-nick-acquisition table)
     (irc-handle-ctcp table)
     table))
-
-(defun circe-irc-conn-connected (conn event)
-  (with-current-buffer (irc-connection-get conn :server-buffer)
-    (setq circe-server-process conn)))
 
 (defun circe-irc-conn-disconnected (conn event)
   (with-current-buffer (irc-connection-get conn :server-buffer)
