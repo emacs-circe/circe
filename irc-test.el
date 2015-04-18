@@ -8,8 +8,8 @@
 
 (describe "The `irc-connect' function"
   (before-each
-    (spy-on 'make-tls-process :and-return-value t)
-    (spy-on 'make-network-process :and-return-value t))
+    (spy-on 'make-tls-process :and-return-value 'the-test-tls-process)
+    (spy-on 'make-network-process :and-return-value 'the-test-process))
 
   (it "should call `make-network-process' if tls was not requested"
     (irc-connect :host "irc.local"
@@ -31,11 +31,16 @@
     (expect 'make-tls-process
             :to-have-been-called))
 
-  (it "should return nil even when using non-tls connections"
+  (it "should return a process when using non-tls connections"
     (expect (irc-connect :host "irc.local"
                          :service 6667)
-            :to-equal
-            nil)))
+            :to-be 'the-test-process))
+
+  (it "should return a process when using tls connections"
+    (expect (irc-connect :host "irc.local"
+                         :service 6667
+                         :tls t)
+            :to-be 'the-test-tls-process)))
 
 (describe "Connection options"
   (let (proc)

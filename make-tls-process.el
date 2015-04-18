@@ -27,6 +27,21 @@
 
 (require 'tls)
 
+(defcustom tls-connection-command
+  (if (executable-find "gnutls-cli")
+      "gnutls-cli --insecure -p %p %h"
+    "openssl s_client -connect %h:%p -no_ssl2 -ign_eof")
+  "The command to use to create a TLS connection.
+
+%h is replaced with server hostname, %p with port to connect to.
+The program should read input on stdin and write output to
+stdout.
+
+Also see `tls-success' for what the program should output after
+successful negotiation."
+  :group 'tls
+  :type 'string)
+
 (defvar tls-debug-output nil
   "Non-nil if you want to see lots of debug messages.")
 
@@ -50,10 +65,14 @@ Different from a process sentinel, but like a network sentinel,
 the sentinel is called with an event \"open\\n\" when the
 connection is established.
 
-This function does NOT return a process object, as we try
-multiple commands to establish a tls connection (see
-`tls-command'). Use the sentinel to get notified of when the
-connection succeeds.
+This function uses `tls-connection-command' to connect to a
+server.
+
+Do NOT use `set-process-filter' or `set-process-sentinel' on the
+return value of this function. The connection setup uses special
+sentinels and filters to be deal with the program output used
+here. Use the :sentinel and :filter keyword arguments to set them
+once the connection is fully established.
 
 Arguments are specified as keyword/argument pairs, similar to
 `make-network-process'. The following arguments are defined:
@@ -73,10 +92,11 @@ for a server process, it must be a valid name or address for the local
 host, and only clients connecting to that address will be accepted.
 
 :service SERVICE -- SERVICE is name of the service desired, or an
-integer specifying a port number to connect to.  If SERVICE is t,
-a random port number is selected for the server.  (If Emacs was
-compiled with getaddrinfo, a port number can also be specified as a
-string, e.g. "80", as well as an integer.  This is not portable.)
+integer specifying a port number to connect to. If SERVICE is t,
+a random port number is selected for the server. (If Emacs was
+compiled with getaddrinfo, a port number can also be specified as
+a string, e.g. \"80\", as well as an integer. This is not
+portable.)
 
 :coding CODING -- If CODING is a symbol, it specifies the coding
 system used for both reading and writing for this process.  If CODING
@@ -94,9 +114,11 @@ running when Emacs is exited.
   (let* ((name (plist-get args :name))
          (host (plist-get args :host))
          (service (plist-get args :service))
-         (commands tls-program))
-    (tls--make-single-process name commands host service args)
-    nil))
+         (proc (tls--start-process name tls-connection-command host service)))
+    (process-put proc :tls-args args)
+    (set-process-sentinel proc #'tls--sentinel)
+    (set-process-filter proc #'tls--filter)
+    proc))
 
 (defun tls--sentinel (proc event)
   "The default sentinel for TLS connections.
@@ -110,17 +132,10 @@ left."
               (process-get proc :tls-data))
   (if (eq (process-status proc)
           'exit)
-      (let ((commands (process-get proc :tls-remaining-commands)))
-        (if (not commands)
-            (let ((sentinel (plist-get (process-get proc :tls-args)
-                                       :sentinel)))
-              (when sentinel
-                (funcall sentinel proc "failed\n")))
-          (tls--make-single-process (process-get proc :tls-name)
-                                     commands
-                                     (process-get proc :tls-host)
-                                     (process-get proc :tls-service)
-                                     (process-get proc :tls-args))))
+      (let ((sentinel (plist-get (process-get proc :tls-args)
+                                 :sentinel)))
+        (when sentinel
+          (funcall sentinel proc "failed with %s\n" event)))
     (error "Unexpected event in tls sentinel: %S" event)))
 
 (defun tls--filter (proc data)
@@ -150,21 +165,12 @@ to the real connection."
               (set-process-coding-system proc (car coding) (cdr coding))
             (set-process-coding-system proc coding coding))
           (set-process-query-on-exit-flag proc (not noquery))
-          (funcall sentinel proc "open\n")
-          (when (not (equal remaining-data ""))
+          (when sentinel
+            (funcall sentinel proc "open\n"))
+          (when (and (not (equal remaining-data ""))
+                     filter)
             (funcall filter proc remaining-data)))
       (process-put proc :tls-data data))))
-
-(defun tls--make-single-process (name commands host service args)
-  "Open a single process using the first argument of COMMANDS."
-  (let ((proc (tls--start-process name (car commands) host service)))
-    (process-put proc :tls-name name)
-    (process-put proc :tls-remaining-commands (cdr commands))
-    (process-put proc :tls-host host)
-    (process-put proc :tls-service service)
-    (process-put proc :tls-args args)
-    (set-process-sentinel proc #'tls--sentinel)
-    (set-process-filter proc #'tls--filter)))
 
 (defun tls--start-process (name cmd host port)
   "Start a single process for network communication.

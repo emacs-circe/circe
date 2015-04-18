@@ -85,9 +85,7 @@ COMMAND conn sender args... -- An IRC command message was received"
            :filter #'irc--filter
            :sentinel #'irc--sentinel
            :plist keywords
-           :keepalive t)
-  ;; Intentional: We do not want to return the process object.
-  nil)
+           :keepalive t))
 
 (defun irc-connection-get (conn propname)
   "Return the value of CONN's PROPNAME property."
