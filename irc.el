@@ -99,7 +99,7 @@ COMMAND conn sender args... -- An IRC command message was received"
 
 (defun irc--sentinel (proc event)
   (cond
-   ((string-match "\\`failed " event)
+   ((string-match "\\`failed" event)
     (irc-event-emit proc "conn.failed"))
    ((string-match "\\`open" event)
     (irc-event-emit proc "conn.connected"))

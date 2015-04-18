@@ -62,6 +62,14 @@
 
     (expect 'irc-event-emit
             :to-have-been-called-with
+            'proc "conn.failed")
+
+    (spy-calls-reset 'irc-event-emit)
+
+    (irc--sentinel 'proc "failed\n")
+
+    (expect 'irc-event-emit
+            :to-have-been-called-with
             'proc "conn.failed"))
 
   (it "should emit conn.connected on an open event"
