@@ -165,7 +165,8 @@ is then associated with the match."
     ("RFC ?\\([0-9]+\\)" 0 lui-button-rfc 1)
     ("SRFI[- ]?\\([0-9]+\\)" 0 lui-button-srfi 1)
     ("PEP[- ]?\\([0-9]+\\)" 0 lui-button-pep 1)
-    ("xkcd[ #]*\\([0-9]+\\)" 0 lui-button-xkcd 1))
+    ("xkcd[ #]*\\([0-9]+\\)" 0 lui-button-xkcd 1)
+    ("[0-9a-zA-Z_.-]+/[0-9a-zA-Z_.-]+#[0-9]+" 0 lui-button-github 0))
   "The list of buttons to buttonize.
 This consists of lists of four elements each:
 
@@ -616,6 +617,13 @@ Otherwise, we move to the next button."
 (defun lui-button-xkcd (number)
   "Browse the xkcd NUMBER."
   (browse-url (format "https://xkcd.com/%s" number)))
+
+(defun lui-button-github (issue-part)
+  "Browse the github issue ISSUE-PART."
+  (let ((parts (split-string issue-part "#")))
+    (browse-url (format "https://github.com/%s/issues/%s"
+                        (car parts)
+                        (cadr parts)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
