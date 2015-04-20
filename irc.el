@@ -80,7 +80,7 @@ COMMAND conn sender args... -- An IRC command message was received"
                         (error "Must specify a :service to connect to"))
            :family (plist-get keywords :family)
            :coding 'no-conversion
-           :nowait t
+           :nowait (featurep 'make-network-process '(:nowait t))
            :noquery t
            :filter #'irc--filter
            :sentinel #'irc--sentinel

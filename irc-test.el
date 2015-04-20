@@ -40,7 +40,25 @@
     (expect (irc-connect :host "irc.local"
                          :service 6667
                          :tls t)
-            :to-be 'the-test-tls-process)))
+            :to-be 'the-test-tls-process))
+
+  (it "should not use nowait if it is not supported"
+    (spy-on 'featurep :and-return-value nil)
+
+    (irc-connect :host "irc.local"
+                 :service 6667)
+
+    (expect 'featurep
+            :to-have-been-called-with
+            'make-network-process '(:nowait t))
+
+    (expect 'make-network-process
+            :to-have-been-called-with
+            :name "irc.local" :host "irc.local" :service 6667
+            :family nil
+            :coding 'no-conversion :nowait nil :noquery t
+            :filter #'irc--filter :sentinel #'irc--sentinel
+            :plist '(:host "irc.local" :service 6667) :keepalive t)))
 
 (describe "Connection options"
   (let (proc)
