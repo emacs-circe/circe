@@ -663,13 +663,6 @@ it.")
 (defvar circe-irc-handler-table nil
   "The handler table for Circe's IRC connections")
 
-(defun circe-parse-sender (sender)
-  (if (string-match "\\`\\([^!]*\\)!\\([^@]*\\)@\\(.*\\)\\'" sender)
-      (list (match-string 1 sender)
-            (match-string 2 sender)
-            (match-string 3 sender))
-    (list sender nil nil)))
-
 (defvar circe-server-quitting-p nil
   "Non-nil when quitting from the server.
 This is only non-nil when the user is quitting the current
@@ -699,6 +692,15 @@ can vary between networks.")
     (define-key map (kbd "C-c C-r") 'circe-reconnect)
     map)
   "The base keymap for all Circe modes (server, channel, query)")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; User Utility Functions ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun circe-version ()
+  "Display Circe's version."
+  (interactive)
+  (message "Circe %s" circe-version))
 
 ;;;;;;;;;;;;;;;;;;;
 ;;; Server Mode ;;;
@@ -2314,6 +2316,13 @@ Arguments are IGNORED."
                                                 command args)))
             (circe-server-handle-message-internal nick user host
                                                   command args)))))))
+
+(defun circe-parse-sender (sender)
+  (if (string-match "\\`\\([^!]*\\)!\\([^@]*\\)@\\(.*\\)\\'" sender)
+      (list (match-string 1 sender)
+            (match-string 2 sender)
+            (match-string 3 sender))
+    (list sender nil nil)))
 
 (defun circe-server-display-message (nick user host command args)
   "Display an IRC message.

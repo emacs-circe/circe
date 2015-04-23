@@ -2,6 +2,16 @@
 
 (require 'circe)
 
+(describe "The `circe-version' command"
+  (it "should display the current version"
+    (spy-on 'message)
+
+    (let ((circe-version "23.5"))
+      (call-interactively 'circe-version))
+
+    (expect 'message
+            :to-have-been-called-with "Circe %s" "23.5")))
+
 (describe "The `circe-duration-string' function"
   (it "should handle very short amounts of time"
     (expect (circe-duration-string 0)
