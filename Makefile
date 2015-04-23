@@ -6,7 +6,6 @@ VERSION=$(shell sed -ne 's/^;; Version: \(.*\)/\1/p' circe.el)
 all: test
 
 test:
-	cask exec ert-runner -L .
 	cask exec buttercup -L .
 
 test-all: clean cask
