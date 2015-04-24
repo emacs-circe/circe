@@ -48,9 +48,10 @@
       (setq circe-server-killed-confirmation nil)
       (set-buffer channel-buffer)
       (circe-channel-mode "#test" server-buffer)
-      (circe-channel-add-user "testnick")
       (setq circe-channel-killed-confirmation nil)
-      (spy-on 'circe-server-nick :and-return-value "mynick"))
+      (spy-on 'circe-server-nick :and-return-value "mynick")
+      (spy-on 'circe-channel-nicks :and-return-value '("testnick"))
+      (spy-on 'irc-connection-channel))
 
     (after-each
       (kill-buffer channel-buffer)

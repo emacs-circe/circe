@@ -1492,10 +1492,6 @@ state."
                        circe-default-part-message))))
     (circe-server-remove-chat-buffer circe-chat-target))
 
-(defvar circe-channel-receiving-names nil
-  "A hash when we're currently receving a NAMES list. nil if not.")
-(make-variable-buffer-local 'circe-server-receiving-names)
-
 (defun circe-channel-message-handler (nick user host command args)
   "Update the users of a channel as appropriate.
 
@@ -1508,9 +1504,6 @@ received."
    ((string= command "NICK")
     (dolist (buf (circe-chat-buffers))
       (with-current-buffer buf
-        (when (and (eq major-mode 'circe-channel-mode)
-                   (circe-channel-user-p nick))
-          (circe-channel-rename-user nick (car args)))
         (when (and (eq major-mode 'circe-query-mode)
                    (circe-case-fold-string= nick
                                             circe-chat-target))
@@ -1519,224 +1512,64 @@ received."
           (with-circe-server-buffer
             (circe-server-remove-chat-buffer nick)
             (circe-server-add-chat-buffer (car args)
-                                          buf))))))
-   ((string= command "QUIT")
-    (dolist (buf (circe-chat-buffers))
-      (with-current-buffer buf
-        (when (and (eq major-mode 'circe-channel-mode)
-                   (circe-channel-user-p nick))
-          (circe-channel-remove-user nick)))))
-   ((string= command "JOIN")
-    (with-circe-chat-buffer (car args)
-      (circe-channel-add-user nick)))
-   ((string= command "PART")
-    (with-circe-chat-buffer (car args)
-      (circe-channel-remove-user nick)))
-   ((string= command "KICK")
-    (with-circe-chat-buffer (car args)
-      (circe-channel-remove-user (cadr args))))
-   ((string= command "353")             ; RPL_NAMREPLY
-    (with-circe-chat-buffer (nth 2 args)
-      (when (not circe-channel-receiving-names)
-        (setq circe-channel-receiving-names (circe-case-fold-table)))
-      (dolist (nick (circe-channel-parse-names (nth 3 args)))
-        (puthash nick t circe-channel-receiving-names))))
-   ((string= command "366")             ; RPL_ENDOFNAMES
-    (with-circe-chat-buffer (nth 1 args)
-      (circe-channel-users-synchronize circe-channel-receiving-names)
-      (setq circe-channel-receiving-names nil)))))
+                                          buf))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Channel user management ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defvar circe-channel-users nil
-  "A hash table of channel users.")
-(make-variable-buffer-local 'circe-channel-users)
-
-(defvar circe-channel-recent-users nil
-  "Per-channel hash-table of recently parted/quit users.
-
-This list is regularly cleaned up, see
-`circe-channel-recent-users-timeout'.")
-(make-variable-buffer-local 'circe-channel-recent-users)
-
-(defvar circe-channel-users-synchronized nil
-  "True if we have synchronized with channel users.")
-(make-variable-buffer-local 'circe-channel-users-synchronized)
-
-(defun circe-channel-add-user (nick)
-  "Add NICK as a channel user."
-  (when (not circe-channel-users)
-    (setq circe-channel-users (circe-case-fold-table)))
-  (circe-channel-expire-recent-users)
-  (let ((data (or (gethash nick circe-channel-recent-users)
-                  (make-hash-table))))
-    (puthash 'joined (float-time) data)
-    (remhash 'seen-on-initial-names data)
-    (puthash nick data circe-channel-users))
-  (remhash nick circe-channel-recent-users))
-
-(defun circe-channel-remove-user (nick)
-  "Remove NICK as a channel user."
-  (when circe-channel-users
-    (if (circe-server-my-nick-p nick)
-        (setq circe-channel-users nil
-              circe-channel-recent-users nil
-              circe-channel-users-synchronized nil)
-      (circe-channel-expire-recent-users)
-      (let ((data (gethash nick circe-channel-users)))
-        (when data
-          (puthash 'departed (float-time) data)
-          (puthash nick data circe-channel-recent-users)))
-      (remhash nick circe-channel-users))))
-
-(defun circe-channel-rename-user (old new)
-  "Rename the user from nick OLD to NEW."
-  (when circe-channel-users
-    (circe-channel-expire-recent-users)
-    (let (new-data)
-      (cond
-       ;; The new nick has recently left, assume this user returned
-       ;; with a new nick and just got the old one back.
-       ((circe-channel-user-nick-regain-p old new)
-        (setq new-data (gethash new circe-channel-recent-users))
-        (remhash new circe-channel-recent-users)
-        (remhash 'departure new-data)
-        ;; But they might have spoken with the new nick already
-        (let ((new-last-active (gethash 'last-active new-data))
-              (old-last-active (circe-channel-user-info old 'last-active)))
-          (when (or (and new-last-active
-                         old-last-active
-                         (> old-last-active new-last-active))
-                    (and (not new-last-active)
-                         old-last-active))
-            (puthash 'last-active old-last-active new-data))))
-       ;; The new nick is not known, so just copy the old data
-       ((gethash old circe-channel-users)
-        (setq new-data (gethash old circe-channel-users)))
-       ;; This shouldn't happen
-       (t
-        (error "Renaming %S to %S: Not found in current users?" old new)))
-      ;; Now put the new value into the channel users table
-      (remhash old circe-channel-users)
-      (puthash new new-data circe-channel-users))))
 
 (defun circe-channel-user-nick-regain-p (old new)
   "Return true if a nick change from OLD to NEW constitutes a nick regain.
 
 Currently, this uses only the existence of OLD in the recent
 users, which is a pretty rough heuristic, but it works."
-  (and (circe-channel-user-p old)
-       (circe-channel-recent-user-p new)))
-
-(defun circe-channel-expire-recent-users ()
-  "Clean up old users from the recent users table.
-
-Any user who has a departure-time older than
-`circe-channel-recent-users-timeout' will be removed from the table."
-  (when (not circe-channel-recent-users)
-    (setq circe-channel-recent-users (circe-case-fold-table)))
-  (when circe-channel-recent-users-timeout
-    (maphash (lambda (nick data)
-               (when (> (- (float-time)
-                           (gethash 'departed data 0))
-                        circe-channel-recent-users-timeout)
-                 (remhash nick circe-channel-recent-users)))
-             circe-channel-recent-users)))
+  (let ((channel (irc-connection-channel (circe-server-process)
+                                         circe-chat-target)))
+    (when channel
+      (irc-channel-recent-user channel new))))
 
 (defun circe-channel-user-p (nick)
   "Return non-nil when NICK belongs to a channel user."
   (cond
-   (circe-channel-users
-    (gethash nick circe-channel-users))
    ((eq major-mode 'circe-query-mode)
-    (circe-case-fold-string= nick circe-chat-target))))
-
-(defun circe-channel-recent-user-p (nick)
-  "Return non-nil when NICK belongs to a user who recently left."
-  (when circe-channel-recent-users
-    (gethash nick circe-channel-recent-users)))
-
-(defun circe-channel-user-info (nick option &optional default)
-  "Return option OPTION for the nick NICK in the current channel.
-
-Return DEFAULT if no option is set or the nick is not known."
-  (if (not circe-channel-users)
-      default
-    (let ((table (gethash nick circe-channel-users nil)))
-      (if (not table)
-          default
-        (gethash option table default)))))
-
-(defun circe-channel-recent-user-info (nick option &optional default)
-  "Return option OPTION for the nick NICK in the current channel.
-
-Return DEFAULT if no option is set or the nick is not known."
-  (if (not circe-channel-recent-users)
-      default
-    (let ((table (gethash nick circe-channel-recent-users nil)))
-      (if (not table)
-          default
-        (gethash option table default)))))
-
-(defun circe-channel-user-set-info (nick option value)
-  "Set option OPTION to VALUE for this NICK in the current channel"
-  (when circe-channel-users
-    (let ((table (gethash nick circe-channel-users nil)))
-      (when table
-        (puthash option value table)))))
+    (circe-case-fold-string= nick circe-chat-target))
+   ((eq major-mode 'circe-channel-mode)
+    (let ((channel (irc-connection-channel (circe-server-process)
+                                           circe-chat-target)))
+      (when channel
+        (if (irc-channel-user channel nick)
+            t
+          nil))))))
 
 (defun circe-channel-nicks ()
   "Return a list of nicks in the current channel."
-  (let ((nicks nil))
-    (maphash (lambda (nick options)
-               (setq nicks (cons nick nicks)))
-             circe-channel-users)
+  (let* ((channel (irc-connection-channel (circe-server-process)
+                                          circe-chat-target))
+         (nicks nil))
+    (maphash (lambda (folded-nick user)
+               (push (irc-user-nick user) nicks))
+             (irc-channel-users channel))
     nicks))
-
-(defun circe-channel-parse-names (name-string)
-  "Parse the NAMES reply in NAME-STRING."
-  (with-circe-server-buffer
-    (mapcar (lambda (nick)
-              (irc-nick-without-prefix circe-server-process nick))
-            (split-string name-string))))
 
 (defun circe-user-channels (nick)
   "Return a list of channels for the user named NICK."
-  (let ((result nil))
-   (dolist (buf (circe-chat-buffers))
-     (when (with-current-buffer buf
-             (circe-channel-user-p nick))
-       (setq result (cons buf result))))
-   result))
-
-(defun circe-channel-users-synchronize (new-users)
-  "Synchronize the channel user list with a current known state.
-
-NEW is a hash table with currently active nicks in the channel.
-This will ensure they are all in the `circe-channel-users' table,
-and no other nicks are."
-  (when (null circe-channel-users)
-    (setq circe-channel-users (circe-case-fold-table)))
-  (maphash (lambda (nick ignored)
-             (when (not (gethash nick circe-channel-users))
-               (circe-channel-add-user nick)
-               (when (not circe-channel-users-synchronized)
-                 (circe-channel-user-set-info nick 'seen-on-initial-names t))))
-           new-users)
-  (maphash (lambda (nick ignored)
-             (when (not (gethash nick new-users))
-               (circe-channel-remove-user nick)))
-           circe-channel-users)
-  (setq circe-channel-users-synchronized t))
+  (let* ((result nil))
+    (dolist (channel (irc-connection-channel-list (circe-server-process)))
+      (let ((channel (irc-connection-channel (circe-server-process)
+                                             (irc-channel-name channel))))
+        (when (irc-channel-user channel nick)
+          (push channel-name result))))
+    result))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Join/Part Spam Protection
 
 (defun circe-lurker-p (nick)
   "Return a true value if this nick is regarded inactive."
-  (let ((last-active (circe-channel-user-info nick 'last-active)))
+  (let* ((channel (irc-connection-channel (circe-server-process)
+                                          circe-chat-target))
+         (user (irc-channel-user channel nick))
+         (last-active (irc-user-last-activity-time user)))
     (cond
      ;; If we do not track lurkers, no one is ever a lurker.
      ((not circe-reduce-lurker-spam)
@@ -1767,21 +1600,22 @@ and no other nicks are."
 
 (defun circe-lurker-display-active (nick user host)
   "Show that this user is active if they are a lurker."
-  (when (and (circe-lurker-p nick)
-             ;; If we saw them when we joined the channel, no need to
-             ;; say "they're suddenly active!!111one".
-             (not (circe-channel-user-info nick 'seen-on-initial-names)))
-    (let ((joined (circe-channel-user-info nick 'joined)))
-      (circe-display 'circe-format-server-lurker-activity
-                     :nick nick
-                     :user user
-                     :host host
-                     :jointime joined
-                     :joindelta (circe-duration-string
-                                 (- (float-time)
-                                    joined))))))
-
-
+  (let* ((channel (irc-connection-channel (circe-server-process)
+                                          circe-chat-target))
+         (user (irc-channel-user channel nick))
+         (join-time (irc-user-join-time user)))
+    (when (and (circe-lurker-p nick)
+               ;; If we saw them when we joined the channel, no need to
+               ;; say "they're suddenly active!!111one".
+               join-time)
+     (circe-display 'circe-format-server-lurker-activity
+                    :nick nick
+                    :user user
+                    :host host
+                    :jointime join-time
+                    :joindelta (circe-duration-string
+                                (- (float-time)
+                                   join-time))))))
 
 ;;;;;;;;;;;;;;;
 ;;; Queries ;;;
@@ -1907,10 +1741,13 @@ See `minibuffer-completion-table' for details."
 
 (defun circe-completion-sort (collection)
   "Sort the COLLECTION by channel activity for nicks."
-  (let* ((decorated (mapcar (lambda (entry)
-                              (list (circe-channel-user-info
-                                     (circe-completion-clean-nick entry)
-                                     'last-active)
+  (let* ((channel (irc-connection-channel (circe-server-process)
+                                          circe-chat-target))
+         (decorated (mapcar (lambda (entry)
+                              (list (irc-user-last-activity-time
+                                     (irc-channel-user
+                                      channel
+                                      (circe-completion-clean-nick entry)))
                                     (length entry)
                                     entry))
                             collection))
@@ -2265,6 +2102,7 @@ Arguments are IGNORED."
     (irc-handle-current-nick-tracking table)
     (irc-handle-initial-nick-acquisition table)
     (irc-handle-ctcp table)
+    (irc-handle-channel-and-user-tracking table)
     table))
 
 (defun circe-irc-conn-disconnected (conn event)
@@ -2779,7 +2617,6 @@ ARGS the arguments to the command."
     (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                        'circe-channel-mode)
       (circe-lurker-display-active nick user host)
-      (circe-channel-user-set-info nick 'last-active (float-time))
       (circe-display 'circe-format-action
                      :nick nick
                      :body (cadr args)))))
@@ -2867,7 +2704,6 @@ as arguments."
     (with-current-buffer (circe-server-get-chat-buffer (car args)
                                                        'circe-channel-mode)
       (circe-lurker-display-active nick user host)
-      (circe-channel-user-set-info nick 'last-active (float-time))
       (circe-display 'circe-format-say
                      :nick nick
                      :body (cadr args))))))
@@ -2885,8 +2721,7 @@ as arguments."
                                                                  (car args)))
                                  (circe-server-last-active-buffer))
           (when (eq major-mode 'circe-channel-mode)
-            (circe-lurker-display-active nick user host)
-            (circe-channel-user-set-info nick 'last-active (float-time)))
+            (circe-lurker-display-active nick user host))
           (circe-display 'circe-format-notice
                          :nick nick
                          :body (cadr args)))
@@ -3145,8 +2980,14 @@ as arguments."
            (format "Netmerge: %s (Use /WL to see who's still missing)"
                    (car split)))))
        ((and circe-reduce-lurker-spam
-             (circe-channel-recent-user-info nick 'last-active))
-        (let ((departed (circe-channel-recent-user-info nick 'departed)))
+             (let* ((channel (irc-connection-channel (circe-server-process)
+                                                    circe-chat-target))
+                    (user (irc-channel-recent-user channel nick)))
+               (irc-user-last-activity-time user)))
+        (let* ((channel (irc-connection-channel (circe-server-process)
+                                                    circe-chat-target))
+               (user (irc-channel-recent-user channel nick))
+               (departed (irc-user-part-time user)))
           (circe-display 'circe-format-server-rejoin
                          :nick nick
                          :user user
