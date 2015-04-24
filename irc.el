@@ -914,12 +914,17 @@ handler:
                    #'irc-handle-channel-and-user-tracking--NICK)
   (irc-handler-add table "PRIVMSG"
                    #'irc-handle-channel-and-user-tracking--PRIVMSG)
+  (irc-handler-add table "353" ;; RPL_NAMREPLY
+                   #'irc-handle-channel-and-user-tracking--rpl-namreply)
+  (irc-handler-add table "366" ;; RPL_ENDOFNAMES
+                   #'irc-handle-channel-and-user-tracking--rpl-endofnames)
   )
 
 (cl-defstruct irc-channel
   name
   folded-name
   users
+  receiving-names
   connection)
 
 (defun irc-channel-from-name (conn name)
@@ -979,7 +984,10 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
   (let ((nick (irc-userstring-nick userstring)))
     (make-irc-user :nick nick
                    :folded-nick (irc-isupport--case-fold conn nick)
-                   :userhost (substring userstring (1+ (length nick)))
+                   :userhost (let ((nick-len (length nick)))
+                               (if (>= nick-len (length userstring))
+                                   nil
+                                 (substring userstring (1+ nick-len))))
                    :connection conn)))
 
 (defun irc-channel-user (channel nick)
@@ -996,8 +1004,8 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
                                          userstring))
          (folded-nick (irc-user-folded-nick user)))
     (when (not (gethash folded-nick user-table))
-      (setf (irc-user-join-time user) (float-time))
-      (puthash folded-nick user user-table))))
+      (puthash folded-nick user user-table)
+      user)))
 
 (defun irc-channel-remove-user (channel nick)
   "Remove NICK from CHANNEL."
@@ -1016,7 +1024,9 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
      (t
       (let ((channel (irc-connection-channel conn target)))
         (when channel
-          (irc-channel-add-user channel sender)))))))
+          (let ((user (irc-channel-add-user channel sender)))
+            (when user
+              (setf (irc-user-join-time user) (float-time))))))))))
 
 (defun irc-handle-channel-and-user-tracking--PART (conn event sender target
                                                         &optional reason)
@@ -1070,21 +1080,41 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
         (when user
           (setf (irc-user-last-activity-time user) (float-time)))))))
 
-;; Emit events:
-;; - irc.channel.create channel
-;; - irc.channel.remove channel
-;; - irc.channel.join channel user
-;; - irc.channel.leave channel user
-;; - irc.channel.rename channel user oldnick newnick
+(defun irc-handle-channel-and-user-tracking--rpl-namreply
+    (conn event sender current-nick channel-type channel-name nicks)
+  (let ((channel (irc-connection-channel conn channel-name)))
+    (setf (irc-channel-receiving-names channel)
+          (append (irc-channel-receiving-names channel)
+                  (mapcar (lambda (nick)
+                            (irc-nick-without-prefix
+                             conn
+                             (string-trim nick)))
+                          (split-string nicks))))))
 
-;; - RPL_NAMREPLY, RPL-ENDOFNAMES should update a channel nick list
-;;   - New nicks with this get a join time of nil!
+(defun irc-handle-channel-and-user-tracking--rpl-endofnames
+    (conn event sender current-nick channel-name description)
+  (let ((channel (irc-connection-channel conn channel-name)))
+    (irc-channel--synchronize-nicks channel
+                                    (irc-channel-receiving-names channel))
+    (setf (irc-channel-receiving-names channel) nil)))
 
-;; - TOPIC, 331 RPL_NOTPIC, 332 RPL_TOPIC should update the channel's current
-;;   topic
-;;
-;; Events emitted:
-;; - irc.topic.changed channel old new
+(defun irc-channel--synchronize-nicks (channel nicks)
+  "Update the user list of CHANNEL to match NICKS."
+  (let ((have (irc-channel-users channel))
+        (want (make-hash-table :test 'equal)))
+    (dolist (nick nicks)
+      (puthash (irc-isupport--case-fold (irc-channel-connection channel)
+                                        nick)
+               nick
+               want))
+    (maphash (lambda (nick-folded user)
+               (when (not (gethash nick-folded want))
+                 (irc-channel-remove-user channel
+                                          (irc-user-nick user))))
+             have)
+    (maphash (lambda (nick-folded nick)
+               (irc-channel-add-user channel nick))
+             want)))
 
 ;; - PART/KICK/QUIT should move a user to a recent users list
 ;; - JOIN should remove a user from the recent users list
@@ -1092,6 +1122,9 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
 
 ;; - Merge current nick tracking into channel-and-user-tracking
 ;; - Then, rename to irc-handle-state-tracking
+
+;; - TOPIC, 331 RPL_NOTPIC, 332 RPL_TOPIC should update the channel's current
+;;   topic
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Auto-Join

@@ -1414,4 +1414,51 @@
                   "othernick"))
                 :to-equal
                 23)))
+
+    (describe "for NAMES"
+      (before-each
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#channel"))
+      
+      (it "should add nicks"
+        (irc-event-emit proc "353" "irc.server" "mynick" "=" "#channel"
+                        "nick1 @nick2")
+        (irc-event-emit proc "353" "irc.server" "mynick" "=" "#channel"
+                        "nick3")
+        (irc-event-emit proc "366" "irc.server" "mynick" "#channel"
+                        "End of /NAMES list")
+
+        (let ((nicks nil))
+          (maphash (lambda (nick-folded user)
+                     (push (irc-user-nick user) nicks))
+                   (irc-channel-users
+                    (irc-connection-channel proc "#channel")))
+          (setq nicks (sort nicks #'string<))
+          
+          (expect nicks :to-equal '("nick1" "nick2" "nick3"))))
+
+      (it "should add nicks with a join time of nil"
+        (irc-event-emit proc "353" "irc.server" "mynick" "=" "#channel"
+                        "nick1")
+        (irc-event-emit proc "366" "irc.server" "mynick" "#channel"
+                        "End of /NAMES list")
+
+        (expect (irc-user-join-time
+                 (irc-channel-user
+                  (irc-connection-channel proc "#channel")
+                  "nick1"))
+                :to-be nil))
+
+      (it "should not touch existing nicks"
+        (irc-event-emit proc "JOIN" "somenick!user@host" "#channel")
+        (irc-event-emit proc "353" "irc.server" "mynick" "=" "#channel"
+                        "SOMENICK")
+        (irc-event-emit proc "366" "irc.server" "mynick" "#channel"
+                        "End of /NAMES list")
+
+        (expect (irc-user-nick
+                 (irc-channel-user
+                  (irc-connection-channel proc "#channel")
+                  "SOMENICK"))
+                :to-equal
+                "somenick")))
     ))
