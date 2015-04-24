@@ -1179,3 +1179,211 @@
                 proc "alice" "TIME" "Test current time"))
 
       )))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Handler: Channel and User Tracking
+
+(describe "The connection channels and users"
+  (let (proc table)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            table (irc-handler-table)))
+
+    (it "should create channels correctly"
+      (let ((channel (irc-channel-from-name proc "#CHANNEL")))
+        (expect (irc-channel-connection channel)
+                :to-equal proc)
+        (expect (irc-channel-name channel)
+                :to-equal "#CHANNEL")
+        (expect (irc-channel-folded-name channel)
+                :to-equal "#channel")))
+
+    (it "should not know channels not added yet"
+      (expect (irc-connection-channel proc "#channel")
+              :to-be nil))
+
+    (it "should return a channel after it was added"
+      (irc-connection-add-channel proc "#CHANNEL")
+
+      (expect (irc-channel-name (irc-connection-channel proc "#channel"))
+              :to-equal "#CHANNEL"))
+
+    (it "should create users correctly"
+      (let ((user (irc-user-from-userstring proc "SOMENICK!foo@bar")))
+        (expect (irc-user-connection user)
+                :to-equal proc)
+        (expect (irc-user-nick user)
+                :to-equal "SOMENICK")
+        (expect (irc-user-folded-nick user)
+                :to-equal "somenick")
+        (expect (irc-user-userhost user)
+                :to-equal "foo@bar")))
+
+    (it "should return no user if not added yet"
+      (let ((channel (irc-channel-from-name proc "#CHANNEL")))
+        (expect (irc-channel-user channel "somenick")
+                :to-be nil)))
+
+    (it "should return the user object that was added before"
+      (let ((channel (irc-channel-from-name proc "#CHANNEL")))
+        (irc-channel-add-user channel "SOMENICK!user@host")
+        
+        (expect (irc-user-nick (irc-channel-user channel "somenick"))
+                :to-equal "SOMENICK")))
+
+    (it "should remove a channel"
+      (irc-connection-add-channel proc "#channel")
+
+      (irc-connection-remove-channel proc "#channel")
+
+      (expect (irc-connection-channel proc "#channel")
+              :to-be nil))
+
+    (it "should remove a user"
+      (let ((channel (irc-channel-from-name proc "#CHANNEL")))
+        (irc-channel-add-user channel "SOMENICK!user@host")
+
+        (irc-channel-remove-user channel "somenick")
+        
+        (expect (irc-channel-user channel "somenick")
+                :to-be nil)))
+
+    (it "should track all channels"
+      (irc-connection-add-channel proc "#chan1")
+      (irc-connection-add-channel proc "#chan2")
+      (irc-connection-add-channel proc "#chan3")
+
+      (expect (sort (mapcar #'irc-channel-name
+                            (irc-connection-channel-list proc))
+                    #'string<)
+              :to-equal
+              '("#chan1" "#chan2" "#chan3")))))
+
+(describe "The Channel and User Tracking handler"
+  (let (proc table)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            table (irc-handler-table))
+      (irc-connection-put proc :handler-table table)
+      (irc-handle-current-nick-tracking table)
+      (irc-connection-put proc :current-nick "mynick")
+      (irc-handle-channel-and-user-tracking table))
+    
+    (describe "for joining"
+      (it "should update the channel list if we join"
+        (expect (irc-connection-channel proc "#channel")
+                :to-be nil)
+        
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#channel")
+
+        (expect (irc-connection-channel proc "#channel")
+                :not :to-be nil))
+
+      (it "should treat channels case-insensitively"
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#channel")
+
+        (let ((channel (irc-connection-channel proc "#CHANNEL")))
+          (expect (irc-channel-name channel)
+                  :not :to-be nil)))
+
+      (it "should update users in a channel if someone else joins"
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#channel")
+
+        (let ((channel (irc-connection-channel proc "#channel")))
+          (expect (irc-channel-user channel "otheruser")
+                  :to-be nil)
+
+          (irc-event-emit proc "JOIN" "otheruser!user@host" "#channel")
+
+          (expect (irc-channel-user channel "otheruser")
+                  :not :to-be nil)))
+
+      (it "should not update users in a channel we are not there"
+        (irc-event-emit proc "JOIN" "otheruser!user@host" "#channel")
+
+        (expect (irc-connection-channel proc "#channel")
+                :to-be nil))
+
+      (it "should not fail on extended JOIN"
+        (irc-event-emit proc "JOIN" "otheruser!user@host" "#channel"
+                        "account" "The real name")))
+
+    (describe "for parting"
+      (before-each
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#channel")
+        (irc-event-emit proc "JOIN" "othernick!user@host" "#channel"))
+      
+      (it "should remove a channel if we part"
+        (irc-event-emit proc "PART" "mynick!user@host" "#channel")
+
+        (expect (irc-connection-channel proc "#channel")
+                :to-be nil))
+
+      (it "should remove a channel if we get kicked"
+        (irc-event-emit proc "KICK" "somenick!user@host" "#channel" "mynick"
+                        "You are out")
+
+        (expect (irc-connection-channel proc "#channel")
+                :to-be nil))
+
+      (it "should remove all channels if we quit"
+        (irc-event-emit proc "QUIT" "mynick!user@host" "I am out")
+        
+        (expect (irc-connection-channel proc "#channel")
+                :to-be nil))
+
+      (it "should remove a user if they part"
+        (irc-event-emit proc "PART" "othernick!user@host" "#channel")
+
+        (expect (irc-channel-user
+                 (irc-connection-channel proc "#channel")
+                 "othernick")
+                :to-be nil))
+
+      (it "should remove a channel if we get kicked"
+        (irc-event-emit proc "KICK" "mynick!user@host" "#channel" "othernick"
+                        "You are out")
+
+        (expect (irc-channel-user
+                 (irc-connection-channel proc "#channel")
+                 "othernick")
+                :to-be nil))
+
+      (it "should remove all channels if we quit"
+        (irc-event-emit proc "QUIT" "othernick!user@host" "I am out")
+
+        (expect (irc-channel-user
+                 (irc-connection-channel proc "#channel")
+                 "othernick")
+                :to-be nil)))
+
+    (describe "for nick changes"
+      (before-each
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#chan1")
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#chan2")
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#chan3")
+
+        (irc-event-emit proc "JOIN" "othernick!user@host" "#chan1")
+        (irc-event-emit proc "JOIN" "othernick!user@host" "#chan2"))
+      
+      (it "should update the user on all channels"
+        (irc-event-emit proc "NICK" "othernick!user@host" "newnick")
+
+        (expect (irc-channel-user
+                 (irc-connection-channel proc "#chan1")
+                 "othernick")
+                :to-be nil)
+        (expect (irc-channel-user
+                 (irc-connection-channel proc "#chan1")
+                 "newnick")
+                :not :to-be nil)
+        (expect (irc-channel-user
+                 (irc-connection-channel proc "#chan2")
+                 "othernick")
+                :to-be nil)
+        (expect (irc-channel-user
+                 (irc-connection-channel proc "#chan2")
+                 "newnick")
+                :not :to-be nil)
+        ))
+    ))

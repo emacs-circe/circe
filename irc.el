@@ -590,8 +590,8 @@ If the capability is not present, the return value is nil."
   "Compare S1 to S2 case-insensitively.
 
 What case means is defined by the server of CONN."
-  (equal (irc-isupport--translate-string conn s1)
-         (irc-isupport--translate-string conn s2)))
+  (equal (irc-isupport--case-fold conn s1)
+         (irc-isupport--case-fold conn s2)))
 
 (defvar irc-isupport--ascii-table
   (let ((table (make-string 128 0))
@@ -622,7 +622,7 @@ What case means is defined by the server of CONN."
     table)
   "A case mapping table for the rfc1459-strict CASEMAPPING.")
 
-(defun irc-isupport--translate-string (conn s)
+(defun irc-isupport--case-fold (conn s)
   "Translate S to be a lower-case.
 
 This uses the case mapping defined by the IRC server for CONN."
@@ -686,7 +686,10 @@ RPL_ISUPPORT setting of PREFIX set by the IRC server for CONN."
 
 Connection options set:
 
-:current-nick -- The current nick, or nil if not known/set yet."
+:current-nick -- The current nick, or nil if not known/set yet.
+
+Do not use that option directly. Instead, use `irc-current-nick'
+and `irc-current-nick-p'."
   (irc-handler-add table "001" ;; RPL_WELCOME
                    #'irc-handle-current-nick-tracking--rpl-welcome)
   (irc-handler-add table "NICK"
@@ -890,19 +893,183 @@ Events emitted:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Channel and user tracking
 
-;; Events caught:
-;; - JOIN => Remember which channels we are on, and who is on those channels
-;; - NICK => Rename users on channels
-;; - QUIT => Remove users from channels
-;; - PART => Remove user from channels
-;; - 353 RPL_NAMREPLY, 366 RPL_ENDOFNAMES => Store users on channel
+(defun irc-handle-channel-and-user-tracking (table)
+  "Add command handlers to TABLE to track channels and users.
 
-;; Connection options set:
-;; - :irc-channels
-;; - :irc-users
+Connection options used:
 
-;; irc-channel-users conn channel => users
-;; irc-user conn nick => user
+:current-nick -- Our current nick.
+
+Use helper functions to access the information tracked by this
+handler:
+
+`irc-channel-joined-p'"
+  (irc-handler-add table "JOIN"
+                   #'irc-handle-channel-and-user-tracking--JOIN)
+  (irc-handler-add table "PART"
+                   #'irc-handle-channel-and-user-tracking--PART)
+  (irc-handler-add table "KICK"
+                   #'irc-handle-channel-and-user-tracking--KICK)
+  (irc-handler-add table "QUIT"
+                   #'irc-handle-channel-and-user-tracking--QUIT)
+  (irc-handler-add table "NICK"
+                   #'irc-handle-channel-and-user-tracking--NICK)
+  
+  )
+
+(cl-defstruct irc-channel
+  name
+  folded-name
+  users
+  connection)
+
+(defun irc-channel-from-name (conn name)
+  "Create a new IRC channel object on CONN, named NAME."
+  (make-irc-channel :name name
+                    :folded-name (irc-isupport--case-fold conn name)
+                    :users (make-hash-table :test 'equal)
+                    :connection conn))
+
+(defun irc-connection-channel (conn channel-name)
+  "Return the channel object for CHANNEL-NAME on CONN."
+  (let ((channel-table (irc--connection-channel-table conn))
+        (folded-name (irc-isupport--case-fold conn channel-name)))
+    (gethash folded-name channel-table)))
+
+(defun irc-connection-channel-list (conn)
+  "Return the list of channel object on CONN."
+  (let ((channel-list nil))
+    (maphash (lambda (folded-name channel)
+               (push channel channel-list))
+             (irc--connection-channel-table conn))
+    channel-list))
+
+(defun irc-connection-add-channel (conn channel-name)
+  "Add CHANNEL-NAME to the channel table of CONN."
+  (let* ((channel-table (irc--connection-channel-table conn))
+         (channel (irc-channel-from-name conn channel-name))
+         (folded-name (irc-channel-folded-name channel)))
+    (when (not (gethash folded-name channel-table))
+      (puthash folded-name channel channel-table))))
+
+(defun irc-connection-remove-channel (conn channel-name)
+  "Remove CHANNEL-NAME from the channel table of CONN."
+  (let* ((channel-table (irc--connection-channel-table conn))
+         (folded-name (irc-isupport--case-fold conn channel-name)))
+    (remhash folded-name channel-table)))
+
+(defun irc--connection-channel-table (conn)
+  (let ((table (irc-connection-get conn :channel-table)))
+    (when (not table)
+      (setq table (make-hash-table :test 'equal))
+      (irc-connection-put conn :channel-table table))
+    table))
+
+(cl-defstruct irc-user
+  nick
+  folded-nick
+  userhost
+  connection)
+
+(defun irc-user-from-userstring (conn userstring)
+  "Create an irc-user struct on CONN from USERSTRING.
+
+USERSTRING should be a s tring of the form \"nick!user@host\"."
+  (let ((nick (irc-userstring-nick userstring)))
+    (make-irc-user :nick nick
+                   :folded-nick (irc-isupport--case-fold conn nick)
+                   :userhost (substring userstring (1+ (length nick)))
+                   :connection conn)))
+
+(defun irc-channel-user (channel nick)
+  "Return a user named NICK on channel CHANNEL."
+  (let ((user-table (irc-channel-users channel))
+        (folded-nick (irc-isupport--case-fold (irc-channel-connection channel)
+                                              nick)))
+    (gethash folded-nick user-table)))
+
+(defun irc-channel-add-user (channel userstring)
+  "Add USER to CHANNEL."
+  (let* ((user-table (irc-channel-users channel))
+         (user (irc-user-from-userstring (irc-channel-connection channel)
+                                         userstring))
+         (folded-nick (irc-user-folded-nick user)))
+    (when (not (gethash folded-nick user-table))
+      (puthash folded-nick user user-table))))
+
+(defun irc-channel-remove-user (channel nick)
+  "Remove NICK from CHANNEL."
+  (let* ((user-table (irc-channel-users channel))
+         (folded-nick (irc-isupport--case-fold (irc-channel-connection channel)
+                                               nick)))
+    (remhash folded-nick user-table)))
+
+(defun irc-handle-channel-and-user-tracking--JOIN (conn event sender target
+                                                        &optional
+                                                        account realname)
+  (let ((nick (irc-userstring-nick sender)))
+    (cond
+     ((irc-current-nick-p conn nick)
+      (irc-connection-add-channel conn target))
+     (t
+      (let ((channel (irc-connection-channel conn target)))
+        (when channel
+          (irc-channel-add-user channel sender)))))))
+
+(defun irc-handle-channel-and-user-tracking--PART (conn event sender target
+                                                        &optional reason)
+  (let ((nick (irc-userstring-nick sender)))
+    (cond
+     ((irc-current-nick-p conn nick)
+      (irc-connection-remove-channel conn target))
+     (t
+      (let ((channel (irc-connection-channel conn target)))
+        (when channel
+          (irc-channel-remove-user channel nick)))))))
+
+(defun irc-handle-channel-and-user-tracking--KICK (conn event sender target
+                                                        nick &optional reason)
+  (cond
+   ((irc-current-nick-p conn nick)
+    (irc-connection-remove-channel conn target))
+   (t
+    (let ((channel (irc-connection-channel conn target)))
+      (when channel
+        (irc-channel-remove-user channel nick))))))
+
+(defun irc-handle-channel-and-user-tracking--QUIT (conn event sender
+                                                        &optional reason)
+  (let ((nick (irc-userstring-nick sender)))
+    (if (irc-current-nick-p conn nick)
+        (dolist (channel (irc-connection-channel-list conn))
+          (irc-connection-remove-channel conn
+                                         (irc-channel-folded-name channel)))
+      (dolist (channel (irc-connection-channel-list conn))
+        (irc-channel-remove-user channel nick)))))
+
+(defun irc-handle-channel-and-user-tracking--NICK (conn event sender newnick)
+  (let ((nick (irc-userstring-nick sender))
+        (newnick-folded (irc-isupport--case-fold conn newnick)))
+    (dolist (channel (irc-connection-channel-list conn))
+      (let ((user (irc-channel-user channel nick))
+            (user-table (irc-channel-users channel)))
+        (when user
+          (remhash (irc-user-folded-nick user) user-table)
+          (setf (irc-user-nick user) newnick)
+          (setf (irc-user-folded-nick user) newnick-folded)
+          (puthash (irc-user-folded-nick user) user user-table))))))
+
+;; - RPL_NAMREPLY, RPL-ENDOFNAMES should update a channel nick list
+;;   - New nicks with this get a join time of nil!
+;; - TOPIC, RPL_TOPIC, TPL_NOTPIC should update the channel's current
+;;   and last topic
+;; - PRIVMSG should update a user's last-activity timestamp
+
+;; - Join should set the joined timestamp for a nick
+;; - Re-join checks should not depend on the join time being faked by
+;;   old joins, but rather by explicitly checking if the user was
+;;   around before.
+;; - The old member list should be cleaned up regularly
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Channel topic tracking
