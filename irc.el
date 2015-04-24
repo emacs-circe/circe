@@ -912,7 +912,8 @@ handler:
                    #'irc-handle-channel-and-user-tracking--QUIT)
   (irc-handler-add table "NICK"
                    #'irc-handle-channel-and-user-tracking--NICK)
-
+  (irc-handler-add table "PRIVMSG"
+                   #'irc-handle-channel-and-user-tracking--PRIVMSG)
   )
 
 (cl-defstruct irc-channel
@@ -968,6 +969,7 @@ handler:
   folded-nick
   userhost
   join-time
+  last-activity-time
   connection)
 
 (defun irc-user-from-userstring (conn userstring)
@@ -1059,34 +1061,37 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
           (setf (irc-user-folded-nick user) newnick-folded)
           (puthash (irc-user-folded-nick user) user user-table))))))
 
+(defun irc-handle-channel-and-user-tracking--PRIVMSG (conn event sender
+                                                           target message)
+  (let ((channel (irc-connection-channel conn target))
+        (nick (irc-userstring-nick sender)))
+    (when channel
+      (let ((user (irc-channel-user channel nick)))
+        (when user
+          (setf (irc-user-last-activity-time user) (float-time)))))))
+
+;; Emit events:
+;; - irc.channel.create channel
+;; - irc.channel.remove channel
+;; - irc.channel.join channel user
+;; - irc.channel.leave channel user
+;; - irc.channel.rename channel user oldnick newnick
+
 ;; - RPL_NAMREPLY, RPL-ENDOFNAMES should update a channel nick list
 ;;   - New nicks with this get a join time of nil!
 
-;; - TOPIC, RPL_TOPIC, TPL_NOTPIC should update the channel's current
-;;   and last topic
-
-;; - PRIVMSG should update a user's last-activity timestamp
+;; - TOPIC, 331 RPL_NOTPIC, 332 RPL_TOPIC should update the channel's current
+;;   topic
+;;
+;; Events emitted:
+;; - irc.topic.changed channel old new
 
 ;; - PART/KICK/QUIT should move a user to a recent users list
 ;; - JOIN should remove a user from the recent users list
 ;; - All of those should clean up old entries in the list
 
 ;; - Merge current nick tracking into channel-and-user-tracking
-;; - Then, rename
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Handler: Channel topic tracking
-
-;; Events caught:
-;; - TOPIC, 331 RPL_NOTOPIC, 332 RPL_TOPIC
-;;   => Remember current topic of channels
-
-;; Events emitted:
-;; - irc.topic.changed channel old new
-
-;; Options set:
-;; - :channel-topics
-;;   - Or rather, re-use :irc-channels
+;; - Then, rename to irc-handle-state-tracking
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Auto-Join

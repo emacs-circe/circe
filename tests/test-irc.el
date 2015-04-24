@@ -1227,7 +1227,7 @@
     (it "should return the user object that was added before"
       (let ((channel (irc-channel-from-name proc "#CHANNEL")))
         (irc-channel-add-user channel "SOMENICK!user@host")
-        
+
         (expect (irc-user-nick (irc-channel-user channel "somenick"))
                 :to-equal "SOMENICK")))
 
@@ -1244,7 +1244,7 @@
         (irc-channel-add-user channel "SOMENICK!user@host")
 
         (irc-channel-remove-user channel "somenick")
-        
+
         (expect (irc-channel-user channel "somenick")
                 :to-be nil)))
 
@@ -1268,12 +1268,12 @@
       (irc-handle-current-nick-tracking table)
       (irc-connection-put proc :current-nick "mynick")
       (irc-handle-channel-and-user-tracking table))
-    
+
     (describe "for joining"
       (it "should update the channel list if we join"
         (expect (irc-connection-channel proc "#channel")
                 :to-be nil)
-        
+
         (irc-event-emit proc "JOIN" "mynick!user@host" "#channel")
 
         (expect (irc-connection-channel proc "#channel")
@@ -1313,7 +1313,7 @@
       (it "should set the join time"
         (spy-on 'float-time :and-return-value 23)
         (irc-event-emit proc "JOIN" "mynick!user@host" "#channel")
-        
+
         (irc-event-emit proc "JOIN" "somenick!user@host" "#channel")
 
         (expect (irc-user-join-time
@@ -1326,7 +1326,7 @@
       (before-each
         (irc-event-emit proc "JOIN" "mynick!user@host" "#channel")
         (irc-event-emit proc "JOIN" "othernick!user@host" "#channel"))
-      
+
       (it "should remove a channel if we part"
         (irc-event-emit proc "PART" "mynick!user@host" "#channel")
 
@@ -1342,7 +1342,7 @@
 
       (it "should remove all channels if we quit"
         (irc-event-emit proc "QUIT" "mynick!user@host" "I am out")
-        
+
         (expect (irc-connection-channel proc "#channel")
                 :to-be nil))
 
@@ -1379,7 +1379,7 @@
 
         (irc-event-emit proc "JOIN" "othernick!user@host" "#chan1")
         (irc-event-emit proc "JOIN" "othernick!user@host" "#chan2"))
-      
+
       (it "should update the user on all channels"
         (irc-event-emit proc "NICK" "othernick!user@host" "newnick")
 
@@ -1398,6 +1398,20 @@
         (expect (irc-channel-user
                  (irc-connection-channel proc "#chan2")
                  "newnick")
-                :not :to-be nil)
-        ))
+                :not :to-be nil)))
+
+    (describe "for activity"
+      (it "should set the last activity timestamp on PRIVMSG"
+        (spy-on 'float-time :and-return-value 23)
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#channel")
+        (irc-event-emit proc "JOIN" "othernick!user@host" "#channel")
+
+        (irc-event-emit proc "PRIVMSG" "othernick!user@host" "#channel" "Hi!")
+
+        (expect (irc-user-last-activity-time
+                 (irc-channel-user
+                  (irc-connection-channel proc "#channel")
+                  "othernick"))
+                :to-equal
+                23)))
     ))
