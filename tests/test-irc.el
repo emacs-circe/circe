@@ -1461,4 +1461,51 @@
                   "SOMENICK"))
                 :to-equal
                 "somenick")))
+
+    (describe "for recent channel users"
+      (before-each
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#channel"))
+      
+      (it "should not know a recent user that was not there"
+        (irc-event-emit proc "JOIN" "somenick!user@host" "#channel")
+        
+        (expect (irc-channel-recent-user
+                 (irc-connection-channel proc "#channel")
+                 "somenick")
+                :to-be nil))
+
+      (it "should add a user to recent users when they leave"
+        (irc-event-emit proc "JOIN" "somenick!user@host" "#channel")
+        (irc-event-emit proc "PART" "somenick!user@host" "#channel")
+
+        (expect (irc-channel-recent-user
+                 (irc-connection-channel proc "#channel")
+                 "somenick")
+                :not :to-be nil))
+
+      (it "should set the part time"
+        (irc-event-emit proc "JOIN" "somenick!user@host" "#channel")
+        (let ((user (irc-channel-user
+                     (irc-connection-channel proc "#channel")
+                     "somenick")))
+          (expect (irc-user-part-time user)
+                  :to-be nil)
+        
+          (irc-event-emit proc "PART" "somenick!user@host" "#channel")
+
+          (expect (irc-user-part-time user)
+                  :not :to-be nil)))
+
+      (it "should remove users who left over an hour ago"
+        (spy-on 'float-time :and-return-value 10000)
+        (irc-event-emit proc "JOIN" "nick1!user@host" "#channel")
+        (irc-event-emit proc "JOIN" "nick2!user@host" "#channel")
+        (irc-event-emit proc "PART" "nick1!user@host" "#channel")
+        (spy-on 'float-time :and-return-value 13605)
+        (irc-event-emit proc "PART" "nick2!user@host" "#channel")
+
+        (expect (irc-channel-recent-user
+                 (irc-connection-channel proc "#channel")
+                 "nick1")
+                :to-be nil)))
     ))

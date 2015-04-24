@@ -924,6 +924,7 @@ handler:
   name
   folded-name
   users
+  recent-users
   receiving-names
   connection)
 
@@ -932,6 +933,7 @@ handler:
   (make-irc-channel :name name
                     :folded-name (irc-isupport--case-fold conn name)
                     :users (make-hash-table :test 'equal)
+                    :recent-users (make-hash-table :test 'equal)
                     :connection conn))
 
 (defun irc-connection-channel (conn channel-name)
@@ -975,6 +977,7 @@ handler:
   userhost
   join-time
   last-activity-time
+  part-time
   connection)
 
 (defun irc-user-from-userstring (conn userstring)
@@ -997,6 +1000,13 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
                                               nick)))
     (gethash folded-nick user-table)))
 
+(defun irc-channel-recent-user (channel nick)
+  "Return a recent user named NICK on channel CHANNEL."
+  (let ((user-table (irc-channel-recent-users channel))
+        (folded-nick (irc-isupport--case-fold (irc-channel-connection channel)
+                                              nick)))
+    (gethash folded-nick user-table)))
+
 (defun irc-channel-add-user (channel userstring)
   "Add USER to CHANNEL."
   (let* ((user-table (irc-channel-users channel))
@@ -1010,9 +1020,20 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
 (defun irc-channel-remove-user (channel nick)
   "Remove NICK from CHANNEL."
   (let* ((user-table (irc-channel-users channel))
+         (recent-user-table (irc-channel-recent-users channel))
          (folded-nick (irc-isupport--case-fold (irc-channel-connection channel)
-                                               nick)))
-    (remhash folded-nick user-table)))
+                                               nick))
+         (user (gethash folded-nick user-table)))
+    (remhash folded-nick user-table)
+    (when user
+      (setf (irc-user-part-time user) (float-time))
+      (puthash folded-nick user recent-user-table)
+      (maphash (lambda (folded-nick user)
+                 (when (< (irc-user-part-time user)
+                          (- (float-time)
+                             (* 60 60)))
+                   (remhash folded-nick recent-user-table)))
+               recent-user-table))))
 
 (defun irc-handle-channel-and-user-tracking--JOIN (conn event sender target
                                                         &optional
@@ -1115,10 +1136,6 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
     (maphash (lambda (nick-folded nick)
                (irc-channel-add-user channel nick))
              want)))
-
-;; - PART/KICK/QUIT should move a user to a recent users list
-;; - JOIN should remove a user from the recent users list
-;; - All of those should clean up old entries in the list
 
 ;; - Merge current nick tracking into channel-and-user-tracking
 ;; - Then, rename to irc-handle-state-tracking
