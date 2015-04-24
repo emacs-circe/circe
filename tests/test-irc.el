@@ -1305,8 +1305,22 @@
                 :to-be nil))
 
       (it "should not fail on extended JOIN"
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#channel"
+                        "account" "The real name")
         (irc-event-emit proc "JOIN" "otheruser!user@host" "#channel"
-                        "account" "The real name")))
+                        "account" "The real name"))
+
+      (it "should set the join time"
+        (spy-on 'float-time :and-return-value 23)
+        (irc-event-emit proc "JOIN" "mynick!user@host" "#channel")
+        
+        (irc-event-emit proc "JOIN" "somenick!user@host" "#channel")
+
+        (expect (irc-user-join-time
+                 (irc-channel-user
+                  (irc-connection-channel proc "#channel")
+                  "somenick"))
+                :to-equal 23)))
 
     (describe "for parting"
       (before-each

@@ -726,16 +726,14 @@ Connection options used:
 :nick-alternatives -- A list of nicks to try if the first attempt
   does not succeed."
   (irc-handler-add table "432" ;; ERR_ERRONEUSNICKNAME
-                   #'irc-handle-current-nick-tracking--get-initial-nick)
+                   #'irc-handle-initial-nick-acquisition--get-initial-nick)
   (irc-handler-add table "433" ;; ERR_NICKNAMEINUSE
-                   #'irc-handle-current-nick-tracking--get-initial-nick)
+                   #'irc-handle-initial-nick-acquisition--get-initial-nick)
   (irc-handler-add table "437" ;; ERR_UNAVAILRESOURCE
-                   #'irc-handle-current-nick-tracking--get-initial-nick))
+                   #'irc-handle-initial-nick-acquisition--get-initial-nick))
 
-(defun irc-handle-current-nick-tracking--get-initial-nick (conn event sender
-                                                                current-nick
-                                                                attempted-nick
-                                                                reason)
+(defun irc-handle-initial-nick-acquisition--get-initial-nick
+    (conn event sender current-nick attempted-nick reason)
   (when (equal current-nick "*")
     (let ((alternatives (irc-connection-get conn :nick-alternatives)))
       (if (not alternatives)
@@ -914,7 +912,7 @@ handler:
                    #'irc-handle-channel-and-user-tracking--QUIT)
   (irc-handler-add table "NICK"
                    #'irc-handle-channel-and-user-tracking--NICK)
-  
+
   )
 
 (cl-defstruct irc-channel
@@ -969,6 +967,7 @@ handler:
   nick
   folded-nick
   userhost
+  join-time
   connection)
 
 (defun irc-user-from-userstring (conn userstring)
@@ -995,6 +994,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
                                          userstring))
          (folded-nick (irc-user-folded-nick user)))
     (when (not (gethash folded-nick user-table))
+      (setf (irc-user-join-time user) (float-time))
       (puthash folded-nick user user-table))))
 
 (defun irc-channel-remove-user (channel nick)
@@ -1061,15 +1061,18 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
 
 ;; - RPL_NAMREPLY, RPL-ENDOFNAMES should update a channel nick list
 ;;   - New nicks with this get a join time of nil!
+
 ;; - TOPIC, RPL_TOPIC, TPL_NOTPIC should update the channel's current
 ;;   and last topic
+
 ;; - PRIVMSG should update a user's last-activity timestamp
 
-;; - Join should set the joined timestamp for a nick
-;; - Re-join checks should not depend on the join time being faked by
-;;   old joins, but rather by explicitly checking if the user was
-;;   around before.
-;; - The old member list should be cleaned up regularly
+;; - PART/KICK/QUIT should move a user to a recent users list
+;; - JOIN should remove a user from the recent users list
+;; - All of those should clean up old entries in the list
+
+;; - Merge current nick tracking into channel-and-user-tracking
+;; - Then, rename
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Channel topic tracking
