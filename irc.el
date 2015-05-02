@@ -422,9 +422,11 @@ omitted, retrieve the current topic."
 MODE should be an integer as per RFC 2812"
   (irc-send-command conn "USER" user (format "%s" mode) "*" realname))
 
-(defun irc-send-WHOIS (conn target)
+(defun irc-send-WHOIS (conn target server-or-name)
   "Retrieve current whois information on TARGET."
-  (irc-send-command conn "WHOIS" target))
+  (if server-or-name
+      (irc-send-command conn "WHOIS" target server-or-name)
+    (irc-send-command conn "WHOIS" target)))
 
 (defun irc-send-WHOWAS (conn target)
   "Retrieve past whois information on TARGET."

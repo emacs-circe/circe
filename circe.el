@@ -2102,8 +2102,10 @@ message separated by a space."
 (defun circe-command-WHOIS (whom)
   "Request WHOIS information about WHOM."
   (interactive "sWhois: ")
-  (let ((whom (string-trim whom)))
-    (irc-send-WHOIS (circe-server-process) whom)))
+  (let* ((whom-server-name (split-string whom))
+         (whom (car whom-server-name))
+         (server-or-name (cadr whom-server-name)))
+    (irc-send-WHOIS (circe-server-process) whom server-or-name)))
 
 (defun circe-command-WHOWAS (whom)
   "Request WHOWAS information about WHOM."
