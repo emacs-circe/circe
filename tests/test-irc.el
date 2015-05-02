@@ -616,7 +616,14 @@
 
       (expect 'irc-send-raw
               :to-have-been-called-with
-              'proc "WHOIS user")))
+              'proc "WHOIS user"))
+
+    (it "should allow for an optional WHOIS argument"
+      (irc-send-WHOIS 'proc "user" "user")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              'proc "WHOIS user user")))
 
   (describe "`irc-send-WHOWAS'"
     (it "should send a WHOWAS message"
