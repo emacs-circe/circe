@@ -259,9 +259,11 @@
     (when (version< emacs-version "24.4")
       (signal 'buttercup-pending t))
     ;; This is utf-16
-    (expect (irc--parse "PRIVMSG #channel :\xff\xfe\x6d\x00\xf6\x00\x70\x00")
+    (expect (irc--parse
+             (concat ":\xff\xfe\x6d\x00\xf6\x00\x70\x00 "
+                     "PRIVMSG #channel :\xff\xfe\x6d\x00\xf6\x00\x70\x00"))
             :to-equal
-            '(nil "PRIVMSG" "#channel" "möp"))))
+            '("möp" "PRIVMSG" "#channel" "möp"))))
 
 (describe "The `irc-userstring-nick' function"
   (it "should return the nick of a nick!user@host userstring"

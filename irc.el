@@ -176,7 +176,9 @@ COMMAND arg1 arg2 :arg3 still arg3
     (let ((sender nil)
           (args nil))
       (when (looking-at ":\\([^ ]*\\) +")
-        (setq sender (match-string 1))
+        (setq sender (decode-coding-string
+                      (match-string 1)
+                      'undecided))
         (goto-char (match-end 0)))
       (while (re-search-forward ":\\(.*\\)\\|\\([^ ]+\\)" nil t)
         (push (decode-coding-string
