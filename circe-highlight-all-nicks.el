@@ -83,11 +83,12 @@ See `enable-circe-highlight-all-nicks'."
           (nicks '())
           (regex nil))
       (when body
-        (when circe-channel-users
-          (maphash (lambda (nick _)
-                     (when (not (circe-server-my-nick-p nick))
-                       (setq nicks (cons nick nicks))))
-                   circe-channel-users))
+        (let ((channel-nicks (circe-channel-nicks)))
+          (when channel-nicks
+            (mapc (lambda (nick)
+                    (when (not (string= (circe-server-nick) nick))
+                      (setq nicks (cons nick nicks))))
+                  channel-nicks)))
         (setq regex (regexp-opt nicks 'words))
         (goto-char body)
         (while (re-search-forward regex nil t)
