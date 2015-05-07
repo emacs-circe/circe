@@ -1555,10 +1555,8 @@ users, which is a pretty rough heuristic, but it works."
   "Return a list of channels for the user named NICK."
   (let* ((result nil))
     (dolist (channel (irc-connection-channel-list (circe-server-process)))
-      (let ((channel (irc-connection-channel (circe-server-process)
-                                             (irc-channel-name channel))))
-        (when (irc-channel-user channel nick)
-          (push channel-name result))))
+      (when (irc-channel-user channel nick)
+        (push (irc-channel-name channel) result)))
     result))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1569,7 +1567,8 @@ users, which is a pretty rough heuristic, but it works."
   (let* ((channel (irc-connection-channel (circe-server-process)
                                           circe-chat-target))
          (user (irc-channel-user channel nick))
-         (last-active (irc-user-last-activity-time user)))
+         (last-active (when user
+                        (irc-user-last-activity-time user))))
     (cond
      ;; If we do not track lurkers, no one is ever a lurker.
      ((not circe-reduce-lurker-spam)
@@ -1603,7 +1602,8 @@ users, which is a pretty rough heuristic, but it works."
   (let* ((channel (irc-connection-channel (circe-server-process)
                                           circe-chat-target))
          (user (irc-channel-user channel nick))
-         (join-time (irc-user-join-time user)))
+         (join-time (when user
+                      (irc-user-join-time user))))
     (when (and (circe-lurker-p nick)
                ;; If we saw them when we joined the channel, no need to
                ;; say "they're suddenly active!!111one".
@@ -2983,11 +2983,13 @@ as arguments."
              (let* ((channel (irc-connection-channel (circe-server-process)
                                                     circe-chat-target))
                     (user (irc-channel-recent-user channel nick)))
-               (irc-user-last-activity-time user)))
+               (when user
+                 (irc-user-last-activity-time user))))
         (let* ((channel (irc-connection-channel (circe-server-process)
                                                     circe-chat-target))
                (user (irc-channel-recent-user channel nick))
-               (departed (irc-user-part-time user)))
+               (departed (when user
+                           (irc-user-part-time user))))
           (circe-display 'circe-format-server-rejoin
                          :nick nick
                          :user user
