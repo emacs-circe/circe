@@ -155,7 +155,7 @@ Similarity is computed with `circe-color-distance'"
               (nick (plist-get (plist-get (text-properties-at nickstart)
                                           'lui-keywords)
                                :nick)))
-          (when (not (string= (circe-server-nick) nick))
+          (when (not (circe-server-my-nick-p nick))
             (let ((color (gethash nick circe-nick-color-mapping)))
               (when (not color)
                 (setq color (circe-generate-nick-color))
@@ -169,7 +169,7 @@ Similarity is computed with `circe-color-distance'"
         (when body
           (with-syntax-table circe-nick-syntax-table
             (maphash (lambda (nick _)
-                       (when (and (not (string= (circe-server-nick) nick))
+                       (when (and (not (circe-server-my-nick-p nick))
                                   (circe-channel-user-p nick)
                                   (not (member nick circe-color-nicks-message-blacklist)))
                          (setq nicks (cons nick nicks))))
