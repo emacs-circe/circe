@@ -886,10 +886,18 @@ handler:
                    #'irc-handle-state-tracking--rpl-namreply)
   (irc-handler-add table "366" ;; RPL_ENDOFNAMES
                    #'irc-handle-state-tracking--rpl-endofnames)
+
+  (irc-handler-add table "TOPIC"
+                   #'irc-handle-state-tracking--TOPIC)
+  (irc-handler-add table "331" ;; RPL_NOTOPIC
+                   #'irc-handle-state-tracking--rpl-notopic)
+  (irc-handler-add table "332" ;; RPL_TOPIC
+                   #'irc-handle-state-tracking--rpl-topic)
   )
 
 (cl-defstruct irc-channel
   name
+  topic
   folded-name
   users
   recent-users
@@ -1143,8 +1151,22 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
                (irc-channel-add-user channel nick))
              want)))
 
-;; - TOPIC, 331 RPL_NOTPIC, 332 RPL_TOPIC should update the channel's current
-;;   topic
+(defun irc-handle-state-tracking--TOPIC (conn event sender channel new-topic)
+  (let ((channel (irc-connection-channel conn channel)))
+    (when channel
+      (setf (irc-channel-topic channel) new-topic))))
+
+(defun irc-handle-state-tracking--rpl-notopic (conn event sender current-nick
+                                                    channel no-topic-desc)
+  (let ((channel (irc-connection-channel conn channel)))
+    (when channel
+      (setf (irc-channel-topic channel) nil))))
+
+(defun irc-handle-state-tracking--rpl-topic (conn event sender current-nick
+                                                  channel topic)
+  (let ((channel (irc-connection-channel conn channel)))
+    (when channel
+      (setf (irc-channel-topic channel) topic))))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Auto-Join

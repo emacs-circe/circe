@@ -1522,5 +1522,36 @@
                  (irc-connection-channel proc "#channel")
                  "nick1")
                 :to-be nil)))
-    ))
 
+    (describe "for channel topics"
+      (let (channel)
+        (before-each
+          (irc-connection-add-channel proc "#channel")
+          (setq channel (irc-connection-channel proc "#channel")))
+
+        (it "should leave the initial topic empty"
+          (expect (irc-channel-topic channel)
+                  :to-be nil)
+
+          (irc-event-emit proc "331" "irc.server" "mynick" "#channel"
+                          "No topic is set")
+
+          (expect (irc-channel-topic channel)
+                  :to-be nil))
+
+        (it "should set the initial topic"
+          (expect (irc-channel-topic channel)
+                  :to-be nil)
+
+          (irc-event-emit proc "332" "irc.server" "mynick" "#channel"
+                          "The initial topic")
+
+          (expect (irc-channel-topic channel)
+                  :to-equal "The initial topic"))
+
+        (it "should change topics"
+          (irc-event-emit proc "TOPIC" "nick!user@host" "#channel" "New topic")
+
+          (expect (irc-channel-topic channel)
+                  :to-equal "New topic"))
+        ))))
