@@ -166,7 +166,7 @@ is then associated with the match."
     ("SRFI[- ]?\\([0-9]+\\)" 0 lui-button-srfi 1)
     ("PEP[- ]?\\([0-9]+\\)" 0 lui-button-pep 1)
     ("xkcd[ #]*\\([0-9]+\\)" 0 lui-button-xkcd 1)
-    ("[0-9a-zA-Z_.-]+/[0-9a-zA-Z_.-]+#[0-9]+" 0 lui-button-github 0))
+    ("\\([0-9a-zA-Z_.-]+/[0-9a-zA-Z_.-]+\\)#[0-9]+" 0 lui-button-github 0))
   "The list of buttons to buttonize.
 This consists of lists of four elements each:
 
@@ -179,6 +179,14 @@ ARG-MATCH as its sole argument."
                        (integer :tag "Submatch to buttonize")
                        (function :tag "Function to call for this button")
                        (integer :tag "Submatch to pass as an argument")))
+  :group 'lui)
+
+(defcustom lui-button-issue-tracker nil
+  "A tracker URL for the current channel.
+
+This will cause simple #123 links to highlight as issue links to
+the given repository. Use %s to insert the actual number."
+  :type 'string
   :group 'lui)
 
 (defcustom lui-fill-type "    "
@@ -620,10 +628,17 @@ Otherwise, we move to the next button."
 
 (defun lui-button-github (issue-part)
   "Browse the github issue ISSUE-PART."
-  (let ((parts (split-string issue-part "#")))
-    (browse-url (format "https://github.com/%s/issues/%s"
-                        (car parts)
-                        (cadr parts)))))
+  (let* ((parts (split-string issue-part "#"))
+         (repo (car parts))
+         (number (cadr parts)))
+    (browse-url
+     (cond
+      ((and repo (not (equal repo "")))
+       (format "https://github.com/%s/issues/%s" repo number))
+      (lui-button-issue-tracker
+       (format lui-button-issue-tracker number))
+      (t
+       (error "Configure `lui-button-issue-tracker' to use this"))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;

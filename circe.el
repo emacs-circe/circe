@@ -1472,6 +1472,9 @@ SERVER-BUFFER is the server buffer of this chat buffer.
   (setq major-mode 'circe-channel-mode
         mode-name "Circe Channel")
   (use-local-map circe-channel-mode-map)
+  (when (equal circe-chat-target "#emacs-circe")
+    (set (make-local-variable 'lui-button-issue-tracker)
+         "https://github.com/jorgenschaefer/circe/issues/%s"))
   (run-hooks 'circe-channel-mode-hook))
 
 (defun circe-channel-killed ()
