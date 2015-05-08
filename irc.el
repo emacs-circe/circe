@@ -1171,32 +1171,135 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
     (when channel
       (setf (irc-channel-topic channel) topic))))
 
+;;;;;;;;;;;;;;,;;;;;;
+;;; Handler: NickServ
+
+(defun irc-handle-nickserv (table)
+  "Add command handlers to TABLE to deal with NickServ.
+
+Connection options used:
+
+:nickserv-nick -- The nick to register as
+
+:nickserv-password -- The password for nickserv; can be a function and
+  is then called with the IRC connection as its sole argument
+
+:nickserv-mask -- A regular expression matching the correct NickServ's
+  nick!user@host string to avoid fakes
+
+:nickserv-identify-challenge -- A regular expression matching the
+  challenge sent by NickServ to request identification
+
+:nickserv-identify-command -- The raw IRC command to send to identify;
+  expands {nick} and {password} when present
+
+:nickserv-identify-confirmation -- A regular expression matching the
+  confirmation message from NickServ after successful identification
+
+:nickserv-ghost-command -- The raw IRC comment to ghost your original
+  nick; expands {nick} and {password}
+
+:nickserv-ghost-confirmation -- A regular expression matching the
+  confirmation message that the nick was ghosted
+
+Events emitted:
+
+\"nickserv.identified\" -- We have successfully identified with nickserv.
+
+\"nickserv.ghosted\" -- We have ghosted a nick."
+  (irc-handler-add table "irc.registered" #'irc-handle-nickserv--registered)
+  (irc-handler-add table "NOTICE" #'irc-handle-nickserv--NOTICE)
+  (irc-handler-add table "PRIVMSG" #'irc-handle-nickserv--NOTICE)
+  (irc-handler-add table "NICK" #'irc-handle-nickserv--NICK))
+
+(defun irc-handle-nickserv--password (conn)
+  (let ((password (irc-connection-get conn :nickserv-password)))
+    (if (functionp password)
+        (funcall password conn)
+      password)))
+
+(defun irc-handle-nickserv--registered (conn event current-nick)
+  (let ((wanted-nick (irc-connection-get conn :nickserv-nick))
+        (ghost-command (irc-connection-get conn :nickserv-ghost-command)))
+    (when (and wanted-nick
+               ghost-command
+               (not (irc-string-equal-p conn current-nick wanted-nick)))
+      (irc-send-raw conn
+                    (irc-format ghost-command
+                                'nick (irc-connection-get
+                                       conn :nickserv-nick)
+                                'password (irc-handle-nickserv--password
+                                           conn))))))
+
+(defun irc-handle-nickserv--NOTICE (conn event sender target message)
+  (let ((nickserv-mask (irc-connection-get conn :nickserv-mask))
+        identify-challenge identify-command identify-confirmation
+        ghost-confirmation)
+    (when (string-match nickserv-mask sender)
+      (setq identify-challenge
+            (irc-connection-get conn :nickserv-identify-challenge))
+      (setq identify-command
+            (irc-connection-get conn :nickserv-identify-command))
+      (setq identify-confirmation
+            (irc-connection-get conn :nickserv-identify-confirmation))
+      (setq ghost-confirmation
+            (irc-connection-get conn :nickserv-ghost-confirmation))
+
+      (cond
+       ;; Identify
+       ((and identify-challenge
+             (string-match identify-challenge message))
+        (irc-send-raw conn
+                      (irc-format identify-command
+                                  'nick (irc-connection-get
+                                         conn :nickserv-nick)
+                                  'password (irc-handle-nickserv--password
+                                             conn))))
+       ;; Identification confirmed
+       ((and identify-confirmation
+             (string-match identify-confirmation message))
+        (irc-event-emit conn "nickserv.identified"))
+       ;; Ghosting confirmed
+       ((and ghost-confirmation
+             (string-match ghost-confirmation message))
+        (irc-event-emit conn "nickserv.ghosted")
+        (irc-connection-put conn :nickserv-regaining-nick t)
+        (when (irc-connection-get conn :nickserv-nick)
+          (irc-send-NICK conn (irc-connection-get conn :nickserv-nick))))))))
+
+(defun irc-handle-nickserv--NICK (conn event sender new-nick)
+  (when (and (irc-connection-get conn :nickserv-regaining-nick)
+             (irc-string-equal-p conn new-nick
+                                 (irc-connection-get conn :nickserv-nick)))
+    (irc-connection-put conn :nickserv-regaining-nick nil)
+    (irc-event-emit conn "nickserv.regained")))
+
+(defun irc-format (format &rest args)
+  "Return a formatted version of FORMAT, using substitutions from ARGS.
+
+The substitutions are identified by braces ('{' and '}')."
+  (with-temp-buffer
+    (insert format)
+    (goto-char (point-min))
+    (while (re-search-forward "{\\([^}]*\\)}" nil t)
+      (replace-match (plist-get args (intern (match-string 1)))))
+    (buffer-string)))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Auto-Join
 
 ;; Connection options used:
-;; - auto-join-after-registration
-;; - auto-join-after-host-hiding
-;; - auto-join-after-nick-acquisition
+;; - auto-join-after-registration (001)
+;; - auto-join-after-host-hiding (396)
+;; - auto-join-after-nick-acquisition (NICK)
+;; - auto-join-after-nickserv-auth (nickserv.registered)
 
 ;; Events caught:
 ;; - 001 RPL_WELCOME
 ;; - 396 RPL_HOSTHIDDEN
 ;; - NICK => When we regain our preferred nick
-
-;;;;;;;;;;;;;;,;;;;;;
-;;; Handler: NickServ
-
-;; Events caught:
-;; - PRIVMSG, NOTICE => Handle nickserv messages
-;; - irc.registered => Nick not ours? Send ghost message
-
-;; Events emitted:
 ;; - nickserv.registered
-;; - nickserv.failed
-
-;; Connection options used:
-;; - :nickserv-*
 
 (provide 'irc)
 ;;; irc.el ends here

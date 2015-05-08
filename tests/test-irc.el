@@ -1602,3 +1602,131 @@
           (expect (irc-channel-last-topic channel)
                   :to-equal "Old topic"))
         ))))
+
+;;;;;;;;;;;;;;;;;;;;;
+;;; Handler: NickServ
+
+(describe "The nickserv handler"
+  (let (proc table identified-args ghosted-args regained-args)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            table (irc-handler-table))
+      (irc-connection-put proc :handler-table table)
+
+      (spy-on 'irc-send-raw)
+
+      (dolist (elt
+               '((:nickserv-nick "mynick")
+                 (:nickserv-password "top-secret")
+                 (:nickserv-mask "\\`NickServ!n@s\\'")
+                 (:nickserv-identify-challenge "Please identify")
+                 (:nickserv-identify-command
+                  "PRIVMSG NickServ :IDENTIFY {nick} {password}")
+                 (:nickserv-identify-confirmation "You are identified")
+                 (:nickserv-ghost-command
+                  "PRIVMSG NickServ :GHOST {nick} {password}")
+                 (:nickserv-ghost-confirmation "has been ghosted")))
+        (irc-connection-put proc (car elt) (cadr elt)))
+
+      (irc-handle-nickserv table)
+
+      (setq identified-args nil)
+      (irc-handler-add table "nickserv.identified"
+                       (lambda (&rest args)
+                         (setq identified-args args)))
+      (setq ghosted-args nil)
+      (irc-handler-add table "nickserv.ghosted"
+                       (lambda (&rest args)
+                         (setq ghosted-args args)))
+      (setq regained-args nil)
+      (irc-handler-add table "nickserv.regained"
+                       (lambda (&rest args)
+                         (setq regained-args args))))
+
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
+
+    (describe "identification"
+      (it "should register on the identify challenge"
+        (irc-event-emit proc "PRIVMSG" "NickServ!n@s" "mynick"
+                        "Please identify")
+
+        (expect 'irc-send-raw
+                :to-have-been-called-with
+                proc "PRIVMSG NickServ :IDENTIFY mynick top-secret"))
+
+      (it "should register with a password function"
+        (irc-connection-put proc :nickserv-password
+                            (lambda (conn)
+                              "bottom-secret"))
+
+        (irc-event-emit proc "PRIVMSG" "NickServ!n@s" "mynick"
+                        "Please identify")
+
+        (expect 'irc-send-raw
+                :to-have-been-called-with
+                proc "PRIVMSG NickServ :IDENTIFY mynick bottom-secret"))
+
+      (it "should not respond to a fake challenge"
+        (irc-event-emit proc "PRIVMSG" "NickServ!fake@host" "mynick"
+                        "Please identify")
+
+        (expect 'irc-send-raw
+                :not :to-have-been-called))
+
+      (it "should emit nickserv.identified for the identification confirmation"
+        (irc-event-emit proc "PRIVMSG" "NickServ!n@s" "mynick"
+                        "You are identified")
+
+        (expect identified-args
+                :to-equal
+                (list proc "nickserv.identified"))))
+
+    (describe "ghosting"
+      (it "should ghost if we do not have our nick"
+        (irc-event-emit proc "irc.registered" "othernick")
+
+        (expect 'irc-send-raw
+                :to-have-been-called-with
+                proc "PRIVMSG NickServ :GHOST mynick top-secret"))
+
+      (it "should not ghost if we do have our nick"
+        (irc-event-emit proc "irc.registered" "mynick")
+
+        (expect 'irc-send-raw
+                :not :to-have-been-called))
+
+      (it "should emit nickserv.ghosted after successful ghosting"
+        (irc-event-emit proc "PRIVMSG" "NickServ!n@s" "othernick"
+                        "That person has been ghosted")
+
+        (expect ghosted-args
+                :to-equal
+                (list proc "nickserv.ghosted")))
+
+      (it "should regain the original nick"
+        (irc-event-emit proc "PRIVMSG" "NickServ!n@s" "othernick"
+                        "That person has been ghosted")
+
+        (expect 'irc-send-raw
+                :to-have-been-called-with
+                proc "NICK mynick"))
+
+      (it "should emit nickserv.regained when the nick is regained"
+        (irc-event-emit proc "irc.registered" "othernick")
+        (irc-event-emit proc "PRIVMSG" "NickServ!n@s" "othernick"
+                        "That person has been ghosted")
+        (irc-event-emit proc "NICK" "othernick!user@host" "mynick")
+
+        (expect regained-args
+                :to-equal
+                (list proc "nickserv.regained"))))))
+
+(describe "The `irc-format' function"
+  (it "should format simple strings"
+    (expect (irc-format "{greeting}, {world}!"
+                        'greeting "Hello"
+                        'world "World")
+            :to-equal
+            "Hello, World!")))
