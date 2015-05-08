@@ -1912,13 +1912,19 @@ message separated by a space."
                          :target who
                          :body what))))))
 
-(defun circe-command-QUERY (who)
+(defun circe-command-QUERY (arg)
   "Open a query with WHO."
   (interactive "sQuery with: ")
-  (let ((circe-new-buffer-behavior 'ignore)
-        (who (string-trim who)))
+  (let* ((circe-new-buffer-behavior 'ignore)
+         who what)
+    (if (string-match "\\`\\s-*\\(\\S-+\\)\\s-+\\(.*\\)\\'" arg)
+        (setq who (match-string 1 arg)
+              what (match-string 2 arg))
+      (setq who (string-trim arg)))
     (pop-to-buffer
-     (circe-server-get-chat-buffer who 'circe-query-mode))))
+     (circe-server-get-chat-buffer who 'circe-query-mode))
+    (when what
+      (circe-command-SAY what))))
 
 (defun circe-command-JOIN (channel)
   "Join CHANNEL. This can also contain a key."
