@@ -2099,10 +2099,9 @@ Arguments are IGNORED."
     (irc-handle-registration table)
     (irc-handle-ping-pong table)
     (irc-handle-isupport table)
-    (irc-handle-current-nick-tracking table)
+    (irc-handle-state-tracking table)
     (irc-handle-initial-nick-acquisition table)
     (irc-handle-ctcp table)
-    (irc-handle-channel-and-user-tracking table)
     table))
 
 (defun circe-irc-conn-disconnected (conn event)

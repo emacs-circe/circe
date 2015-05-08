@@ -680,43 +680,6 @@ RPL_ISUPPORT setting of PREFIX set by the IRC server for CONN."
       (setq nick (substring nick 1)))
     nick))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Handler: Current nick tracking
-
-(defun irc-handle-current-nick-tracking (table)
-  "Track the current nick of the user.
-
-Connection options set:
-
-:current-nick -- The current nick, or nil if not known/set yet.
-
-Do not use that option directly. Instead, use `irc-current-nick'
-and `irc-current-nick-p'."
-  (irc-handler-add table "001" ;; RPL_WELCOME
-                   #'irc-handle-current-nick-tracking--rpl-welcome)
-  (irc-handler-add table "NICK"
-                   #'irc-handle-current-nick-tracking--nick))
-
-(defun irc-handle-current-nick-tracking--rpl-welcome (conn event sender
-                                                           target text)
-  (irc-connection-put conn :current-nick target))
-
-(defun irc-handle-current-nick-tracking--nick (conn event sender new-nick)
-  (when (irc-current-nick-p conn (irc-userstring-nick sender))
-    (irc-connection-put conn :current-nick new-nick)))
-
-(defun irc-current-nick (conn)
-  "Return the current nick on IRC connection CONN, or nil if not set yet."
-  (irc-connection-get conn :current-nick))
-
-(defun irc-current-nick-p (conn nick)
-  "Return t if NICK is our current nick on IRC connection CONN."
-  (let ((current-nick (irc-current-nick conn)))
-    (if (and (stringp nick)
-             (stringp current-nick))
-        (irc-string-equal-p conn current-nick nick)
-      nil)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Initial nick acquisition
 
@@ -890,36 +853,39 @@ Events emitted:
                                                "")))
                 :drop))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Handler: Channel and user tracking
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Handler: State tracking
 
-(defun irc-handle-channel-and-user-tracking (table)
-  "Add command handlers to TABLE to track channels and users.
+(defun irc-handle-state-tracking (table)
+  "Add command handlers to TABLE to track the IRC state.
 
 Connection options used:
 
-:current-nick -- Our current nick.
+:current-nick -- The current nick, or nil if not known/set yet.
 
 Use helper functions to access the information tracked by this
 handler:
 
-`irc-channel-joined-p'"
+- `irc-current-nick'
+- `irc-current-nick-p'"
+  (irc-handler-add table "001" ;; RPL_WELCOME
+                   #'irc-handle-state-tracking--rpl-welcome)
   (irc-handler-add table "JOIN"
-                   #'irc-handle-channel-and-user-tracking--JOIN)
+                   #'irc-handle-state-tracking--JOIN)
   (irc-handler-add table "PART"
-                   #'irc-handle-channel-and-user-tracking--PART)
+                   #'irc-handle-state-tracking--PART)
   (irc-handler-add table "KICK"
-                   #'irc-handle-channel-and-user-tracking--KICK)
+                   #'irc-handle-state-tracking--KICK)
   (irc-handler-add table "QUIT"
-                   #'irc-handle-channel-and-user-tracking--QUIT)
+                   #'irc-handle-state-tracking--QUIT)
   (irc-handler-add table "NICK"
-                   #'irc-handle-channel-and-user-tracking--NICK)
+                   #'irc-handle-state-tracking--NICK)
   (irc-handler-add table "PRIVMSG"
-                   #'irc-handle-channel-and-user-tracking--PRIVMSG)
+                   #'irc-handle-state-tracking--PRIVMSG)
   (irc-handler-add table "353" ;; RPL_NAMREPLY
-                   #'irc-handle-channel-and-user-tracking--rpl-namreply)
+                   #'irc-handle-state-tracking--rpl-namreply)
   (irc-handler-add table "366" ;; RPL_ENDOFNAMES
-                   #'irc-handle-channel-and-user-tracking--rpl-endofnames)
+                   #'irc-handle-state-tracking--rpl-endofnames)
   )
 
 (cl-defstruct irc-channel
@@ -965,6 +931,18 @@ handler:
   (let* ((channel-table (irc--connection-channel-table conn))
          (folded-name (irc-isupport--case-fold conn channel-name)))
     (remhash folded-name channel-table)))
+
+(defun irc-current-nick (conn)
+  "Return the current nick on IRC connection CONN, or nil if not set yet."
+  (irc-connection-get conn :current-nick))
+
+(defun irc-current-nick-p (conn nick)
+  "Return t if NICK is our current nick on IRC connection CONN."
+  (let ((current-nick (irc-current-nick conn)))
+    (if (and (stringp nick)
+             (stringp current-nick))
+        (irc-string-equal-p conn current-nick nick)
+      nil)))
 
 (defun irc--connection-channel-table (conn)
   (let ((table (irc-connection-get conn :channel-table)))
@@ -1062,7 +1040,11 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
       (setf (irc-user-folded-nick user) newnick-folded)
       (puthash (irc-user-folded-nick user) user user-table))))
 
-(defun irc-handle-channel-and-user-tracking--JOIN (conn event sender target
+(defun irc-handle-state-tracking--rpl-welcome (conn event sender
+                                                           target text)
+  (irc-connection-put conn :current-nick target))
+
+(defun irc-handle-state-tracking--JOIN (conn event sender target
                                                         &optional
                                                         account realname)
   (let ((nick (irc-userstring-nick sender)))
@@ -1076,7 +1058,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
             (when user
               (setf (irc-user-join-time user) (float-time))))))))))
 
-(defun irc-handle-channel-and-user-tracking--PART (conn event sender target
+(defun irc-handle-state-tracking--PART (conn event sender target
                                                         &optional reason)
   (let ((nick (irc-userstring-nick sender)))
     (cond
@@ -1087,7 +1069,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
         (when channel
           (irc-channel-remove-user channel nick)))))))
 
-(defun irc-handle-channel-and-user-tracking--KICK (conn event sender target
+(defun irc-handle-state-tracking--KICK (conn event sender target
                                                         nick &optional reason)
   (cond
    ((irc-current-nick-p conn nick)
@@ -1097,7 +1079,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
       (when channel
         (irc-channel-remove-user channel nick))))))
 
-(defun irc-handle-channel-and-user-tracking--QUIT (conn event sender
+(defun irc-handle-state-tracking--QUIT (conn event sender
                                                         &optional reason)
   (let ((nick (irc-userstring-nick sender)))
     (if (irc-current-nick-p conn nick)
@@ -1107,12 +1089,16 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
       (dolist (channel (irc-connection-channel-list conn))
         (irc-channel-remove-user channel nick)))))
 
-(defun irc-handle-channel-and-user-tracking--NICK (conn event sender newnick)
+(defun irc-handle-state-tracking--NICK (conn event sender new-nick)
+  ;; Update channels
   (let ((nick (irc-userstring-nick sender)))
     (dolist (channel (irc-connection-channel-list conn))
-      (irc-channel-rename-user channel nick newnick))))
+      (irc-channel-rename-user channel nick new-nick)))
+  ;; Update our own nick
+  (when (irc-current-nick-p conn (irc-userstring-nick sender))
+    (irc-connection-put conn :current-nick new-nick)))
 
-(defun irc-handle-channel-and-user-tracking--PRIVMSG (conn event sender
+(defun irc-handle-state-tracking--PRIVMSG (conn event sender
                                                            target message)
   (let ((channel (irc-connection-channel conn target))
         (nick (irc-userstring-nick sender)))
@@ -1121,7 +1107,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
         (when user
           (setf (irc-user-last-activity-time user) (float-time)))))))
 
-(defun irc-handle-channel-and-user-tracking--rpl-namreply
+(defun irc-handle-state-tracking--rpl-namreply
     (conn event sender current-nick channel-type channel-name nicks)
   (let ((channel (irc-connection-channel conn channel-name)))
     (setf (irc-channel-receiving-names channel)
@@ -1132,7 +1118,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
                              (string-trim nick)))
                           (split-string nicks))))))
 
-(defun irc-handle-channel-and-user-tracking--rpl-endofnames
+(defun irc-handle-state-tracking--rpl-endofnames
     (conn event sender current-nick channel-name description)
   (let ((channel (irc-connection-channel conn channel-name)))
     (irc-channel--synchronize-nicks channel
@@ -1156,9 +1142,6 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
     (maphash (lambda (nick-folded nick)
                (irc-channel-add-user channel nick))
              want)))
-
-;; - Merge current nick tracking into channel-and-user-tracking
-;; - Then, rename to irc-handle-state-tracking
 
 ;; - TOPIC, 331 RPL_NOTPIC, 332 RPL_TOPIC should update the channel's current
 ;;   topic

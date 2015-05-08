@@ -886,45 +886,8 @@
         (expect (irc-nick-without-prefix proc "+nick") :to-equal "nick")
         (expect (irc-nick-without-prefix proc "%nick") :to-equal "%nick")))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Handler: Current nick tracking
-
-(describe "The current nick tracking handler"
-  (let (proc table)
-    (before-each
-      (setq proc (start-process "test" nil "cat")
-            table (irc-handler-table))
-      (irc-connection-put proc :handler-table table)
-
-      (irc-handle-current-nick-tracking table))
-
-    (it "should not have a current nick initially"
-      (expect (irc-current-nick proc)
-              :to-equal
-              nil)
-      (expect (irc-current-nick-p proc "foo")
-              :to-be nil))
-
-    (it "should set the nick on 001 RPL_WELCOME"
-      (irc-event-emit proc "001" "irc.server" "new-nick" "Welcome to IRC")
-
-      (expect (irc-current-nick proc)
-              :to-equal
-              "new-nick")
-      (expect (irc-current-nick-p proc "new-nick")
-              :to-equal
-              t))
-
-    (it "should change the nick on NICK"
-      (irc-event-emit proc "001" "irc.server" "initial-nick" "Welcome to IRC")
-      (irc-event-emit proc "NICK" "initial-nick!user@host" "new-nick")
-
-      (expect (irc-current-nick proc)
-              :to-equal
-              "new-nick")
-      (expect (irc-current-nick-p proc "new-nick")
-              :to-equal
-              t))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Handler: Initial nick acquisition
 
 (describe "The initial nick acquisition handler"
   (let (proc table)
@@ -1182,8 +1145,8 @@
 
       )))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Handler: Channel and User Tracking
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Handler: State Tracking
 
 (describe "The connection channels and users"
   (let (proc table)
@@ -1289,15 +1252,36 @@
                  (irc-channel-user channel "nick"))
                 :to-equal 235)))))
 
-(describe "The Channel and User Tracking handler"
+(describe "The State Tracking handler"
   (let (proc table)
     (before-each
       (setq proc (start-process "test" nil "cat")
             table (irc-handler-table))
       (irc-connection-put proc :handler-table table)
-      (irc-handle-current-nick-tracking table)
       (irc-connection-put proc :current-nick "mynick")
-      (irc-handle-channel-and-user-tracking table))
+      (irc-handle-state-tracking table))
+
+    (describe "for the current nick"
+      (it "should set the nick on 001 RPL_WELCOME"
+        (irc-event-emit proc "001" "irc.server" "new-nick" "Welcome to IRC")
+
+        (expect (irc-current-nick proc)
+                :to-equal
+                "new-nick")
+        (expect (irc-current-nick-p proc "new-nick")
+                :to-equal
+                t))
+
+      (it "should change the nick on NICK"
+        (irc-event-emit proc "001" "irc.server" "initial-nick" "Welcome to IRC")
+        (irc-event-emit proc "NICK" "initial-nick!user@host" "new-nick")
+
+        (expect (irc-current-nick proc)
+                :to-equal
+                "new-nick")
+        (expect (irc-current-nick-p proc "new-nick")
+                :to-equal
+                t)))
 
     (describe "for joining"
       (it "should update the channel list if we join"
@@ -1539,3 +1523,4 @@
                  "nick1")
                 :to-be nil)))
     ))
+
