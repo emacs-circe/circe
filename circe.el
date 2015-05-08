@@ -1914,6 +1914,8 @@ message separated by a space."
 
 (defun circe-command-QUERY (arg)
   "Open a query with WHO."
+  ;; Eventually, this should probably be just the same as
+  ;; circe-command-SAY
   (interactive "sQuery with: ")
   (let* ((circe-new-buffer-behavior 'ignore)
          who what)
@@ -1921,6 +1923,8 @@ message separated by a space."
         (setq who (match-string 1 arg)
               what (match-string 2 arg))
       (setq who (string-trim arg)))
+    (when (string= who "")
+      (circe-server-message "Usage: /query <nick> [something to say]"))
     (pop-to-buffer
      (circe-server-get-chat-buffer who 'circe-query-mode))
     (when what
