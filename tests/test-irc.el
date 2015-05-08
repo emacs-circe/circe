@@ -1554,4 +1554,11 @@
 
           (expect (irc-channel-topic channel)
                   :to-equal "New topic"))
+
+        (it "should remember the old topic"
+          (irc-event-emit proc "TOPIC" "nick!user@host" "#channel" "Old topic")
+          (irc-event-emit proc "TOPIC" "nick!user@host" "#channel" "New topic")
+
+          (expect (irc-channel-last-topic channel)
+                  :to-equal "Old topic"))
         ))))

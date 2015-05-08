@@ -898,6 +898,7 @@ handler:
 (cl-defstruct irc-channel
   name
   topic
+  last-topic
   folded-name
   users
   recent-users
@@ -1154,6 +1155,8 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
 (defun irc-handle-state-tracking--TOPIC (conn event sender channel new-topic)
   (let ((channel (irc-connection-channel conn channel)))
     (when channel
+      (setf (irc-channel-last-topic channel)
+            (irc-channel-topic channel))
       (setf (irc-channel-topic channel) new-topic))))
 
 (defun irc-handle-state-tracking--rpl-notopic (conn event sender current-nick
