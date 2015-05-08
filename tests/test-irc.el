@@ -1259,7 +1259,35 @@
                             (irc-connection-channel-list proc))
                     #'string<)
               :to-equal
-              '("#chan1" "#chan2" "#chan3")))))
+              '("#chan1" "#chan2" "#chan3")))
+
+    (it "should rember activity times for a rejoining user"
+      (let ((channel (irc-channel-from-name proc "#channel"))
+            user)
+        (irc-channel-add-user channel "nick!user@host")
+        (setq user (irc-channel-user channel "nick"))
+        (setf (irc-user-last-activity-time user) 235)
+        (irc-channel-remove-user channel "nick")
+        (irc-channel-add-user channel "nick!user@host")
+
+        (expect (irc-user-last-activity-time
+                 (irc-channel-user channel "nick"))
+                :to-equal 235)))
+
+    (it "should rember activity times for a user regaining their nick"
+      (let ((channel (irc-channel-from-name proc "#channel"))
+            user)
+        (irc-channel-add-user channel "nick!user@host")
+        (setq user (irc-channel-user channel "nick"))
+        (setf (irc-user-last-activity-time user) 235)
+        (irc-channel-remove-user channel "nick")
+        (irc-channel-add-user channel "nick2!user@host")
+
+        (irc-channel-rename-user channel "nick2" "nick")
+
+        (expect (irc-user-last-activity-time
+                 (irc-channel-user channel "nick"))
+                :to-equal 235)))))
 
 (describe "The Channel and User Tracking handler"
   (let (proc table)
@@ -1420,7 +1448,7 @@
     (describe "for NAMES"
       (before-each
         (irc-event-emit proc "JOIN" "mynick!user@host" "#channel"))
-      
+
       (it "should add nicks"
         (irc-event-emit proc "353" "irc.server" "mynick" "=" "#channel"
                         "nick1 @nick2")
@@ -1435,7 +1463,7 @@
                    (irc-channel-users
                     (irc-connection-channel proc "#channel")))
           (setq nicks (sort nicks #'string<))
-          
+
           (expect nicks :to-equal '("nick1" "nick2" "nick3"))))
 
       (it "should add nicks with a join time of nil"
@@ -1467,10 +1495,10 @@
     (describe "for recent channel users"
       (before-each
         (irc-event-emit proc "JOIN" "mynick!user@host" "#channel"))
-      
+
       (it "should not know a recent user that was not there"
         (irc-event-emit proc "JOIN" "somenick!user@host" "#channel")
-        
+
         (expect (irc-channel-recent-user
                  (irc-connection-channel proc "#channel")
                  "somenick")
@@ -1492,7 +1520,7 @@
                      "somenick")))
           (expect (irc-user-part-time user)
                   :to-be nil)
-        
+
           (irc-event-emit proc "PART" "somenick!user@host" "#channel")
 
           (expect (irc-user-part-time user)

@@ -1014,8 +1014,14 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
   (let* ((user-table (irc-channel-users channel))
          (user (irc-user-from-userstring (irc-channel-connection channel)
                                          userstring))
-         (folded-nick (irc-user-folded-nick user)))
+         (folded-nick (irc-user-folded-nick user))
+         (recent-user (irc-channel-recent-user channel (irc-user-nick user))))
     (when (not (gethash folded-nick user-table))
+      (when (and recent-user
+                 (equal (irc-user-userhost recent-user)
+                        (irc-user-userhost user)))
+        (setf (irc-user-last-activity-time user)
+              (irc-user-last-activity-time recent-user)))
       (puthash folded-nick user user-table)
       user)))
 
@@ -1036,6 +1042,25 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
                              (* 60 60)))
                    (remhash folded-nick recent-user-table)))
                recent-user-table))))
+
+(defun irc-channel-rename-user (channel oldnick newnick)
+  "Update CHANNEL so that the user with nick OLDNICK now has nick NEWNICK."
+  (let ((user-table (irc-channel-users channel))
+        (user (irc-channel-user channel oldnick))
+        (newnick-folded (irc-isupport--case-fold
+                         (irc-channel-connection channel)
+                         newnick))
+        (recent-user (irc-channel-recent-user channel newnick)))
+    (when user
+      (when (and recent-user
+                 (equal (irc-user-userhost recent-user)
+                        (irc-user-userhost user)))
+        (setf (irc-user-last-activity-time user)
+              (irc-user-last-activity-time recent-user)))
+      (remhash (irc-user-folded-nick user) user-table)
+      (setf (irc-user-nick user) newnick)
+      (setf (irc-user-folded-nick user) newnick-folded)
+      (puthash (irc-user-folded-nick user) user user-table))))
 
 (defun irc-handle-channel-and-user-tracking--JOIN (conn event sender target
                                                         &optional
@@ -1083,16 +1108,9 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
         (irc-channel-remove-user channel nick)))))
 
 (defun irc-handle-channel-and-user-tracking--NICK (conn event sender newnick)
-  (let ((nick (irc-userstring-nick sender))
-        (newnick-folded (irc-isupport--case-fold conn newnick)))
+  (let ((nick (irc-userstring-nick sender)))
     (dolist (channel (irc-connection-channel-list conn))
-      (let ((user (irc-channel-user channel nick))
-            (user-table (irc-channel-users channel)))
-        (when user
-          (remhash (irc-user-folded-nick user) user-table)
-          (setf (irc-user-nick user) newnick)
-          (setf (irc-user-folded-nick user) newnick-folded)
-          (puthash (irc-user-folded-nick user) user user-table))))))
+      (irc-channel-rename-user channel nick newnick))))
 
 (defun irc-handle-channel-and-user-tracking--PRIVMSG (conn event sender
                                                            target message)
