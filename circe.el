@@ -693,6 +693,64 @@ can vary between networks.")
     map)
   "The base keymap for all Circe modes (server, channel, query)")
 
+(defvar circe-nickserv-mask nil
+  "The regular expression to identify the nickserv on this network.
+
+Matched against nick!user@host.")
+(make-variable-buffer-local 'circe-nickserv-mask)
+
+(defvar circe-nickserv-identify-challenge nil
+  "A regular expression matching the nickserv challenge to identify.")
+(make-variable-buffer-local 'circe-nickserv-identify-challenge)
+
+(defvar circe-nickserv-identify-command nil
+  "The IRC command to send to identify with nickserv.
+
+This must be a full IRC command. It accepts the following
+formatting options:
+
+ {nick} - The nick to identify as
+ {password} - The configured nickserv password")
+(make-variable-buffer-local 'circe-nickserv-identify-command)
+
+(defvar circe-nickserv-identify-confirmation nil
+  "A regular expression matching a confirmation of authentication.")
+(make-variable-buffer-local 'circe-nickserv-identify-confirmation)
+
+(defvar circe-nickserv-ghost-command nil
+  "The IRC command to send to regain/ghost your nick.
+
+This must be a full IRC command. It accepts the following
+formatting options:
+
+  {nick} - The nick to ghost
+  {password} - The configured nickserv password")
+(make-variable-buffer-local 'circe-nickserv-ghost-command)
+
+(defvar circe-nickserv-ghost-confirmation nil
+  "A regular expression matching a confirmation for the GHOST command.
+
+This is used to know when we can set our nick to the regained one
+Leave nil if regaining automatically sets your nick")
+(make-variable-buffer-local 'circe-nickserv-ghost-confirmation)
+
+(defvar circe-nickserv-nick nil
+  "The nick we are registered with for nickserv.
+
+Do not set this variable directly. Use `circe-network-options' or
+pass an argument to the `circe' function for this.")
+(make-variable-buffer-local 'circe-nickserv-nick)
+
+(defvar circe-nickserv-password nil
+  "The password we use for nickserv on this network.
+
+Can be either a string or a unary function of the nick returning
+a string.
+
+Do not set this variable directly. Use `circe-network-options' or
+pass an argument to the `circe' function for this.")
+(make-variable-buffer-local 'circe-nickserv-password)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; User Utility Functions ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -973,6 +1031,15 @@ See `circe-server-max-reconnect-attempts'.")
              :cap-req (when (and circe-sasl-username
                                  circe-sasl-password)
                         '("sasl"))
+             :nickserv-nick circe-nickserv-nick
+             :nickserv-password circe-nickserv-password
+             :nickserv-mask circe-nickserv-mask
+             :nickserv-identify-challenge circe-nickserv-identify-challenge
+             :nickserv-identify-command circe-nickserv-identify-command
+             :nickserv-identify-confirmation
+             circe-nickserv-identify-confirmation
+             :nickserv-ghost-command circe-nickserv-ghost-command
+             :nickserv-ghost-confirmation circe-nickserv-ghost-confirmation
              :sasl-username circe-sasl-username
              :sasl-password (if (functionp circe-sasl-password)
                                 (funcall circe-sasl-password
@@ -3345,6 +3412,11 @@ used."
                circe-server-chat-buffers))
     result))
 
+(circe-add-message-handler "396" 'circe-handle-396)
+(defun circe-handle-396 (nick user host command args)
+  "Handle 396 RPL_HOSTHIDDEN messages."
+  (circe-auto-join :after-cloak))
+
 ;;;;;;;;;;;;;;;;;;;
 ;;; Topic Handling
 
@@ -3451,184 +3523,6 @@ The list consists of words and spaces."
               (replace-match ""))
           (error "Can't happen"))))
     (nreverse lis)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Nickserv Authentication
-
-(defcustom circe-nickserv-authenticated-hook nil
-  "Functions called after nickserv authenticated succeeded.
-This is run every time nickserv confirms nick authentication,
-which can happen multiple times per connection."
-  :type 'hook
-  :group 'circe)
-
-(defcustom circe-acquired-preferred-nick-hook nil
-  "Hook run after we're sure we have the nick we want.
-Only used when auto-regain is enabled. See
-`circe-nickserv-ghost-style'."
-  :type 'hook
-  :group 'circe)
-
-(defcustom circe-nickserv-ghost-style nil
-  "Whether and when circe should automatically regain your nick.
-'immediate means to attempt regain immediately upon connect.
-'after-auth means to attempt regain after authenticating with
-nickserv."
-  :type '(choice (const :tag "Immediate" 'immediate)
-                 (const :tag "After Auth" 'after-auth)
-                 (const :tag "Off" nil))
-  :group 'circe)
-
-(defvar circe-nickserv-mask nil
-  "The regular expression to identify the nickserv on this network.
-
-Matched against nick!user@host.")
-(make-variable-buffer-local 'circe-nickserv-mask)
-
-(defvar circe-nickserv-identify-challenge nil
-  "A regular expression matching the nickserv challenge to identify.")
-(make-variable-buffer-local 'circe-nickserv-identify-challenge)
-
-(defvar circe-nickserv-identify-command nil
-  "The IRC command to send to identify with nickserv.
-
-This must be a full IRC command. It accepts the following
-formatting options:
-
- {nick} - The nick to identify as
- {password} - The configured nickserv password")
-(make-variable-buffer-local 'circe-nickserv-identify-command)
-
-(defvar circe-nickserv-identify-confirmation nil
-  "A regular expression matching a confirmation of authentication.")
-(make-variable-buffer-local 'circe-nickserv-identify-confirmation)
-
-(defvar circe-nickserv-ghost-command nil
-  "The IRC command to send to regain/ghost your nick.
-
-This must be a full IRC command. It accepts the following
-formatting options:
-
-  {nick} - The nick to ghost
-  {password} - The configured nickserv password")
-(make-variable-buffer-local 'circe-nickserv-ghost-command)
-
-(defvar circe-nickserv-ghost-confirmation nil
-  "A regular expression matching a confirmation for the GHOST command.
-
-This is used to know when we can set our nick to the regained one
-Leave nil if regaining automatically sets your nick")
-(make-variable-buffer-local 'circe-nickserv-ghost-confirmation)
-
-(defvar circe-nickserv-nick nil
-  "The nick we are registered with for nickserv.
-
-Do not set this variable directly. Use `circe-network-options' or
-pass an argument to the `circe' function for this.")
-(make-variable-buffer-local 'circe-nickserv-nick)
-
-(defvar circe-nickserv-password nil
-  "The password we use for nickserv on this network.
-
-Can be either a string or a unary function of the nick returning
-a string.
-
-Do not set this variable directly. Use `circe-network-options' or
-pass an argument to the `circe' function for this.")
-(make-variable-buffer-local 'circe-nickserv-password)
-
-(defun circe-nickserv-identify ()
-  "Authenticate with nickserv."
-  (with-circe-server-buffer
-    (when (and circe-nickserv-identify-command
-               circe-nickserv-nick
-               circe-nickserv-password)
-      (irc-send-raw
-       (circe-server-process)
-       (lui-format circe-nickserv-identify-command
-                   :nick circe-nickserv-nick
-                   :password (if (functionp circe-nickserv-password)
-                                 (funcall circe-nickserv-password
-                                          circe-nickserv-nick)
-                               circe-nickserv-password))))))
-
-(defun circe-nickserv-ghost ()
-  "Regain/reclaim/ghost your nick if necessary."
-  (with-circe-server-buffer
-    (when (and circe-nickserv-ghost-command
-               circe-nickserv-nick
-               circe-nickserv-password)
-      (irc-send-raw
-       (circe-server-process)
-       (lui-format circe-nickserv-ghost-command
-                   :nick circe-nickserv-nick
-                   :password circe-nickserv-password)))))
-
-(defvar circe-auto-regain-awaiting-nick-change nil
-  "Set to t when circe is awaiting confirmation for a regain request.")
-(make-variable-buffer-local 'circe-auto-regain-awaiting-nick-change)
-
-(add-hook 'circe-server-connected-hook 'circe-nickserv-ghost-immediately)
-(defun circe-nickserv-ghost-immediately ()
-  (when (eql 'immediate circe-nickserv-ghost-style)
-    (if (circe-server-my-nick-p circe-nickserv-nick)
-        (run-hooks 'circe-acquired-preferred-nick-hook)
-      (circe-nickserv-ghost)
-      (setq circe-auto-regain-awaiting-nick-change t))))
-
-(circe-add-message-handler "PRIVMSG" 'circe-nickserv-handle-PRIVMSG)
-(defun circe-nickserv-handle-PRIVMSG (nick user host command args)
-  "Handle PRIVMSG messages from nickserv, which is unusual.
-
-But bitlbee uses this."
-  (circe-nickserv-handle-NOTICE nick user host command args))
-
-(circe-add-message-handler "NOTICE" 'circe-nickserv-handle-NOTICE)
-(defun circe-nickserv-handle-NOTICE (nick user host command args)
-  "React to messages relevant to nickserv authentication and auto-regain."
-  (when (and circe-nickserv-mask
-             (string-match circe-nickserv-mask
-                           (format "%s!%s@%s" nick user host)))
-    (cond
-     ;; Identify challenge
-     ((and circe-nickserv-identify-challenge
-           (string-match circe-nickserv-identify-challenge (cadr args)))
-      (circe-nickserv-identify))
-     ;; Confirmation
-     ((and circe-nickserv-identify-confirmation
-           circe-nickserv-nick
-           (string-match circe-nickserv-identify-confirmation (cadr args)))
-      (run-hooks 'circe-nickserv-authenticated-hook)
-      (when (eq 'after-auth circe-nickserv-ghost-style)
-        (if (circe-server-my-nick-p circe-nickserv-nick)
-            (run-hooks 'circe-acquired-preferred-nick-hook)
-          (circe-nickserv-ghost)
-          (setq circe-auto-regain-awaiting-nick-change t))))
-     ;; Nick got ghosted
-     ((and circe-auto-regain-awaiting-nick-change
-           circe-nickserv-ghost-confirmation
-           circe-nickserv-nick
-           (string-match circe-nickserv-ghost-confirmation
-                         (cadr args)))
-      (circe-command-NICK circe-nickserv-nick)))))
-
-(circe-add-message-handler "NICK" 'circe-nickserv-handle-NICK)
-(defun circe-nickserv-handle-NICK (nick user host command args)
-  "Handle NICK messages in relation to nickserv commands.
-
-This is used to run `circe-acquired-preferred-nick-hook' when
-we're waiting for our nick change."
-  (when (and circe-auto-regain-awaiting-nick-change
-             (circe-server-my-nick-p nick)
-             circe-nickserv-nick
-             (string= (car args) circe-nickserv-nick))
-    (setq circe-auto-regain-awaiting-nick-change nil)
-    (run-hooks 'circe-acquired-preferred-nick-hook)))
-
-(circe-add-message-handler "396" 'circe-handle-396)
-(defun circe-handle-396 (nick user host command args)
-  "Handle 396 RPL_HOSTHIDDEN messages."
-  (circe-auto-join :after-cloak))
 
 (provide 'circe)
 ;;; circe.el ends here
