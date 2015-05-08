@@ -3348,14 +3348,6 @@ used."
 ;;;;;;;;;;;;;;;;;;;
 ;;; Topic Handling
 
-(defvar circe-channel-topic ""
-  "The current topic of the channel.")
-(make-variable-buffer-local 'circe-channel-topic)
-
-(defvar circe-channel-topic-old ""
-  "The previous topic of the channel.")
-(make-variable-buffer-local 'circe-channel-topic-old)
-
 (defun circe-command-TOPIC (channel &optional newtopic)
   "Change the topic of CHANNEL to NEWTOPIC."
   (interactive "sChannel: \nsNew topic: ")
@@ -3383,28 +3375,12 @@ Arguments are IGNORED."
   (interactive)
   (if (not circe-chat-target)
       (circe-server-message "No target for current buffer")
-    (lui-replace-input (format "/TOPIC %s %s" circe-chat-target circe-channel-topic))
+    (let* ((channel (irc-connection-channel (circe-server-process)
+                                            circe-chat-target))
+           (topic (when channel
+                    (irc-channel-topic channel))))
+      (lui-replace-input (format "/TOPIC %s %s" circe-chat-target topic)))
     (goto-char (point-max))))
-
-(circe-add-message-handler "TOPIC" 'circe-handle-TOPIC)
-(defun circe-handle-TOPIC (nick user host command args)
-  "Handle TOPIC messages."
-  (with-circe-chat-buffer (car args)
-    (setq circe-channel-topic-old circe-channel-topic
-          circe-channel-topic (cadr args))))
-
-(circe-add-message-handler "331" 'circe-handle-331)
-(defun circe-handle-331 (nick user host command args)
-  "Handle 331 RPL_NOTOPIC messages."
-  (with-circe-chat-buffer (cadr args)
-    (setq circe-channel-topic "")))
-
-(circe-add-message-handler "332" 'circe-handle-332)
-(defun circe-handle-332 (nick user host command args)
-  "Handle 332 RPL_TOPIC messages."
-  (with-circe-chat-buffer (cadr args)
-    (setq circe-channel-topic (nth 2 args)
-          circe-channel-topic-old circe-channel-topic)))
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
 (defun circe-display-topic (nick user host command args)
@@ -3413,8 +3389,12 @@ Arguments are IGNORED."
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (with-circe-chat-buffer (car args)
-    (let ((old circe-channel-topic-old)
-          (new (cadr args)))
+    (let* ((channel-name (car args))
+           (new-topic (cadr args))
+           (channel (irc-connection-channel (circe-server-process)
+                                            channel-name))
+           (old-topic (when channel
+                        (irc-channel-last-topic channel))))
       (circe-display 'circe-format-server-topic
                      :nick (or nick "(unknown)")
                      :user (or user "(unknown)")
@@ -3425,11 +3405,11 @@ as arguments."
                                          (or user "(unknown)")
                                          (or host "(unknown)"))
                                (or nick "(unknown)"))
-                     :target (car args)
-                     :channel (car args)
-                     :new-topic new
-                     :old-topic old
-                     :topic-diff (circe-topic-diff old new)))))
+                     :target channel-name
+                     :channel channel-name
+                     :new-topic new-topic
+                     :old-topic old-topic
+                     :topic-diff (circe-topic-diff old-topic new-topic)))))
 
 (defun circe-topic-diff (old new)
   "Return a colored topic diff between OLD and NEW."
