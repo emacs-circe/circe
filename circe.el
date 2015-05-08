@@ -1744,12 +1744,13 @@ See `minibuffer-completion-table' for details."
   (let* ((channel (irc-connection-channel (circe-server-process)
                                           circe-chat-target))
          (decorated (mapcar (lambda (entry)
-                              (list (irc-user-last-activity-time
-                                     (irc-channel-user
-                                      channel
-                                      (circe-completion-clean-nick entry)))
-                                    (length entry)
-                                    entry))
+                              (let* ((nick (circe-completion-clean-nick
+                                            entry))
+                                     (user (irc-channel-user channel nick)))
+                                (list (when user
+                                        (irc-user-last-activity-time user))
+                                      (length entry)
+                                      entry)))
                             collection))
          (sorted (sort decorated
                        (lambda (a b)
