@@ -2734,24 +2734,27 @@ as arguments."
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (when (circe-server-my-nick-p nick)
-    (with-circe-server-buffer
-      (circe-server-message
-       (format "Nick change: You are now known as %s"
-               (car args)))))
-  (dolist (buf (circe-user-channels nick))
-    (with-current-buffer buf
-      (cond
-       ((circe-lurker-p nick)
-        nil)
-       ((circe-channel-user-nick-regain-p nick (car args))
-        (circe-server-message
-         (format "Nick re-gain: %s (%s@%s) is now known as %s"
-                 nick user host (car args))))
-       (t
-        (circe-server-message
-         (format "Nick change: %s (%s@%s) is now known as %s"
-                 nick user host (car args))))))))
+  (if (circe-server-my-nick-p (car args))
+      (dolist (buf (cons (or circe-server-buffer
+                             (current-buffer))
+                         (circe-chat-buffers)))
+        (with-current-buffer buf
+          (circe-server-message
+           (format "Nick change: You are now known as %s"
+                   (car args)))))
+    (dolist (buf (circe-user-channels nick))
+      (with-current-buffer buf
+        (cond
+         ((circe-lurker-p nick)
+          nil)
+         ((circe-channel-user-nick-regain-p nick (car args))
+          (circe-server-message
+           (format "Nick re-gain: %s (%s@%s) is now known as %s"
+                   nick user host (car args))))
+         (t
+          (circe-server-message
+           (format "Nick change: %s (%s@%s) is now known as %s"
+                   nick user host (car args)))))))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick user host command args)
