@@ -1285,21 +1285,51 @@ The substitutions are identified by braces ('{' and '}')."
       (replace-match (plist-get args (intern (match-string 1)))))
     (buffer-string)))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Auto-Join
 
-;; Connection options used:
-;; - auto-join-after-registration (001)
-;; - auto-join-after-host-hiding (396)
-;; - auto-join-after-nick-acquisition (NICK)
-;; - auto-join-after-nickserv-auth (nickserv.registered)
+(defun irc-handle-auto-join (table)
+  "Add command handlers to TABLE to deal with NickServ.
 
-;; Events caught:
-;; - 001 RPL_WELCOME
-;; - 396 RPL_HOSTHIDDEN
-;; - NICK => When we regain our preferred nick
-;; - nickserv.registered
+Connection options used:
+
+:auto-join-after-registration -- List of channels to join
+  immediately after registration with the server
+
+:auto-join-after-host-hiding -- List of channels to join
+  after our host was hidden
+
+:auto-join-after-nick-acquisition -- List of channels to join
+  after we gained our original nick
+
+:auto-join-after-nickserv-identification -- List of channels
+  to join after we identified successfully with NickServ"
+  (irc-handler-add table "irc.registered" #'irc-handle-auto-join--registered)
+  (irc-handler-add table "396" ;; RPL_HOSTHIDDEN
+                   #'irc-handle-auto-join--rpl-hosthidden)
+  (irc-handler-add table "nickserv.regained"
+                   #'irc-handle-auto-join--nickserv-regained)
+  (irc-handler-add table "nickserv.identified"
+                   #'irc-handle-auto-join--nickserv-identified))
+
+(defun irc-handle-auto-join--registered (conn event current-nick)
+  (dolist (channel (irc-connection-get conn :auto-join-after-registration))
+    (irc-send-JOIN conn channel)))
+
+(defun irc-handle-auto-join--rpl-hosthidden (conn event sender target host
+                                                  description)
+  (dolist (channel (irc-connection-get conn :auto-join-after-host-hiding))
+    (irc-send-JOIN conn channel)))
+
+(defun irc-handle-auto-join--nickserv-regained (conn event)
+  (dolist (channel (irc-connection-get
+                    conn :auto-join-after-nick-acquisition))
+    (irc-send-JOIN conn channel)))
+
+(defun irc-handle-auto-join--nickserv-identified (conn event)
+  (dolist (channel (irc-connection-get
+                    conn :auto-join-after-nickserv-identification))
+    (irc-send-JOIN conn channel)))
 
 (provide 'irc)
 ;;; irc.el ends here

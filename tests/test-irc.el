@@ -1730,3 +1730,60 @@
                         'world "World")
             :to-equal
             "Hello, World!")))
+
+;;;;;;;;;;;;;;;;;;;;;;
+;;; Handler: Auto join
+
+(describe "The auto join handler"
+  (let (proc table)
+    (before-each
+      (setq proc (start-process "test" nil "cat")
+            table (irc-handler-table))
+      (irc-connection-put proc :handler-table table)
+      (irc-connection-put
+       proc :auto-join-after-registration '("#after-registration"))
+      (irc-connection-put
+       proc :auto-join-after-host-hiding '("#after-host-hiding"))
+      (irc-connection-put
+       proc :auto-join-after-nick-acquisition '("#after-nick-acquisition"))
+      (irc-connection-put
+       proc :auto-join-after-nickserv-identification
+       '("#after-nickserv-identification"))
+
+      (spy-on 'irc-send-raw)
+
+      (irc-handle-auto-join table))
+
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
+
+    (it "should join channels after registration"
+      (irc-event-emit proc "irc.registered" "mynick")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              proc "JOIN #after-registration"))
+
+    (it "should join channels after host hiding"
+      (irc-event-emit proc "396" "server" "mynick" "host" "is now your host")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              proc "JOIN #after-host-hiding"))
+
+    (it "should join channels after nick regain"
+      (irc-event-emit proc "nickserv.regained")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              proc "JOIN #after-nick-acquisition"))
+
+    (it "should join channels after nickserv identification"
+      (irc-event-emit proc "nickserv.identified")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              proc "JOIN #after-nickserv-identification"))
+
+    ))
