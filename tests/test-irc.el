@@ -283,6 +283,10 @@
             handler-table (irc-handler-table))
       (irc-connection-put proc :handler-table handler-table))
 
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
+
     (it "should run the irc-handler for the event"
       (let ((called-with nil))
         (irc-handler-add handler-table "the.event"
@@ -355,6 +359,10 @@
       (spy-on 'run-at-time)
       (spy-on 'float-time :and-call-fake (lambda ()
                                            current-time)))
+
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
 
     (after-each
       (ignore-errors
@@ -656,6 +664,10 @@
 
       (irc-handle-registration table))
 
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
+
     (describe "on conn.connected"
       (it "should send the standard registration on connect"
         (irc-event-emit proc "conn.connected")
@@ -768,6 +780,10 @@
     (before-each
       (setq proc (start-process "test" nil "cat")))
 
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
+
     (it "should return the connection state"
       (irc-connection-put proc :connection-state 'registered)
 
@@ -794,6 +810,10 @@
 
       (irc-handle-ping-pong table))
 
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
+
     (it "should send PONG on a PING"
       (irc-event-emit proc "PING" "irc.server" "arg")
 
@@ -812,6 +832,10 @@
       (irc-connection-put proc :handler-table table)
 
       (irc-handle-isupport table))
+
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
 
     (it "should set the :isupport connection option"
       (irc-event-emit proc "005" "irc.server" "mynick" "WITHARG=#" "NOARG")
@@ -900,6 +924,10 @@
 
       (irc-handle-initial-nick-acquisition table))
 
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
+
     (it "should try an alternative nick if the initial nick is bogus"
       (irc-event-emit proc "432" "irc.server" "*" "bogus"
                       "Erroneous Nickname")
@@ -984,6 +1012,10 @@
       (irc-handler-add table "irc.ctcpreply"
                        (lambda (proc &rest event)
                          (setq last-ctcpreply event))))
+
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
 
     (it "should send irc.message on a normal PRIVMSG"
       (irc-event-emit proc "PRIVMSG" "alice" "bob" "Hi")
@@ -1154,6 +1186,10 @@
       (setq proc (start-process "test" nil "cat")
             table (irc-handler-table)))
 
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
+
     (it "should create channels correctly"
       (let ((channel (irc-channel-from-name proc "#CHANNEL")))
         (expect (irc-channel-connection channel)
@@ -1260,6 +1296,10 @@
       (irc-connection-put proc :handler-table table)
       (irc-connection-put proc :current-nick "mynick")
       (irc-handle-state-tracking table))
+
+    (after-each
+      (ignore-errors
+        (delete-process proc)))
 
     (describe "for the current nick"
       (it "should set the nick on 001 RPL_WELCOME"
