@@ -135,7 +135,7 @@ left."
       (let ((sentinel (plist-get (process-get proc :tls-args)
                                  :sentinel)))
         (when sentinel
-          (funcall sentinel proc "failed with %s\n" event)))
+          (funcall sentinel proc (format "failed with %s\n" event))))
     (error "Unexpected event in tls sentinel: %S" event)))
 
 (defun tls--filter (proc data)
