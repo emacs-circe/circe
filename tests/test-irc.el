@@ -1681,7 +1681,13 @@
 
         (expect identified-args
                 :to-equal
-                (list proc "nickserv.identified"))))
+                (list proc "nickserv.identified")))
+
+      (it "should not fail if no nickserv mask is given"
+        (irc-connection-put proc :nickserv-mask nil)
+
+        (irc-event-emit proc "PRIVMSG" "NickServ!n@s" "mynick"
+                        "Please identify")))
 
     (describe "ghosting"
       (it "should ghost if we do not have our nick"

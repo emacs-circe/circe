@@ -1235,7 +1235,7 @@ Events emitted:
   (let ((nickserv-mask (irc-connection-get conn :nickserv-mask))
         identify-challenge identify-command identify-confirmation
         ghost-confirmation)
-    (when (string-match nickserv-mask sender)
+    (when (and nickserv-mask (string-match nickserv-mask sender))
       (setq identify-challenge
             (irc-connection-get conn :nickserv-identify-challenge))
       (setq identify-command
