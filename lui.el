@@ -163,6 +163,7 @@ is then associated with the match."
 (defcustom lui-buttons-list
   `(("`\\([A-Za-z0-9+=*/-]+\\)'" 1 lui-button-elisp-symbol 1)
     ("RFC ?\\([0-9]+\\)" 0 lui-button-rfc 1)
+    ("CVE[- ]\\([0-9]+-[0-9]+\\)" 0 lui-button-cve 1)
     ("SRFI[- ]?\\([0-9]+\\)" 0 lui-button-srfi 1)
     ("PEP[- ]?\\([0-9]+\\)" 0 lui-button-pep 1)
     ("xkcd[ #]*\\([0-9]+\\)" 0 lui-button-xkcd 1)
@@ -611,6 +612,11 @@ Otherwise, we move to the next button."
   "Browse the RFC NUMBER."
   (browse-url (format "http://www.ietf.org/rfc/rfc%s.txt"
                       number)))
+
+(defun lui-button-cve (ref)
+  "Browse the CVE REF."
+  (browse-url (format "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-%s"
+                      ref)))
 
 (defun lui-button-srfi (number)
   "Browse the SRFI NUMBER."
