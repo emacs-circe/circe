@@ -225,20 +225,10 @@ argument is given to /PART."
   'switch   - Switch input to that buffer
   'ignore   - Open them in the background
 
-This does NOT affect buffers created with /join or /query.
-
-Also see `circe-new-buffer-behavior-ignore-auto-joins'."
+This does NOT affect buffers created with /join or /query."
   :type '(choice (const :tag "Display" display)
                  (const :tag "Switch" switch)
                  (const :tag "Ignore" ignore))
-  :group 'circe)
-
-(defcustom circe-new-buffer-behavior-ignore-auto-joins nil
-  "Don't show channel buffers when they were auto-joined.
-
-When t, the value of `circe-new-buffer-behavior' will be ignored
-for auto-joined channel buffers."
-  :type 'boolean
   :group 'circe)
 
 (defcustom circe-auto-query-p t
@@ -1049,6 +1039,14 @@ See `circe-server-max-reconnect-attempts'.")
                                    circe-version)
              :ctcp-source circe-source-url
              :ctcp-clientinfo "CLIENTINFO PING SOURCE TIME VERSION"
+             :auto-join-after-registration
+             (circe-auto-join-list :immediate)
+             :auto-join-after-host-hiding
+             (circe-auto-join-list :after-cloak)
+             :auto-join-after-nick-acquisition
+             (circe-auto-join-list :after-nick)
+             :auto-join-after-nickserv-identification
+             (circe-auto-join-list :after-auth)
              )))))
 
 (defun circe-reconnect-all ()
@@ -1351,10 +1349,6 @@ initialize a new buffer if none exists."
           (with-current-buffer buf
             (funcall create target server))
           (cond
-           ((and circe-new-buffer-behavior-ignore-auto-joins
-                 (member-ignore-case target circe-auto-joins))
-            (setq circe-auto-joins
-                  (remove (downcase target) circe-auto-joins)))
            ((eq circe-new-buffer-behavior 'display)
             (display-buffer buf))
            ((eq circe-new-buffer-behavior 'switch)
@@ -2180,9 +2174,11 @@ Arguments are IGNORED."
     (irc-handle-registration table)
     (irc-handle-ping-pong table)
     (irc-handle-isupport table)
-    (irc-handle-state-tracking table)
     (irc-handle-initial-nick-acquisition table)
     (irc-handle-ctcp table)
+    (irc-handle-state-tracking table)
+    (irc-handle-nickserv table)
+    (irc-handle-auto-join table)
     table))
 
 (defun circe-irc-conn-disconnected (conn event)
@@ -3339,83 +3335,17 @@ A keyword in the first position of the channels list overrides
 joined channels.")
 (make-variable-buffer-local 'circe-server-auto-join-channels)
 
-(defvar circe-auto-joins ()
-  "Internal variable, listing channels in the process of being
-auto-joined, book-keeping for
-`circe-new-buffer-behavior-ignore-auto-joins'.")
-(make-variable-buffer-local 'circe-auto-joins)
-
-(add-hook 'circe-server-connected-hook 'circe-auto-join-immediate)
-(defun circe-auto-join-immediate ()
-  "Join channels as per `circe-server-auto-join-channels'."
-  (circe-auto-join :immediate))
-
-(add-hook 'circe-nickserv-authenticated-hook 'circe-auto-join-after-auth)
-(defun circe-auto-join-after-auth ()
-"Join channels as per `circe-server-auto-join-channels'."
-  (circe-auto-join :after-auth))
-
-(add-hook 'circe-acquired-preferred-nick-hook
-          'circe-auto-join-after-acquired-preferred-nick)
-(defun circe-auto-join-after-acquired-preferred-nick ()
-"Join channels as per `circe-server-auto-join-channels'."
-  (circe-auto-join :after-nick))
-
-(defun circe-auto-join (type)
-  "Join channels as specified by TYPE.
-
-See `circe-server-auto-join-channels' for details on TYPE."
-  (dolist (channel (circe-auto-join-channels type))
-    (unless (circe-server-get-chat-buffer channel)
-      (add-to-list 'circe-auto-joins (downcase channel)))
-    (irc-send-JOIN (circe-server-process) channel)))
-
-(defun circe-auto-join-channels (type)
-  "Return a list of channels as configured for auto-join type TYPE.
-
-See `circe-server-auto-join-channels' for details. Channels
-joined manually which are not in that list are added to the
-front.  If the first item in the channels list is an auto-join
-type keyword, that keyword is also used for manually joined
-channels; otherwise, `circe-server-auto-join-default-type' is
-used."
-  (let* ((all-channels circe-server-auto-join-channels)
-         (current-type (if (keywordp (car all-channels))
-                           (car all-channels)
-                           circe-server-auto-join-default-type))
-         (result nil))
-    (setq all-channels (append (circe-auto-join-manually-joined-channels
-                                all-channels)
-                               all-channels))
-    (dolist (channel all-channels)
+(defun circe-auto-join-list (type)
+  "Return the list of channels to join for type TYPE."
+  (let ((result nil)
+        (current-type circe-server-auto-join-default-type))
+    (dolist (channel circe-server-auto-join-channels)
       (cond
-       ((stringp channel)
-        (when (eq type current-type)
-          (setq result (cons channel result))))
        ((keywordp channel)
-        (setq current-type channel))))
+        (setq current-type channel))
+       ((eq current-type type)
+        (push channel result))))
     (nreverse result)))
-
-(defun circe-auto-join-manually-joined-channels (channels)
-  "Return a list of already-joined channels not in CHANNELS."
-  (let ((known (circe-case-fold-table))
-        (result nil))
-    (dolist (channel channels)
-      (when (stringp channel)
-        (puthash channel t known)))
-    (when circe-server-chat-buffers
-      (maphash (lambda (key channel)
-                 (with-current-buffer channel
-                   (when (and (eq major-mode 'circe-channel-mode)
-                              (not (gethash circe-chat-target known nil)))
-                     (setq result (cons circe-chat-target result)))))
-               circe-server-chat-buffers))
-    result))
-
-(circe-add-message-handler "396" 'circe-handle-396)
-(defun circe-handle-396 (nick user host command args)
-  "Handle 396 RPL_HOSTHIDDEN messages."
-  (circe-auto-join :after-cloak))
 
 ;;;;;;;;;;;;;;;;;;;
 ;;; Topic Handling
@@ -3465,8 +3395,9 @@ as arguments."
            (new-topic (cadr args))
            (channel (irc-connection-channel (circe-server-process)
                                             channel-name))
-           (old-topic (when channel
-                        (irc-channel-last-topic channel))))
+           (old-topic (or (when channel
+                            (irc-channel-last-topic channel))
+                          "")))
       (circe-display 'circe-format-server-topic
                      :nick (or nick "(unknown)")
                      :user (or user "(unknown)")
