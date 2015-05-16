@@ -2108,7 +2108,7 @@ Arguments are IGNORED."
   (interactive)
   (circe-command-SAY (format (concat "I'm using Circe version %s "
                                      "with %s %s (of %s)")
-                             circe-version
+                             (circe--version)
                              "GNU Emacs"
                              emacs-version
                              (format-time-string "%Y-%m-%d"
