@@ -5,9 +5,9 @@
 (describe "The `circe-version' command"
   (it "should display the current version"
     (spy-on 'message)
+    (spy-on 'circe--version :and-return-value "23.5")
 
-    (let ((circe-version "23.5"))
-      (call-interactively 'circe-version))
+    (call-interactively 'circe-version)
 
     (expect 'message
             :to-have-been-called-with "Circe %s" "23.5")))
