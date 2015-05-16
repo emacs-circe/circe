@@ -700,7 +700,24 @@ can vary between networks.")
 (defun circe-version ()
   "Display Circe's version."
   (interactive)
-  (message "Circe %s" circe-version))
+  (message "Circe %s" (circe--version)))
+
+(defun circe--version ()
+  "Return Circe's version"
+  (let ((circe-git-version (circe--git-version)))
+    (if circe-git-version
+        (format "%s-%s" circe-version circe-git-version)
+      (format "%s" circe-version))))
+
+(defun circe--git-version ()
+  (let* ((current-file-path (or load-file-name buffer-file-name
+                                (locate-library "circe.el")))
+         (vcs-path (locate-dominating-file current-file-path ".git")))
+    (when vcs-path
+      (let ((default-directory vcs-path))
+        ;; chop off the trailing newline
+        (substring (shell-command-to-string "git rev-parse --short HEAD")
+                   0 -1)))))
 
 ;;;;;;;;;;;;;;;;;;;
 ;;; Server Mode ;;;
