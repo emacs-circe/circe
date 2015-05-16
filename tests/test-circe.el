@@ -3,15 +3,14 @@
 (require 'circe)
 
 (describe "The `circe-version' command"
-  (let (circe--version)
-    (it "should display the current version"
-      (spy-on 'message)
+  (it "should display the current version"
+    (spy-on 'message)
+    (spy-on 'circe--version :and-return-value "23.5")
 
-      (fset 'circe--version (lambda () "23.5"))
-      (call-interactively 'circe-version)
+    (call-interactively 'circe-version)
 
-      (expect 'message
-              :to-have-been-called-with "Circe %s" "23.5"))))
+    (expect 'message
+            :to-have-been-called-with "Circe %s" "23.5")))
 
 (describe "The `circe-duration-string' function"
   (it "should handle very short amounts of time"
