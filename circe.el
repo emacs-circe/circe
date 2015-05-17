@@ -820,6 +820,23 @@ server's chat buffers."
           (setq result (cons buf result)))))
     (nreverse result)))
 
+(defmacro with-circe-server-buffer (&rest body)
+  "Run BODY with the current buffer being the current server buffer."
+  (let ((server (make-symbol "server")))
+    `(let ((,server (cond
+                      ((eq major-mode 'circe-server-mode)
+                       (current-buffer))
+                      (circe-server-buffer
+                       circe-server-buffer)
+                      (t
+                       (error "`with-circe-server-buffer' outside of an circe buffer")))))
+       (when (and ,server ;; Might be dead!
+                  (bufferp ,server)
+                  (buffer-live-p ,server))
+         (with-current-buffer ,server
+           ,@body)))))
+(put 'with-circe-server-buffer 'lisp-indent-function 0)
+
 (defun circe-server-last-active-buffer ()
   "Return the last active buffer of this server."
   (with-circe-server-buffer
@@ -1381,23 +1398,6 @@ SERVER-BUFFER is the server buffer of this chat buffer.")
   (when (equal circe-chat-target "#emacs-circe")
     (set (make-local-variable 'lui-button-issue-tracker)
          "https://github.com/jorgenschaefer/circe/issues/%s")))
-
-(defmacro with-circe-server-buffer (&rest body)
-  "Run BODY with the current buffer being the current server buffer."
-  (let ((server (make-symbol "server")))
-    `(let ((,server (cond
-                      ((eq major-mode 'circe-server-mode)
-                       (current-buffer))
-                      (circe-server-buffer
-                       circe-server-buffer)
-                      (t
-                       (error "`with-circe-server-buffer' outside of an circe buffer")))))
-       (when (and ,server ;; Might be dead!
-                  (bufferp ,server)
-                  (buffer-live-p ,server))
-         (with-current-buffer ,server
-           ,@body)))))
-(put 'with-circe-server-buffer 'lisp-indent-function 0)
 
 (defun circe-chat-disconnected ()
   "The current buffer got disconnected."
