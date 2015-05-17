@@ -2004,7 +2004,7 @@ message separated by a space."
   (interactive "sQuery with: ")
   (let* ((circe-new-buffer-behavior 'ignore)
          who what)
-    (if (string-match "\\`\\s-*\\(\\S-+\\)\\s-+\\(.*\\)\\'" arg)
+    (if (string-match "\\`\\s-*\\(\\S-+\\)\\s-\\(\\s-*\\S-.*\\)\\'" arg)
         (setq who (match-string 1 arg)
               what (match-string 2 arg))
       (setq who (string-trim arg)))
