@@ -218,28 +218,10 @@ argument is given to /PART."
   :type 'string
   :group 'circe)
 
-(defcustom circe-new-buffer-behavior 'display
-  "How new buffers should be treated.
-
-  'display  - Show them, but don't select them
-  'switch   - Switch input to that buffer
-  'ignore   - Open them in the background
-
-This does NOT affect buffers created with /join or /query."
-  :type '(choice (const :tag "Display" display)
-                 (const :tag "Switch" switch)
-                 (const :tag "Ignore" ignore))
-  :group 'circe)
-
-(defcustom circe-auto-query-p t
-  "Non-nil if queries should be opened automatically."
-  :type 'boolean
-  :group 'circe)
-
 (defcustom circe-auto-query-max 23
   "The maximum number of queries which are opened automatically.
 If more messages arrive - typically in a flood situation - they
-are displayed as if `circe-auto-query-p' was nil."
+are displayed in the server buffer."
   :type 'integer
   :group 'circe)
 
@@ -276,13 +258,6 @@ speak for the first time, Circe displays their join time."
 (defcustom circe-active-users-timeout nil
   "When non-nil, should be the number of seconds after which
 active users are regarded as inactive again after speaking."
-  :type 'integer
-  :group 'circe)
-
-(defcustom circe-channel-recent-users-timeout (* 20 60)
-  "Forget about parted users after this many seconds.
-
-If nil, parted users are immediately forgotten about."
   :type 'integer
   :group 'circe)
 
@@ -421,11 +396,6 @@ COMMAND, and ARGS."
 (defcustom circe-server-connected-hook nil
   "Hook run when we successfully connected to a server.
 This is run from a 001 (RPL_WELCOME) message handler."
-  :type 'hook
-  :group 'circe)
-
-(defcustom circe-server-mode-hook nil
-  "Hook run when circe connects to a server."
   :type 'hook
   :group 'circe)
 
@@ -774,11 +744,12 @@ modes that derive from this.
 
 The mode inheritance hierarchy looks like this:
 
-circe-mode
-`-circe-server-mode
-`-circe-chat-mode
-  `-circe-channel-mode
-  `-circe-query-mode"
+lui-mode
+`-circe-mode
+  `-circe-server-mode
+  `-circe-chat-mode
+    `-circe-channel-mode
+    `-circe-query-mode"
   (add-hook 'lui-pre-output-hook 'circe-highlight-nick
             nil t)
   (add-hook 'completion-at-point-functions 'circe-completion-at-point
@@ -801,6 +772,9 @@ circe-mode
 ;;;;;;;;;;;;;;;;;;;
 ;;; Server Mode ;;;
 ;;;;;;;;;;;;;;;;;;;
+
+(defvar circe-server-mode-hook nil
+  "Hook run when circe connects to a server.")
 
 (defvar circe-server-mode-map (make-sparse-keymap)
   "The key map for server mode buffers.")
@@ -1673,11 +1647,10 @@ SERVER-BUFFER is the server buffer of this chat buffer.
 
 (defun circe-server-auto-query-buffer (who)
   "Return a buffer for a query with `WHO'.
-This adheres to `circe-auto-query-p' and `circe-auto-query-max'."
+This adheres to `circe-auto-query-max'."
   (or (circe-server-get-chat-buffer who)
-      (when (and circe-auto-query-p
-                 (< (circe-server-query-count)
-                    circe-auto-query-max))
+      (when (< (circe-server-query-count)
+               circe-auto-query-max)
         (circe-server-get-or-create-chat-buffer who 'circe-query-mode))))
 
 (defun circe-server-query-count ()
@@ -1938,8 +1911,7 @@ message separated by a space."
   ;; Eventually, this should probably be just the same as
   ;; circe-command-SAY
   (interactive "sQuery with: ")
-  (let* ((circe-new-buffer-behavior 'ignore)
-         who what)
+  (let* (who what)
     (if (string-match "\\`\\s-*\\(\\S-+\\)\\s-\\(\\s-*\\S-.*\\)\\'" arg)
         (setq who (match-string 1 arg)
               what (match-string 2 arg))
@@ -1954,8 +1926,7 @@ message separated by a space."
 (defun circe-command-JOIN (channel)
   "Join CHANNEL. This can also contain a key."
   (interactive "sChannel: ")
-  (let ((circe-new-buffer-behavior 'ignore)
-        (channel (string-trim channel)))
+  (let ((channel (string-trim channel)))
     (pop-to-buffer
      (circe-server-get-or-create-chat-buffer channel 'circe-channel-mode))
     (irc-send-JOIN (circe-server-process) channel)))
