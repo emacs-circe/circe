@@ -1148,7 +1148,9 @@ See `circe-server-max-reconnect-attempts'.")
                                  circe-sasl-password)
                         '("sasl"))
              :nickserv-nick circe-nickserv-nick
-             :nickserv-password circe-nickserv-password
+             :nickserv-password (if (functionp circe-nickserv-password)
+                                    (funcall circe-nickserv-password circe-server-name)
+                                  circe-nickserv-password)
              :nickserv-mask circe-nickserv-mask
              :nickserv-identify-challenge circe-nickserv-identify-challenge
              :nickserv-identify-command circe-nickserv-identify-command
