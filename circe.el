@@ -1829,12 +1829,14 @@ See `minibuffer-completion-table' for details."
 
 (defun circe-completion-sort (collection)
   "Sort the COLLECTION by channel activity for nicks."
-  (let* ((channel (irc-connection-channel (circe-server-process)
-                                          circe-chat-target))
+  (let* ((channel (when circe-chat-target
+                    (irc-connection-channel (circe-server-process)
+                                            circe-chat-target)))
          (decorated (mapcar (lambda (entry)
                               (let* ((nick (circe-completion-clean-nick
                                             entry))
-                                     (user (irc-channel-user channel nick)))
+                                     (user (when channel
+                                             (irc-channel-user channel nick))))
                                 (list (when user
                                         (irc-user-last-activity-time user))
                                       (length entry)
