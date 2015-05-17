@@ -176,7 +176,7 @@ missing a CTCP response sent to the old nick."
   "Call force-mode-line-update on a circe server buffer and all
 of its chat buffers."
   (force-mode-line-update)
-  (dolist (b (circe-chat-buffers))
+  (dolist (b (circe-server-chat-buffers))
     (with-current-buffer b
       (force-mode-line-update))))
 
