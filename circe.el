@@ -814,11 +814,11 @@ server's chat buffers."
 (defun circe-server-buffers ()
   "Return a list of all server buffers in this Emacs instance."
   (let ((result nil))
-   (dolist (buf (buffer-list))
-     (with-current-buffer buf
-       (when (eq major-mode 'circe-server-mode)
-         (setq result (cons buf result)))))
-   (nreverse result)))
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf
+        (when (eq major-mode 'circe-server-mode)
+          (setq result (cons buf result)))))
+    (nreverse result)))
 
 (defun circe-server-last-active-buffer ()
   "Return the last active buffer of this server."
@@ -921,6 +921,15 @@ This is used by Circe to know where to put spurious messages."
                    (push buffer buffer-list))
                  circe-server-chat-buffer-table)
         buffer-list))))
+
+(defun circe-server-channel-buffers ()
+  "Return a list of all channel buffers of this server."
+  (let ((result nil))
+    (dolist (buf (circe-server-chat-buffers))
+      (with-current-buffer buf
+        (when (eq major-mode 'circe-channel-mode)
+          (setq result (cons buf result)))))
+    (nreverse result)))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;;; Connecting to IRC
@@ -1368,7 +1377,7 @@ SERVER-BUFFER is the server buffer of this chat buffer.")
     (setq mode-line-buffer-identification
           (list (format "%%b@%-8s" network)))
     (setq lui-logging-format-arguments
-          `(:target ,target :network ,network)))
+          `(:target ,circe-chat-target :network ,network)))
   (when (equal circe-chat-target "#emacs-circe")
     (set (make-local-variable 'lui-button-issue-tracker)
          "https://github.com/jorgenschaefer/circe/issues/%s")))
