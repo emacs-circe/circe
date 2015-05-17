@@ -624,10 +624,6 @@ If a function is set it will be called with the value of
   "The last active circe buffer.")
 (make-variable-buffer-local 'circe-server-last-active-buffer)
 
-(defvar circe-server-chat-buffers nil
-  "A hash of chat buffers associated with this server.")
-(make-variable-buffer-local 'circe-server-chat-buffers)
-
 (defvar circe-server-processing-p nil
   "Non-nil when we're currently processing a message.
 Yep, this is a mutex. Why would one need a mutex in Emacs, a
@@ -820,6 +816,141 @@ to reconnect to the server.
 \\{circe-server-mode-map}"
   (add-hook 'kill-buffer-hook 'circe-server-killed nil t))
 
+(defun circe-server-killed ()
+  "Run when the server buffer got killed.
+
+This will IRC, and ask the user whether to kill all of the
+server's chat buffers."
+  (when circe-server-killed-confirmation
+    (when (not (y-or-n-p
+                (if (eq circe-server-killed-confirmation 'ask-and-kill-all)
+                    "Really kill all buffers of this server? (if not, try `circe-reconnect') "
+                  "Really kill the IRC connection? (if not, try `circe-reconnect') ")))
+      (error "Buffer not killed as per user request")))
+  (setq circe-server-quitting-p t)
+  (ignore-errors
+    (irc-send-QUIT circe-server-process circe-default-quit-message))
+  (ignore-errors
+    (delete-process circe-server-process))
+  (when (eq circe-server-killed-confirmation 'ask-and-kill-all)
+    (dolist (buf (circe-server-chat-buffers))
+      (let ((circe-channel-killed-confirmation nil))
+        (kill-buffer buf)))))
+
+(defun circe-server-buffers ()
+  "Return a list of all server buffers in this Emacs instance."
+  (let ((result nil))
+   (dolist (buf (buffer-list))
+     (with-current-buffer buf
+       (when (eq major-mode 'circe-server-mode)
+         (setq result (cons buf result)))))
+   (nreverse result)))
+
+(defun circe-server-last-active-buffer ()
+  "Return the last active buffer of this server."
+  (with-circe-server-buffer
+    (if (and circe-server-last-active-buffer
+             (bufferp circe-server-last-active-buffer)
+             (buffer-live-p circe-server-last-active-buffer))
+        circe-server-last-active-buffer
+      (current-buffer))))
+
+;; There really ought to be a hook for this!
+(defadvice select-window (after circe-server-track-select-window
+                                (window &optional norecord))
+  "Remember the current buffer as the last active buffer.
+This is used by Circe to know where to put spurious messages."
+  (with-current-buffer (window-buffer window)
+    (when (derived-mode-p 'circe-mode)
+      (let ((buf (current-buffer)))
+        (with-circe-server-buffer
+          (setq circe-server-last-active-buffer buf))))))
+(ad-activate 'select-window)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;;; Chat Buffer Manager
+
+;; This interface manages a list of chat buffers active for this
+;; server buffer. The main purpose of this is so we do not have to
+;; rely on buffer names, but have our own management list.
+
+(defvar circe-server-chat-buffer-table nil
+  "A hash table of chat buffers associated with this server.")
+(make-variable-buffer-local 'circe-server-chat-buffer-table)
+
+(defun circe-server-get-chat-buffer (target)
+  "Return the chat buffer addressing TARGET, or nil if none."
+  (with-circe-server-buffer
+    (when circe-server-chat-buffer-table
+      (let ((target-name (irc-isupport--case-fold (circe-server-process)
+                                                  target)))
+        (gethash target-name circe-server-chat-buffer-table)))))
+
+(defun circe-server-create-chat-buffer (target chat-mode)
+  "Return a new buffer addressing TARGET in CHAT-MODE."
+  (with-circe-server-buffer
+    (let ((target-name (irc-isupport--case-fold (circe-server-process) target))
+          (chat-buffer (generate-new-buffer target))
+          (server-buffer (current-buffer)))
+      (with-current-buffer chat-buffer
+        (funcall chat-mode)
+        (circe--chat-mode-setup target server-buffer))
+      (when (not circe-server-chat-buffer-table)
+        (setq circe-server-chat-buffer-table (make-hash-table :test 'equal)))
+      (puthash target-name chat-buffer circe-server-chat-buffer-table))))
+
+(defun circe-server-get-or-create-chat-buffer (target chat-mode)
+  "Return a buffer addressing TARGET; create one in CHAT-MODE if none exists."
+  (let ((buf (circe-server-get-chat-buffer target)))
+    (if buf
+        buf
+      (circe-server-create-chat-buffer target chat-mode))))
+
+(defun circe-server-remove-chat-buffer (target-or-buffer)
+  "Remove the buffer addressing TARGET-OR-BUFFER."
+  (with-circe-server-buffer
+    (let* ((target (if (bufferp target-or-buffer)
+                       (circe-server-chat-buffer-target target-or-buffer)
+                     target-or-buffer))
+           (target-name  (irc-isupport--case-fold (circe-server-process)
+                                                  target)))
+      (remhash target-name circe-server-chat-buffer-table))))
+
+(defun circe-server-rename-chat-buffer (old-name new-name)
+  "Note that the chat buffer addressing OLD-NAME now addresses NEW-NAME."
+  (with-circe-server-buffer
+    (let* ((old-target-name (irc-isupport--case-fold (circe-server-process)
+                                                     old-name))
+           (new-target-name (irc-isupport--case-fold (circe-server-process)
+                                                     new-name))
+           (buf (gethash old-target-name circe-server-chat-buffer-table)))
+      (when buf
+        (remhash old-target-name circe-server-chat-buffer-table)
+        (puthash new-target-name buf circe-server-chat-buffer-table)
+        (with-current-buffer buf
+          (setq circe-chat-target new-name))))))
+
+(defun circe-server-chat-buffer-target (&optional buffer)
+  "Return the chat target of BUFFER, or the current buffer if none."
+  (if buffer
+      (with-current-buffer buffer
+        circe-chat-target)
+    circe-chat-target))
+
+(defun circe-server-chat-buffers ()
+  "Return the list of chat buffers on this server."
+  (with-circe-server-buffer
+    (when circe-server-chat-buffer-table
+      (let ((buffer-list nil))
+        (maphash (lambda (target-name buffer)
+                   (push buffer buffer-list))
+                 circe-server-chat-buffer-table)
+        buffer-list))))
+
+;;;;;;;;;;;;;;;;;;;;;
+;;; Connecting to IRC
+
 (defun circe-read-network ()
   "Read a host or network name with completion.
 
@@ -971,38 +1102,6 @@ See `circe-network-options' for a list of common options."
         (circe-reconnect)
         (switch-to-buffer server-buffer)))))
 
-(defvar circe-server-buffer nil
-  "The buffer of the server associated with the current chat buffer.")
-(make-variable-buffer-local 'circe-server-buffer)
-
-(defmacro with-circe-server-buffer (&rest body)
-  "Run BODY with the current buffer being the current server buffer."
-  (let ((server (make-symbol "server")))
-    `(let ((,server (cond
-                      ((eq major-mode 'circe-server-mode)
-                       (current-buffer))
-                      (circe-server-buffer
-                       circe-server-buffer)
-                      (t
-                       (error "`with-circe-server-buffer' outside of an circe buffer")))))
-       (when (and ,server ;; Might be dead!
-                  (bufferp ,server)
-                  (buffer-live-p ,server))
-         (with-current-buffer ,server
-           ,@body)))))
-(put 'with-circe-server-buffer 'lisp-indent-function 0)
-
-(defmacro with-circe-chat-buffer (name &rest body)
-  "Switch to the chat buffer NAME and run BODY there.
-
-If no such buffer exists, do nothing."
-  (let ((buf (make-symbol "buf")))
-    `(let ((,buf (circe-server-get-chat-buffer ,name)))
-       (when ,buf
-         (with-current-buffer ,buf
-           ,@body)))))
-(put 'with-circe-chat-buffer 'lisp-indent-function 1)
-
 (defvar circe-server-reconnect-attempts 0
   "The number of reconnect attempts that Circe has done so far.
 See `circe-server-max-reconnect-attempts'.")
@@ -1024,7 +1123,7 @@ See `circe-server-max-reconnect-attempts'.")
       (when (not circe-irc-handler-table)
         (setq circe-irc-handler-table (circe-irc-handler-table)))
       (circe-server-message "Connecting...")
-      (dolist (buf (circe-chat-buffers))
+      (dolist (buf (circe-server-chat-buffers))
         (with-current-buffer buf
           (circe-server-message "Connecting...")))
       (setq circe-server-process
@@ -1088,45 +1187,6 @@ See `circe-server-max-reconnect-attempts'.")
   "Return the current server process."
   (with-circe-server-buffer
     circe-server-process))
-
-(defun circe-server-killed ()
-  "Run when the server buffer got killed.
-
-This will IRC, and ask the user whether to kill all of the
-server's chat buffers."
-  (when circe-server-killed-confirmation
-    (when (not (y-or-n-p
-                (if (eq circe-server-killed-confirmation 'ask-and-kill-all)
-                    "Really kill all buffers of this server? (if not, try `circe-reconnect') "
-                  "Really kill the IRC connection? (if not, try `circe-reconnect') ")))
-      (error "Buffer not killed as per user request")))
-  (setq circe-server-quitting-p t)
-  (ignore-errors
-    (irc-send-QUIT circe-server-process circe-default-quit-message))
-  (ignore-errors
-    (delete-process circe-server-process))
-  (when (eq circe-server-killed-confirmation 'ask-and-kill-all)
-    (dolist (buf (circe-chat-buffers))
-      (let ((circe-channel-killed-confirmation nil))
-        (kill-buffer buf)))))
-
-(defun circe-server-last-active-buffer ()
-  "Return the last active buffer of this server."
-  (with-circe-server-buffer
-    (if (and circe-server-last-active-buffer
-             (bufferp circe-server-last-active-buffer)
-             (buffer-live-p circe-server-last-active-buffer))
-        circe-server-last-active-buffer
-      (current-buffer))))
-
-(defun circe-server-buffers ()
-  "Return a list of all server buffers in this Emacs instance."
-  (let ((result nil))
-   (dolist (buf (buffer-list))
-     (with-current-buffer buf
-       (when (eq major-mode 'circe-server-mode)
-         (setq result (cons buf result)))))
-   (nreverse result)))
 
 (defun circe-server-my-nick-p (nick)
   "Return non-nil when NICK is our current nick."
@@ -1230,18 +1290,6 @@ It is always possible to use the mynick or target formats."
                 entry)))
             keywords)))
 
-;; There really ought to be a hook for this!
-(defadvice select-window (after circe-server-track-select-window
-                                (window &optional norecord))
-  "Remember the current buffer as the last active buffer.
-This is used by Circe to know where to put spurious messages."
-  (with-current-buffer (window-buffer window)
-    (when (derived-mode-p 'circe-mode)
-      (let ((buf (current-buffer)))
-        (with-circe-server-buffer
-          (setq circe-server-last-active-buffer buf))))))
-(ad-activate 'select-window)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Nick Highlighting ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1306,93 +1354,6 @@ with all properties in PROPERTIES."
         (add-text-properties beg end properties)
         (setq beg (text-property-any end to prop val))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Chat Buffer Manager ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Case-insensitive hash table
-;; This does not work for the RFC 1459 encoding.
-(defun circe-case-fold-string= (a b)
-  "Compare the two strings A and B case-insensitively."
-  (eq t
-      (compare-strings a nil nil b nil nil t)))
-
-(defun circe-case-fold-string-hash (a)
-  "Return a hash value for the string A."
-  (sxhash (upcase a)))
-
-(define-hash-table-test 'circe-case-fold
-  'circe-case-fold-string=
-  'circe-case-fold-string-hash)
-
-(defun circe-case-fold-table ()
-  "Return a new hash table for chat buffers."
-  (make-hash-table :test 'circe-case-fold))
-
-;; Manager interface
-
-(defun circe-server-add-chat-buffer (target buf)
-  "For target TARGET, add BUF as a chat buffer."
-  (let ((name (if (bufferp buf)
-                  buf
-                (get-buffer buf))))
-    (with-circe-server-buffer
-      (when (not circe-server-chat-buffers)
-        (setq circe-server-chat-buffers (circe-case-fold-table)))
-      (puthash target name circe-server-chat-buffers))))
-
-(defun circe-server-remove-chat-buffer (target)
-  "Remove TARGET from the chat buffers."
-  (with-circe-server-buffer
-    (when circe-server-chat-buffers
-      (remhash target circe-server-chat-buffers))))
-
-(defun circe-server-get-chat-buffer (target &optional create)
-  "Return the chat buffer associated with TARGET.
-If CREATE is non-nil, it is a function which is used to
-initialize a new buffer if none exists."
-  (with-circe-server-buffer
-    (let ((entry (when circe-server-chat-buffers
-                   (gethash target circe-server-chat-buffers))))
-      (cond
-       (entry
-        entry)
-       (create
-        (let ((buf (generate-new-buffer target))
-              (server (current-buffer)))
-          (circe-server-add-chat-buffer target buf)
-          (with-current-buffer buf
-            (funcall create)
-            (circe--chat-mode-setup target server))
-          (cond
-           ((eq circe-new-buffer-behavior 'display)
-            (display-buffer buf))
-           ((eq circe-new-buffer-behavior 'switch)
-            (switch-to-buffer buf)))
-          buf))
-       (t
-        nil)))))
-
-(defun circe-chat-buffers ()
-  "Return a list of all chat buffer of the current server."
-  (let ((hash (with-circe-server-buffer
-                circe-server-chat-buffers))
-        (result nil))
-    (when hash
-      (maphash (lambda (key value)
-                 (setq result (cons value result)))
-               hash))
-    result))
-
-(defun circe-channel-buffers ()
-  "Return a list of all channel buffers of the current server."
-  (let ((buffers nil))
-    (dolist (buf (circe-chat-buffers))
-      (with-current-buffer buf
-        (when (eq major-mode 'circe-channel-mode)
-          (setq buffers (cons buf buffers)))))
-    buffers))
-
 ;;;;;;;;;;;;;;;;;;;;
 ;;; Chat Buffers ;;;
 ;;;;;;;;;;;;;;;;;;;;
@@ -1411,7 +1372,11 @@ file name for lui applications.")
 (defvar circe-chat-mode-hook nil
   "The hook run after `circe-chat-mode' is initialized.")
 
-(define-derived-mode circe-chat-mode circe-server-mode "Circe Chat"
+(defvar circe-server-buffer nil
+  "The buffer of the server associated with the current chat buffer.")
+(make-variable-buffer-local 'circe-server-buffer)
+
+(define-derived-mode circe-chat-mode circe-mode "Circe Chat"
   "The circe chat major mode.
 
 This is the common mode used for both queries and channels.
@@ -1433,6 +1398,23 @@ SERVER-BUFFER is the server buffer of this chat buffer.")
   (when (equal circe-chat-target "#emacs-circe")
     (set (make-local-variable 'lui-button-issue-tracker)
          "https://github.com/jorgenschaefer/circe/issues/%s")))
+
+(defmacro with-circe-server-buffer (&rest body)
+  "Run BODY with the current buffer being the current server buffer."
+  (let ((server (make-symbol "server")))
+    `(let ((,server (cond
+                      ((eq major-mode 'circe-server-mode)
+                       (current-buffer))
+                      (circe-server-buffer
+                       circe-server-buffer)
+                      (t
+                       (error "`with-circe-server-buffer' outside of an circe buffer")))))
+       (when (and ,server ;; Might be dead!
+                  (bufferp ,server)
+                  (buffer-live-p ,server))
+         (with-current-buffer ,server
+           ,@body)))))
+(put 'with-circe-server-buffer 'lisp-indent-function 0)
 
 (defun circe-chat-disconnected ()
   "The current buffer got disconnected."
@@ -1539,34 +1521,13 @@ state."
     (when (and circe-channel-killed-confirmation
                (not (y-or-n-p "Really leave this channel? ")))
       (error "Channel not left."))
-    (when (circe-channel-user-p (circe-server-nick))
-      (ignore-errors
-        (irc-send-PART (circe-server-process)
-                       circe-chat-target
-                       circe-default-part-message))))
-    (circe-server-remove-chat-buffer circe-chat-target))
-
-(defun circe-channel-message-handler (nick user host command args)
-  "Update the users of a channel as appropriate.
-
-This handles nick changes and channel joins and departures, and
-updates the variable `circe-channel-users' accordingly.
-
-NICK, USER, HOST, COMMAND and ARGS should be the command
-received."
-  (cond
-   ((string= command "NICK")
-    (dolist (buf (circe-chat-buffers))
-      (with-current-buffer buf
-        (when (and (eq major-mode 'circe-query-mode)
-                   (circe-case-fold-string= nick
-                                            circe-chat-target))
-          (setq circe-chat-target (car args))
-          (rename-buffer circe-chat-target t)
-          (with-circe-server-buffer
-            (circe-server-remove-chat-buffer nick)
-            (circe-server-add-chat-buffer (car args)
-                                          buf))))))))
+    (ignore-errors
+      (irc-send-PART (circe-server-process)
+                     circe-chat-target
+                     circe-default-part-message))
+    (ignore-errors
+      (with-circe-server-buffer
+        (circe-server-remove-chat-buffer circe-chat-target)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Channel user management ;;;
@@ -1586,7 +1547,9 @@ users, which is a pretty rough heuristic, but it works."
   "Return non-nil when NICK belongs to a channel user."
   (cond
    ((eq major-mode 'circe-query-mode)
-    (circe-case-fold-string= nick circe-chat-target))
+    (irc-string-equal-p (circe-server-process)
+                        nick
+                        circe-chat-target))
    ((eq major-mode 'circe-channel-mode)
     (let ((channel (irc-connection-channel (circe-server-process)
                                            circe-chat-target)))
@@ -1703,8 +1666,10 @@ SERVER-BUFFER is the server buffer of this chat buffer.
 
 (defun circe-query-killed ()
   "Called when the query buffer got killed."
-  (when (buffer-live-p circe-server-buffer)
-    (circe-server-remove-chat-buffer circe-chat-target)))
+  (ignore-errors
+    (let ((target circe-chat-target))
+      (with-circe-server-buffer
+        (circe-server-remove-chat-buffer target)))))
 
 (defun circe-server-auto-query-buffer (who)
   "Return a buffer for a query with `WHO'.
@@ -1713,12 +1678,12 @@ This adheres to `circe-auto-query-p' and `circe-auto-query-max'."
       (when (and circe-auto-query-p
                  (< (circe-server-query-count)
                     circe-auto-query-max))
-        (circe-server-get-chat-buffer who 'circe-query-mode))))
+        (circe-server-get-or-create-chat-buffer who 'circe-query-mode))))
 
 (defun circe-server-query-count ()
   "Return the number of queries on the current server."
   (let ((num 0))
-    (dolist (buf (circe-chat-buffers))
+    (dolist (buf (circe-server-chat-buffers))
       (with-current-buffer buf
         (when (eq major-mode 'circe-query-mode)
           (setq num (+ num 1)))))
@@ -1850,11 +1815,11 @@ See `minibuffer-completion-table' for details."
                                (mapcar (lambda (buf)
                                          (with-current-buffer buf
                                            circe-chat-target))
-                                       (circe-channel-buffers)))))
+                                       (circe-server-channel-buffers)))))
       (cond
        ;; In a server buffer, complete all nicks in all channels
        ((eq major-mode 'circe-server-mode)
-        (dolist (buf (circe-channel-buffers))
+        (dolist (buf (circe-server-channel-buffers))
           (with-current-buffer buf
             (dolist (nick (circe-channel-nicks))
               (setq completions (cons (concat nick nick-suffix)
@@ -1982,7 +1947,7 @@ message separated by a space."
     (when (string= who "")
       (circe-server-message "Usage: /query <nick> [something to say]"))
     (pop-to-buffer
-     (circe-server-get-chat-buffer who 'circe-query-mode))
+     (circe-server-get-or-create-chat-buffer who 'circe-query-mode))
     (when what
       (circe-command-SAY what))))
 
@@ -1992,7 +1957,7 @@ message separated by a space."
   (let ((circe-new-buffer-behavior 'ignore)
         (channel (string-trim channel)))
     (pop-to-buffer
-     (circe-server-get-chat-buffer channel 'circe-channel-mode))
+     (circe-server-get-or-create-chat-buffer channel 'circe-channel-mode))
     (irc-send-JOIN (circe-server-process) channel)))
 
 (defun circe-command-PART (reason)
@@ -2178,7 +2143,7 @@ Arguments are IGNORED."
 
 (defun circe-irc-conn-disconnected (conn event)
   (with-current-buffer (irc-connection-get conn :server-buffer)
-    (dolist (buf (circe-chat-buffers))
+    (dolist (buf (circe-server-chat-buffers))
       (with-current-buffer buf
         (circe-chat-disconnected)))
 
@@ -2227,8 +2192,9 @@ Arguments are IGNORED."
                 (when (not (circe-message-option 'dont-display))
                   (circe-server-display-message nick user host
                                                 command args)))
-            (circe-server-handle-message-internal nick user host
-                                                  command args)))))))
+            (when (string= command "001")             ; RPL_WELCOME
+              (setq circe-server-reconnect-attempts 0)
+              (run-hooks 'circe-server-connected-hook))))))))
 
 (defun circe-parse-sender (sender)
   (if (string-match "\\`\\([^!]*\\)!\\([^@]*\\)@\\(.*\\)\\'" sender)
@@ -2340,33 +2306,6 @@ ignored."
     (funcall function nick user host command args))
   (run-hook-with-args 'circe-receive-message-functions
                       nick user host command args))
-
-(defun circe-server-handle-message-internal (nick user host command args)
-  "Handle this message for internal bookkeeping.
-
-This does mandatory client-side bookkeeping of the server state.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (cond
-   ;; Quitting
-   ((string= command "QUIT")
-    (when (circe-server-my-nick-p nick)
-      (dolist (buf (circe-chat-buffers))
-        (with-current-buffer buf
-          (circe-chat-disconnected)))))
-   ;; Create new channel buffers
-   ((string= command "JOIN")
-    (when (circe-server-my-nick-p nick)
-      (circe-server-add-chat-buffer
-       (car args)
-       (circe-server-get-chat-buffer (car args)
-                                     'circe-channel-mode))))
-   ;; Initialization
-   ((string= command "001")             ; RPL_WELCOME
-    (setq circe-server-reconnect-attempts 0)
-    (run-hooks 'circe-server-connected-hook)))
-  (circe-channel-message-handler nick user host command args))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Accessing Display Handlers ;;;
@@ -2687,8 +2626,8 @@ ARGS the arguments to the command."
             (circe-display 'circe-format-message-action
                            :nick nick
                            :body (cadr args)))))
-    (with-current-buffer (circe-server-get-chat-buffer (car args)
-                                                       'circe-channel-mode)
+    (with-current-buffer (circe-server-get-or-create-chat-buffer
+                          (car args) 'circe-channel-mode)
       (circe-lurker-display-active nick user host)
       (circe-display 'circe-format-action
                      :nick nick
@@ -2774,8 +2713,8 @@ as arguments."
                          :nick nick
                          :body (cadr args))))))
    (t                                   ; Channel talk
-    (with-current-buffer (circe-server-get-chat-buffer (car args)
-                                                       'circe-channel-mode)
+    (with-current-buffer (circe-server-get-or-create-chat-buffer
+                          (car args) 'circe-channel-mode)
       (circe-lurker-display-active nick user host)
       (circe-display 'circe-format-say
                      :nick nick
@@ -2789,9 +2728,10 @@ NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (let ((queryp (circe-server-my-nick-p (car args))))
     (if (and nick (not (string-match "\\." nick)))
-        (with-current-buffer (or (circe-server-get-chat-buffer (if queryp
-                                                                   nick
-                                                                 (car args)))
+        (with-current-buffer (or (circe-server-get-chat-buffer
+                                  (if queryp
+                                      nick
+                                    (car args)))
                                  (circe-server-last-active-buffer))
           (when (eq major-mode 'circe-channel-mode)
             (circe-lurker-display-active nick user host))
@@ -2811,7 +2751,7 @@ as arguments."
   (if (circe-server-my-nick-p (car args))
       (dolist (buf (cons (or circe-server-buffer
                              (current-buffer))
-                         (circe-chat-buffers)))
+                         (circe-server-chat-buffers)))
         (with-current-buffer buf
           (circe-server-message
            (format "Nick change: You are now known as %s"
@@ -3009,7 +2949,7 @@ or nil when this isn't a split."
               (puthash nick nick table)
               time)
           ;; New split!
-          (let ((table (circe-case-fold-table)))
+          (let ((table (make-hash-table :test 'equal)))
             (puthash nick nick table)
             (setq circe-netsplit-list
                   (cons (list reason 0 (float-time) table)
@@ -3049,8 +2989,8 @@ NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   ;; First, channel buffers for this user.
   (let ((split (circe-netsplit-join nick)))
-    (with-current-buffer (circe-server-get-chat-buffer (car args)
-                                                       'circe-channel-mode)
+    (with-current-buffer (circe-server-get-or-create-chat-buffer
+                          (car args) 'circe-channel-mode)
       (cond
        (split
         (when (< (+ (cadr split) circe-netsplit-delay)
@@ -3390,14 +3330,15 @@ Arguments are IGNORED."
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (with-circe-chat-buffer (car args)
-    (let* ((channel-name (car args))
-           (new-topic (cadr args))
-           (channel (irc-connection-channel (circe-server-process)
-                                            channel-name))
-           (old-topic (or (when channel
-                            (irc-channel-last-topic channel))
-                          "")))
+  (let* ((channel-name (car args))
+         (new-topic (cadr args))
+         (buf (circe-server-get-chat-buffer channel-name))
+         (channel (irc-connection-channel (circe-server-process)
+                                          channel-name))
+         (old-topic (or (when channel
+                          (irc-channel-last-topic channel))
+                        "")))
+    (with-current-buffer buf
       (circe-display 'circe-format-server-topic
                      :nick (or nick "(unknown)")
                      :user (or user "(unknown)")
