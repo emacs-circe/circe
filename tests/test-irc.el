@@ -1417,13 +1417,37 @@
                  "othernick")
                 :to-be nil))
 
-      (it "should remove all channels if we quit"
+      (it "should remove a user from a channel if they quit"
         (irc-event-emit proc "QUIT" "othernick!user@host" "I am out")
 
         (expect (irc-channel-user
                  (irc-connection-channel proc "#channel")
                  "othernick")
-                :to-be nil)))
+                :to-be nil))
+
+      (it "should emit a signal for each channel a user was on if they quit"
+        (let ((events nil))
+          (irc-handler-add table "channel.quit"
+                           (lambda (proc event sender channel message)
+                             (push (list sender channel message) events)))
+
+          (irc-event-emit proc "JOIN" "mynick!user@host" "#channel1")
+          (irc-event-emit proc "JOIN" "othernick!user@host" "#channel1")
+          (irc-event-emit proc "JOIN" "mynick!user@host" "#channel2")
+          (irc-event-emit proc "JOIN" "othernick!user@host" "#channel2")
+          (irc-event-emit proc "JOIN" "mynick!user@host" "#channel3")
+          (irc-event-emit proc "QUIT" "othernick!user@host" "I am out")
+
+          (expect events
+                  :to-contain
+                  '("othernick!user@host" "#channel1" "I am out"))
+          (expect events
+                  :to-contain
+                  '("othernick!user@host" "#channel2" "I am out"))
+          (expect events
+                  :not :to-contain
+                  '("othernick!user@host" "#channel3" "I am out"))
+          )))
 
     (describe "for nick changes"
       (before-each

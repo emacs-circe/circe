@@ -867,7 +867,12 @@ Use helper functions to access the information tracked by this
 handler:
 
 - `irc-current-nick'
-- `irc-current-nick-p'"
+- `irc-current-nick-p'
+
+Events emitted:
+
+\"channel.quit\" sender channel reason -- A user quit IRC and
+    left this channel that way."
   (irc-handler-add table "001" ;; RPL_WELCOME
                    #'irc-handle-state-tracking--rpl-welcome)
   (irc-handler-add table "JOIN"
@@ -1089,13 +1094,18 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
         (irc-channel-remove-user channel nick))))))
 
 (defun irc-handle-state-tracking--QUIT (conn event sender
-                                                        &optional reason)
+                                             &optional reason)
   (let ((nick (irc-userstring-nick sender)))
     (if (irc-current-nick-p conn nick)
         (dolist (channel (irc-connection-channel-list conn))
           (irc-connection-remove-channel conn
                                          (irc-channel-folded-name channel)))
       (dolist (channel (irc-connection-channel-list conn))
+        (when (irc-channel-user channel nick)
+          (irc-event-emit conn "channel.quit"
+                          sender
+                          (irc-channel-name channel)
+                          reason))
         (irc-channel-remove-user channel nick)))))
 
 (defun irc-handle-state-tracking--NICK (conn event sender new-nick)
