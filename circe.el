@@ -1633,11 +1633,14 @@ users, which is a pretty rough heuristic, but it works."
     nicks))
 
 (defun circe-user-channels (nick)
-  "Return a list of channels for the user named NICK."
+  "Return a list of channel buffers for the user named NICK."
   (let* ((result nil))
     (dolist (channel (irc-connection-channel-list (circe-server-process)))
       (when (irc-channel-user channel nick)
-        (push (irc-channel-name channel) result)))
+        (let* ((name (irc-channel-name channel))
+               (buf (circe-server-get-chat-buffer name)))
+          (when buf
+            (push buf result)))))
     result))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
