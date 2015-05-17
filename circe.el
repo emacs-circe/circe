@@ -1648,8 +1648,12 @@ users, which is a pretty rough heuristic, but it works."
   (let* ((channel (irc-connection-channel (circe-server-process)
                                           circe-chat-target))
          (user (irc-channel-user channel nick))
-         (last-active (when user
-                        (irc-user-last-activity-time user))))
+         (recent-user (irc-channel-recent-user channel nick))
+         (last-active (cond
+                       (user
+                        (irc-user-last-activity-time user))
+                       (recent-user
+                        (irc-user-last-activity-time recent-user)))))
     (cond
      ;; If we do not track lurkers, no one is ever a lurker.
      ((not circe-reduce-lurker-spam)
@@ -2220,6 +2224,8 @@ Arguments are IGNORED."
       (setq event "PRIVMSG"))
      ((equal event "irc.notice")
       (setq event "NOTICE"))
+     ((equal event "channel.quit")
+      (setq event "CHANNEL-QUIT"))
      ((equal event "irc.ctcp")
       (setq event (format "CTCP-%s" (elt args 1))
             args (list (elt args 0)
@@ -3036,27 +3042,30 @@ or nil when this isn't a split."
                         circe-netsplit-list))
             0))))))
 
-(circe-set-display-handler "QUIT" 'circe-display-QUIT)
+;; This actually show channel.quit from irc.el
+(circe-set-display-handler "CHANNEL-QUIT" 'circe-display-QUIT)
+(circe-set-display-handler "QUIT" 'circe-display-ignore)
 (defun circe-display-QUIT (nick user host command args)
   "Show a QUIT message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (let ((split (circe-netsplit-quit (car args)
-                                    nick)))
-    (dolist (buf (circe-user-channels nick))
-      (with-current-buffer buf
-        (cond
-         (split
-          (when (< (+ split circe-netsplit-delay)
-                   (float-time))
-            (circe-server-message
-             (format "Netsplit: %s (Use /WL to see who left)"
-                     (car args)))))
-         ((not (circe-lurker-p nick))
+  (let* ((channel (car args))
+         (reason (cadr args))
+         (split (circe-netsplit-quit reason nick))
+         (buf (circe-server-get-chat-buffer channel)))
+    (with-current-buffer buf
+      (cond
+       (split
+        (when (< (+ split circe-netsplit-delay)
+                 (float-time))
           (circe-server-message
-           (format "Quit: %s (%s@%s) - %s"
-                   nick user host (car args)))))))))
+           (format "Netsplit: %s (Use /WL to see who left)"
+                   reason))))
+       ((not (circe-lurker-p nick))
+        (circe-server-message
+         (format "Quit: %s (%s@%s) - %s"
+                 nick user host reason)))))))
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick user host command args)
