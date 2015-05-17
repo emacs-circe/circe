@@ -408,7 +408,7 @@ Use `lui-insert' instead of accessing this marker directly.")
 ;;; Major Mode ;;;
 ;;;;;;;;;;;;;;;;;;
 
-(defun lui-mode ()
+(define-derived-mode lui-mode nil "LUI"
   "The Linewise User Interface mode.
 This can be used as a user interface for various applications.
 Those should define derived modes of this, so this function
@@ -416,12 +416,6 @@ should never be called directly.
 
 It can be customized for an application by specifying a
 `lui-input-function'."
-  (kill-all-local-variables)
-  (auto-fill-mode 0)
-  (setq major-mode 'lui-mode
-        mode-name "LUI")
-  (use-local-map lui-mode-map)
-  ;; Buffer-local variables
   (setq lui-input-marker (make-marker)
         lui-output-marker (make-marker)
         lui-input-ring (make-ring lui-input-ring-size)
@@ -431,15 +425,13 @@ It can be customized for an application by specifying a
   (set-marker lui-output-marker (point-max))
   (add-hook 'window-scroll-functions 'lui-scroll-window nil t)
   (add-hook 'post-command-hook 'lui-scroll-post-command)
-  (add-hook 'change-major-mode-hook
-            'lui-change-major-mode
-            nil t)
+  (add-hook 'change-major-mode-hook 'lui-change-major-mode nil t)
   (lui-time-stamp-enable-filtering)
   (tracking-mode 1)
+  (auto-fill-mode 0)
   (when lui-flyspell-p
     (require 'flyspell)
-    (lui-flyspell-change-dictionary))
-  (run-hooks 'lui-mode-hook))
+    (lui-flyspell-change-dictionary)))
 
 (defun lui-change-major-mode ()
   "Assure that the user really wants to change the major mode.

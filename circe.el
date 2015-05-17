@@ -675,9 +675,8 @@ This is either a channel or a nick name.")
 This is not entirely accurate, as exact chars constituting a nick
 can vary between networks.")
 
-(defvar circe-base-mode-map
+(defvar circe-mode-map
   (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map lui-mode-map)
     (define-key map (kbd "C-c C-j") 'circe-command-JOIN)
     (define-key map (kbd "C-c C-r") 'circe-reconnect)
     map)
@@ -767,48 +766,59 @@ pass an argument to the `circe' function for this.")
         (substring (shell-command-to-string "git rev-parse --short HEAD")
                    0 -1)))))
 
-;;;;;;;;;;;;;;;;;;;
-;;; Server Mode ;;;
-;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;
+;;; Base Mode ;;;
+;;;;;;;;;;;;;;;;;
 
-(defvar circe-server-mode-map
-  (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map circe-base-mode-map)
-    map)
-  "The key map for server mode buffers.")
+(define-derived-mode circe-mode lui-mode "Circe"
+  "Base mode for all Circe buffers.
 
-(defun circe-server-mode ()
-  "The mode for circe server buffers.
-This buffer represents a server connection. When you kill it, the
-server connection is closed. This will make all associated
-buffers unusable. Be sure to use \\[circe-reconnect] if you want
-to reconnect to the server.
+A buffer should never be in this mode directly, but rather in
+modes that derive from this.
 
-\\{circe-server-mode-map}"
-  (lui-mode)
+The mode inheritance hierarchy looks like this:
+
+circe-mode
+`-circe-server-mode
+`-circe-chat-mode
+  `-circe-channel-mode
+  `-circe-query-mode"
   (add-hook 'lui-pre-output-hook 'circe-highlight-nick
             nil t)
-  (setq major-mode 'circe-server-mode
-        mode-name "Circe Server"
-        lui-input-function 'circe-chat-input
-        default-directory (expand-file-name circe-default-directory))
-  (use-local-map circe-server-mode-map)
-  (lui-set-prompt circe-prompt-string)
-  (goto-char (point-max))
-  (setq circe-server-last-active-buffer (current-buffer))
   (add-hook 'completion-at-point-functions 'circe-completion-at-point
             nil t)
+  (lui-set-prompt circe-prompt-string)
+  (goto-char (point-max))
+  (setq lui-input-function 'circe-chat-input
+        default-directory (expand-file-name circe-default-directory)
+        circe-server-last-active-buffer (current-buffer)
+        flyspell-generic-check-word-p 'circe-flyspell-check-word-p)
   (when circe-use-cycle-completion
     (set (make-local-variable 'completion-cycle-threshold)
          t))
   ;; Tab completion should be case-insensitive
   (set (make-local-variable 'completion-ignore-case)
        t)
-  (goto-char (point-max))
-  (setq circe-server-last-active-buffer (current-buffer))
-  (add-hook 'kill-buffer-hook
-            'circe-buffer-killed)
-  (run-hooks 'circe-server-mode-hook))
+  (set (make-local-variable 'tracking-faces-priorities)
+       circe-track-faces-priorities))
+
+;;;;;;;;;;;;;;;;;;;
+;;; Server Mode ;;;
+;;;;;;;;;;;;;;;;;;;
+
+(defvar circe-server-mode-map (make-sparse-keymap)
+  "The key map for server mode buffers.")
+
+(define-derived-mode circe-server-mode circe-mode "Circe Server"
+  "The mode for circe server buffers.
+
+This buffer represents a server connection. When you kill it, the
+server connection is closed. This will make all associated
+buffers unusable. Be sure to use \\[circe-reconnect] if you want
+to reconnect to the server.
+
+\\{circe-server-mode-map}"
+  (add-hook 'kill-buffer-hook 'circe-server-killed nil t))
 
 (defun circe-read-network ()
   "Read a host or network name with completion.
@@ -1079,16 +1089,6 @@ See `circe-server-max-reconnect-attempts'.")
   (with-circe-server-buffer
     circe-server-process))
 
-(defun circe-buffer-killed ()
-  "The current buffer is being killed. Do the necessary bookkeeping for circe."
-  (cond
-   ((eq major-mode 'circe-channel-mode)
-    (circe-channel-killed))
-   ((eq major-mode 'circe-query-mode)
-    (circe-query-killed))
-   ((eq major-mode 'circe-server-mode)
-    (circe-server-killed))))
-
 (defun circe-server-killed ()
   "Run when the server buffer got killed.
 
@@ -1236,9 +1236,7 @@ It is always possible to use the mynick or target formats."
   "Remember the current buffer as the last active buffer.
 This is used by Circe to know where to put spurious messages."
   (with-current-buffer (window-buffer window)
-    (when (memq major-mode '(circe-channel-mode
-                             circe-query-mode
-                             circe-server-mode))
+    (when (derived-mode-p 'circe-mode)
       (let ((buf (current-buffer)))
         (with-circe-server-buffer
           (setq circe-server-last-active-buffer buf))))))
@@ -1364,7 +1362,8 @@ initialize a new buffer if none exists."
               (server (current-buffer)))
           (circe-server-add-chat-buffer target buf)
           (with-current-buffer buf
-            (funcall create target server))
+            (funcall create)
+            (circe--chat-mode-setup target server))
           (cond
            ((eq circe-new-buffer-behavior 'display)
             (display-buffer buf))
@@ -1398,10 +1397,7 @@ initialize a new buffer if none exists."
 ;;; Chat Buffers ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
-(defvar circe-chat-mode-map
-  (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map circe-base-mode-map)
-    map)
+(defvar circe-chat-mode-map (make-sparse-keymap)
   "Base key map for all Circe chat buffers (channel, query).")
 
 ;; Defined here as we use it, but do not necessarily want to use the
@@ -1415,43 +1411,28 @@ file name for lui applications.")
 (defvar circe-chat-mode-hook nil
   "The hook run after `circe-chat-mode' is initialized.")
 
-(defun circe-chat-mode (target server-buffer)
+(define-derived-mode circe-chat-mode circe-server-mode "Circe Chat"
   "The circe chat major mode.
+
 This is the common mode used for both queries and channels.
 It should not be used directly.
 TARGET is the default target to send data to.
-SERVER-BUFFER is the server buffer of this chat buffer."
-  (lui-mode)
-  (add-hook 'lui-pre-output-hook 'circe-highlight-nick
-            nil t)
-  (setq major-mode 'circe-chat-mode
-        mode-name "Circe Chat"
-        lui-input-function 'circe-chat-input
-        circe-chat-target target
-        circe-server-buffer server-buffer
-        default-directory (expand-file-name circe-default-directory))
-  (set (make-local-variable 'tracking-faces-priorities)
-       circe-track-faces-priorities)
-  (add-hook 'completion-at-point-functions 'circe-completion-at-point
-            nil t)
-  (when circe-use-cycle-completion
-    (set (make-local-variable 'completion-cycle-threshold)
-         t))
-  ;; Tab completion should be case-insensitive
-  (set (make-local-variable 'completion-ignore-case)
-       t)
-  (setq flyspell-generic-check-word-p 'circe-flyspell-check-word-p)
-  (lui-set-prompt circe-prompt-string)
-  (goto-char (point-max))
+SERVER-BUFFER is the server buffer of this chat buffer.")
+
+(defun circe--chat-mode-setup (chat-target server-buffer)
+  "Set up the current chat mode buffer."
+  (setq circe-chat-target chat-target
+        circe-server-buffer server-buffer)
   (let ((network (with-circe-server-buffer
                    circe-server-network)))
-
     (make-local-variable 'mode-line-buffer-identification)
     (setq mode-line-buffer-identification
           (list (format "%%b@%-8s" network)))
     (setq lui-logging-format-arguments
           `(:target ,target :network ,network)))
-  (run-hooks 'circe-chat-mode-hook))
+  (when (equal circe-chat-target "#emacs-circe")
+    (set (make-local-variable 'lui-button-issue-tracker)
+         "https://github.com/jorgenschaefer/circe/issues/%s")))
 
 (defun circe-chat-disconnected ()
   "The current buffer got disconnected."
@@ -1532,13 +1513,12 @@ will also call `lui-flyspell-check-word-p'."
 
 (defvar circe-channel-mode-map
   (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map circe-chat-mode-map)
     (define-key map (kbd "C-c C-n") 'circe-command-NAMES)
     (define-key map (kbd "C-c C-t") 'circe-command-CHTOPIC)
     map)
   "The key map for channel mode buffers.")
 
-(defun circe-channel-mode (target server-buffer)
+(define-derived-mode circe-channel-mode circe-chat-mode "Circe Channel"
   "The circe channel chat major mode.
 This mode represents a channel you are talking in.
 
@@ -1546,14 +1526,7 @@ TARGET is the default target to send data to.
 SERVER-BUFFER is the server buffer of this chat buffer.
 
 \\{circe-channel-mode-map}"
-  (circe-chat-mode target server-buffer)
-  (setq major-mode 'circe-channel-mode
-        mode-name "Circe Channel")
-  (use-local-map circe-channel-mode-map)
-  (when (equal circe-chat-target "#emacs-circe")
-    (set (make-local-variable 'lui-button-issue-tracker)
-         "https://github.com/jorgenschaefer/circe/issues/%s"))
-  (run-hooks 'circe-channel-mode-hook))
+  (add-hook 'kill-buffer-hook 'circe-channel-killed nil t))
 
 (defun circe-channel-killed ()
   "Called when the channel buffer got killed.
@@ -1718,7 +1691,7 @@ users, which is a pretty rough heuristic, but it works."
     map)
   "The key map for query mode buffers.")
 
-(defun circe-query-mode (target server-buffer)
+(define-derived-mode circe-query-mode circe-chat-mode "Circe Query"
   "The circe query chat major mode.
 This mode represents a query you are talking in.
 
@@ -1726,11 +1699,7 @@ TARGET is the default target to send data to.
 SERVER-BUFFER is the server buffer of this chat buffer.
 
 \\{circe-query-mode-map}"
-  (circe-chat-mode target server-buffer)
-  (setq major-mode 'circe-query-mode
-        mode-name "Circe Query")
-  (use-local-map circe-channel-mode-map)
-  (run-hooks 'circe-query-mode-hook))
+  (add-hook 'kill-buffer-hook 'circe-query-killed nil t))
 
 (defun circe-query-killed ()
   "Called when the query buffer got killed."
