@@ -625,6 +625,9 @@ This is only non-nil when the user is quitting the current
 server. See `circe-command-QUIT'.")
 (make-variable-buffer-local 'circe-server-quitting-p)
 
+(defvar circe-chat-calling-server-buffer-and-target nil
+  "Internal variable to pass the server buffer and target to chat modes.")
+
 (defvar circe-chat-target nil
   "The current target for the buffer.
 This is either a channel or a nick name.")
@@ -885,15 +888,18 @@ This is used by Circe to know where to put spurious messages."
 (defun circe-server-create-chat-buffer (target chat-mode)
   "Return a new buffer addressing TARGET in CHAT-MODE."
   (with-circe-server-buffer
-    (let ((target-name (irc-isupport--case-fold (circe-server-process) target))
-          (chat-buffer (generate-new-buffer target))
-          (server-buffer (current-buffer)))
-      (with-current-buffer chat-buffer
-        (funcall chat-mode)
-        (circe--chat-mode-setup target server-buffer))
+    (let* ((target-name (irc-isupport--case-fold (circe-server-process)
+                                                 target))
+           (chat-buffer (generate-new-buffer target))
+           (server-buffer (current-buffer))
+           (circe-chat-calling-server-buffer-and-target (cons server-buffer
+                                                              target-name)))
       (when (not circe-server-chat-buffer-table)
         (setq circe-server-chat-buffer-table (make-hash-table :test 'equal)))
-      (puthash target-name chat-buffer circe-server-chat-buffer-table))))
+      (puthash target-name chat-buffer circe-server-chat-buffer-table)
+      (with-current-buffer chat-buffer
+        (funcall chat-mode))
+      chat-buffer)))
 
 (defun circe-server-get-or-create-chat-buffer (target chat-mode)
   "Return a buffer addressing TARGET; create one in CHAT-MODE if none exists."
@@ -1390,12 +1396,9 @@ file name for lui applications.")
 This is the common mode used for both queries and channels.
 It should not be used directly.
 TARGET is the default target to send data to.
-SERVER-BUFFER is the server buffer of this chat buffer.")
-
-(defun circe--chat-mode-setup (chat-target server-buffer)
-  "Set up the current chat mode buffer."
-  (setq circe-chat-target chat-target
-        circe-server-buffer server-buffer)
+SERVER-BUFFER is the server buffer of this chat buffer."
+  (setq circe-server-buffer (car circe-chat-calling-server-buffer-and-target)
+        circe-chat-target (cdr circe-chat-calling-server-buffer-and-target))
   (let ((network (with-circe-server-buffer
                    circe-server-network)))
     (make-local-variable 'mode-line-buffer-identification)

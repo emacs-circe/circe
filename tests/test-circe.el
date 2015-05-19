@@ -2,6 +2,24 @@
 
 (require 'circe)
 
+(describe "Circe chat mode"
+  (describe "creation function"
+    (it "should have circe-server-buffer set in the mode hook"
+      (let* ((csb-value nil)
+             (circe-server-killed-confirmation nil)
+             (circe-chat-mode-hook (list
+                                    (lambda ()
+                                      (setq csb-value circe-server-buffer))))
+             buf)
+        (with-temp-buffer
+          (circe-server-mode)
+          (spy-on 'irc-isupport--case-fold :and-return-value "foo")
+
+          (setq buf (circe-server-create-chat-buffer "foo" 'circe-chat-mode))
+          (kill-buffer buf)
+
+          (expect csb-value :to-equal (current-buffer)))))))
+
 (describe "The `circe-version' command"
   (it "should display the current version"
     (spy-on 'message)
@@ -39,22 +57,24 @@
             :to-equal "1 month 2 minutes")))
 
 (describe "Circe's completion facility"
-  (let (channel-buffer server-buffer)
+  (let (proc channel-buffer server-buffer)
     (before-each
-      (setq channel-buffer (generate-new-buffer "#test")
-            server-buffer (generate-new-buffer "*Test Server*"))
+      (setq server-buffer (generate-new-buffer "*Test Server*"))
       (set-buffer server-buffer)
       (circe-server-mode)
+      (setq proc (start-process "test" nil "cat")
+            circe-server-process proc)
       (setq circe-server-killed-confirmation nil)
+      (setq channel-buffer (circe-server-create-chat-buffer
+                            "test" 'circe-channel-mode))
       (set-buffer channel-buffer)
-      (circe-channel-mode)
-      (circe--chat-mode-setup "#test" server-buffer)
       (setq circe-channel-killed-confirmation nil)
       (spy-on 'circe-server-nick :and-return-value "mynick")
       (spy-on 'circe-channel-nicks :and-return-value '("testnick"))
       (spy-on 'irc-connection-channel))
 
     (after-each
+      (delete-process proc)
       (kill-buffer channel-buffer)
       (kill-buffer server-buffer))
 
