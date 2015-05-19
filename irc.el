@@ -223,6 +223,13 @@ USERSTRING is a typical nick!user@host prefix as used by IRC."
                    (list handler))
            table))
 
+(defun irc-handler-remove (table event handler)
+  "Remove HANDLER for EVENT to the event handler table TABLE."
+  (puthash event
+           (delete handler
+                   (gethash event table))
+           table))
+
 (defun irc-handler-run (table event &rest args)
   "Run the handlers for EVENT in TABLE, passing ARGS to each."
   (dolist (handler (gethash event table))

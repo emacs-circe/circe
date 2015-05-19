@@ -345,7 +345,19 @@
 
       (expect (lambda ()
                 (irc-handler-run table "the.event"))
-              :to-throw))))
+              :to-throw)))
+
+  (it "should not run a remove handler"
+    (let* ((table (irc-handler-table))
+           (called-with nil)
+           (handler (lambda (&rest args)
+                      (setq called-with args))))
+      (irc-handler-add table "the.event" handler)
+      (irc-handler-remove table "the.event" handler)
+
+      (irc-handler-run table "the.event" 1 2 3)
+
+      (expect called-with :to-equal nil))))
 
 ;;;;;;;;;;;
 ;;; Sending
