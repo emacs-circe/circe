@@ -874,9 +874,13 @@ This is used by Circe to know where to put spurious messages."
   "Return the chat buffer addressing TARGET, or nil if none."
   (with-circe-server-buffer
     (when circe-server-chat-buffer-table
-      (let ((target-name (irc-isupport--case-fold (circe-server-process)
-                                                  target)))
-        (gethash target-name circe-server-chat-buffer-table)))))
+      (let* ((target-name (irc-isupport--case-fold (circe-server-process)
+                                                   target))
+             (buf (gethash target-name circe-server-chat-buffer-table)))
+        (if (buffer-live-p buf)
+            buf
+          (remhash target-name circe-server-chat-buffer-table)
+          nil)))))
 
 (defun circe-server-create-chat-buffer (target chat-mode)
   "Return a new buffer addressing TARGET in CHAT-MODE."
@@ -935,7 +939,9 @@ This is used by Circe to know where to put spurious messages."
     (when circe-server-chat-buffer-table
       (let ((buffer-list nil))
         (maphash (lambda (target-name buffer)
-                   (push buffer buffer-list))
+                   (if (buffer-live-p buffer)
+                       (push buffer buffer-list)
+                     (remhash target-name circe-server-chat-buffer-table)))
                  circe-server-chat-buffer-table)
         buffer-list))))
 
@@ -1511,8 +1517,7 @@ state."
                      circe-chat-target
                      circe-default-part-message))
     (ignore-errors
-      (with-circe-server-buffer
-        (circe-server-remove-chat-buffer circe-chat-target)))))
+      (circe-server-remove-chat-buffer circe-chat-target))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Channel user management ;;;
@@ -1652,9 +1657,7 @@ SERVER-BUFFER is the server buffer of this chat buffer.
 (defun circe-query-killed ()
   "Called when the query buffer got killed."
   (ignore-errors
-    (let ((target circe-chat-target))
-      (with-circe-server-buffer
-        (circe-server-remove-chat-buffer target)))))
+    (circe-server-remove-chat-buffer circe-chat-target)))
 
 (defun circe-server-auto-query-buffer (who)
   "Return a buffer for a query with `WHO'.
