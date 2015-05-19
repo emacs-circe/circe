@@ -616,9 +616,6 @@ it.")
 (defvar circe-message-handler-table nil
   "A hash table mapping commands to their handler function lists.")
 
-(defvar circe-irc-handler-table nil
-  "The handler table for Circe's IRC connections")
-
 (defvar circe-server-quitting-p nil
   "Non-nil when quitting from the server.
 This is only non-nil when the user is quitting the current
@@ -1132,8 +1129,6 @@ See `circe-server-max-reconnect-attempts'.")
       (when (and circe-server-process
                  (process-live-p circe-server-process))
         (delete-process circe-server-process))
-      (when (not circe-irc-handler-table)
-        (setq circe-irc-handler-table (circe-irc-handler-table)))
       (circe-server-message "Connecting...")
       (dolist (buf (circe-server-chat-buffers))
         (with-current-buffer buf
@@ -1144,7 +1139,7 @@ See `circe-server-max-reconnect-attempts'.")
              :service circe-server-service
              :tls circe-server-use-tls
              :ip-family circe-server-ip-family
-             :handler-table circe-irc-handler-table
+             :handler-table (circe-irc-handler-table)
              :server-buffer (current-buffer)
              :nick circe-server-nick
              :nick-alternatives (list (circe-nick-next circe-server-nick)
@@ -2115,19 +2110,26 @@ Arguments are IGNORED."
 ;;; IRC Protocol Handling ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defvar circe--irc-handler-table nil
+  "The handler table for Circe's IRC connections.
+
+Do not use this directly. Instead, call `circe-irc-handler-table'.")
+
 (defun circe-irc-handler-table ()
-  (let ((table (irc-handler-table)))
-    (irc-handler-add table nil #'circe-irc-legacy-bridge)
-    (irc-handler-add table "conn.disconnected" #'circe-irc-conn-disconnected)
-    (irc-handle-registration table)
-    (irc-handle-ping-pong table)
-    (irc-handle-isupport table)
-    (irc-handle-initial-nick-acquisition table)
-    (irc-handle-ctcp table)
-    (irc-handle-state-tracking table)
-    (irc-handle-nickserv table)
-    (irc-handle-auto-join table)
-    table))
+  (when (not circe--irc-handler-table)
+    (let ((table (irc-handler-table)))
+      (irc-handler-add table nil #'circe-irc-legacy-bridge)
+      (irc-handler-add table "conn.disconnected" #'circe-irc-conn-disconnected)
+      (irc-handle-registration table)
+      (irc-handle-ping-pong table)
+      (irc-handle-isupport table)
+      (irc-handle-initial-nick-acquisition table)
+      (irc-handle-ctcp table)
+      (irc-handle-state-tracking table)
+      (irc-handle-nickserv table)
+      (irc-handle-auto-join table)
+      (setq circe--irc-handler-table table)))
+  circe--irc-handler-table)
 
 (defun circe-irc-conn-disconnected (conn event)
   (with-current-buffer (irc-connection-get conn :server-buffer)
