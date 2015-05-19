@@ -55,7 +55,7 @@ Increase this to improve performance at the cost of accuracy."
   :type 'number
   :group 'circe-lagmon)
 
-(defcustom circe-lagmon-reconnect-interval 40
+(defcustom circe-lagmon-reconnect-interval 120
   "Seconds after which to automatically reconnect upon a timeout
 of a lag monitor message. A value of nil disables the feature."
   :type '(choice (const :tag "Disable auto-reconnect" nil)
