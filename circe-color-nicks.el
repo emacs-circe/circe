@@ -106,6 +106,18 @@ readability."
   :type '(repeat string)
   :group 'circe)
 
+(defcustom circe-color-nicks-pool-type 'adaptive
+  "Type of the color nick pool.
+Must be one of the following:
+
+'adaptive: Generate colors based on the current theme.
+
+List of strings: Pick colors from the specified list of hex codes
+or color names (see `color-name-rgb-alist')."
+  :type '(choice (const :tag "Adaptive" adaptive)
+                 (repeat string))
+  :group 'circe)
+
 
 ;;; See http://www.w3.org/TR/2013/NOTE-WCAG20-TECHS-20130905/G18
 
@@ -199,16 +211,18 @@ be mutated."
 
 (defun circe-nick-color-generate-pool ()
   "Return a list of appropriate nick colors."
-  (let ((bg (circe-color-canonicalize-format (face-background 'default)))
-        (fg (circe-color-canonicalize-format (face-foreground 'default)))
-        (my-msg (circe-color-canonicalize-format
-                 (face-attribute
-                  'circe-my-message-face :foreground nil 'default))))
-    (mapcar #'car (circe-nick-colors-delete-similar
-                   (cl-remove-if-not
-                    (lambda (c)
-                      (circe-nick-color-appropriate-p c bg fg my-msg))
-                    (circe-color-alist))))))
+  (if (consp circe-color-nicks-pool-type)
+      circe-color-nicks-pool-type
+    (let ((bg (circe-color-canonicalize-format (face-background 'default)))
+          (fg (circe-color-canonicalize-format (face-foreground 'default)))
+          (my-msg (circe-color-canonicalize-format
+                   (face-attribute
+                    'circe-my-message-face :foreground nil 'default))))
+      (mapcar #'car (circe-nick-colors-delete-similar
+                     (cl-remove-if-not
+                      (lambda (c)
+                        (circe-nick-color-appropriate-p c bg fg my-msg))
+                      (circe-color-alist)))))))
 
 (defun circe-nick-color-pool-test ()
   "Display all appropriate nick colors in a temp buffer."
