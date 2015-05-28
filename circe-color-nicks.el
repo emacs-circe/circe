@@ -38,7 +38,6 @@
 (require 'circe)
 (require 'color)
 (require 'cl-lib)
-(require 'gv)
 
 ;;;###autoload
 (defun enable-circe-color-nicks ()
