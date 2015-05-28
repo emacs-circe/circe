@@ -262,6 +262,8 @@ Own nick is excluded."
 wasn't assigned already."
   (let ((color (gethash nick circe-nick-color-mapping)))
     (when (not color)
+      ;; NOTE use this as entry point for taking NICK into account for
+      ;; picking the new color
       (setq color (circe-nick-color-pick))
       (puthash nick color circe-nick-color-mapping))
     (puthash color (float-time) circe-nick-color-timestamps)
