@@ -98,13 +98,13 @@ readability."
 (defcustom circe-color-nicks-everywhere nil
   "Whether nicks should be colored in message bodies too."
   :type 'boolean
-  :group 'circe)
+  :group 'circe-color-nicks)
 
 (defcustom circe-color-nicks-message-blacklist nil
   "Blacklist for nicks that shall never be highlighted inside
   images."
   :type '(repeat string)
-  :group 'circe)
+  :group 'circe-color-nicks)
 
 (defcustom circe-color-nicks-pool-type 'adaptive
   "Type of the color nick pool.
@@ -116,7 +116,7 @@ List of strings: Pick colors from the specified list of hex codes
 or color names (see `color-name-rgb-alist')."
   :type '(choice (const :tag "Adaptive" adaptive)
                  (repeat string))
-  :group 'circe)
+  :group 'circe-color-nicks)
 
 
 ;;; See http://www.w3.org/TR/2013/NOTE-WCAG20-TECHS-20130905/G18
