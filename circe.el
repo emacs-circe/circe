@@ -779,6 +779,10 @@ lui-mode
 (defvar circe-server-mode-map (make-sparse-keymap)
   "The key map for server mode buffers.")
 
+(defvar circe-server-buffer nil
+  "The buffer of the server associated with the current chat buffer.")
+(make-variable-buffer-local 'circe-server-buffer)
+
 (define-derived-mode circe-server-mode circe-mode "Circe Server"
   "The mode for circe server buffers.
 
@@ -1380,10 +1384,6 @@ file name for lui applications.")
 
 (defvar circe-chat-mode-hook nil
   "The hook run after `circe-chat-mode' is initialized.")
-
-(defvar circe-server-buffer nil
-  "The buffer of the server associated with the current chat buffer.")
-(make-variable-buffer-local 'circe-server-buffer)
 
 (define-derived-mode circe-chat-mode circe-mode "Circe Chat"
   "The circe chat major mode.
