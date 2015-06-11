@@ -1550,7 +1550,13 @@
                   (irc-connection-channel proc "#channel")
                   "SOMENICK"))
                 :to-equal
-                "somenick")))
+                "somenick"))
+
+      (it "should not fail for unknown channels"
+        (irc-event-emit proc "353" "irc.server" "mynick" "=" "#unknown"
+                        "SOMENICK")
+        (irc-event-emit proc "366" "irc.server" "mynick" "#unknown"
+                        "End of /NAMES list")))
 
     (describe "for recent channel users"
       (before-each

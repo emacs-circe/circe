@@ -1136,20 +1136,22 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
 (defun irc-handle-state-tracking--rpl-namreply
     (conn event sender current-nick channel-type channel-name nicks)
   (let ((channel (irc-connection-channel conn channel-name)))
-    (setf (irc-channel-receiving-names channel)
-          (append (irc-channel-receiving-names channel)
-                  (mapcar (lambda (nick)
-                            (irc-nick-without-prefix
-                             conn
-                             (string-trim nick)))
-                          (split-string nicks))))))
+    (when channel
+      (setf (irc-channel-receiving-names channel)
+            (append (irc-channel-receiving-names channel)
+                    (mapcar (lambda (nick)
+                              (irc-nick-without-prefix
+                               conn
+                               (string-trim nick)))
+                            (split-string nicks)))))))
 
 (defun irc-handle-state-tracking--rpl-endofnames
     (conn event sender current-nick channel-name description)
   (let ((channel (irc-connection-channel conn channel-name)))
-    (irc-channel--synchronize-nicks channel
-                                    (irc-channel-receiving-names channel))
-    (setf (irc-channel-receiving-names channel) nil)))
+    (when channel
+      (irc-channel--synchronize-nicks channel
+                                      (irc-channel-receiving-names channel))
+      (setf (irc-channel-receiving-names channel) nil))))
 
 (defun irc-channel--synchronize-nicks (channel nicks)
   "Update the user list of CHANNEL to match NICKS."
