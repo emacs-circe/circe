@@ -2947,10 +2947,8 @@ or nil when this isn't a split."
                         circe-netsplit-list))
             0))))))
 
-;; This actually show channel.quit from irc.el
-(circe-set-display-handler "CHANNEL-QUIT" 'circe-display-QUIT)
-(circe-set-display-handler "QUIT" 'circe-display-ignore)
-(defun circe-display-QUIT (nick user host command args)
+(circe-set-display-handler "CHANNEL-QUIT" 'circe-display-CHANNEL-QUIT)
+(defun circe-display-CHANNEL-QUIT (nick user host command args)
   "Show a QUIT message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2971,6 +2969,22 @@ as arguments."
         (circe-server-message
          (format "Quit: %s (%s@%s) - %s"
                  nick user host reason)))))))
+
+(circe-set-display-handler "QUIT" 'circe-display-QUIT)
+(defun circe-display-QUIT (nick user host command args)
+  "Show a QUIT message.
+
+NICK, USER, and HOST are the originator of COMMAND which had ARGS
+as arguments.
+
+Channel quits are shown already, so just show quits in queries."
+  (let* ((reason (car args))
+         (buf (circe-server-get-chat-buffer nick)))
+    (when buf
+      (with-current-buffer buf
+        (circe-server-message
+         (format "Quit: %s (%s@%s) - %s"
+                 nick user host reason))))))
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick user host command args)
