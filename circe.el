@@ -1190,6 +1190,7 @@ See `circe-server-max-reconnect-attempts'.")
 
 (defun circe-reconnect-all ()
   "Reconnect all Circe connections."
+  (interactive)
   (dolist (buf (circe-server-buffers))
     (with-current-buffer buf
       (if (called-interactively-p 'any)
