@@ -2957,18 +2957,19 @@ as arguments."
          (reason (cadr args))
          (split (circe-netsplit-quit reason nick))
          (buf (circe-server-get-chat-buffer channel)))
-    (with-current-buffer buf
-      (cond
-       (split
-        (when (< (+ split circe-netsplit-delay)
-                 (float-time))
+    (when buf
+      (with-current-buffer buf
+        (cond
+         (split
+          (when (< (+ split circe-netsplit-delay)
+                   (float-time))
+            (circe-server-message
+             (format "Netsplit: %s (Use /WL to see who left)"
+                     reason))))
+         ((not (circe-lurker-p nick))
           (circe-server-message
-           (format "Netsplit: %s (Use /WL to see who left)"
-                   reason))))
-       ((not (circe-lurker-p nick))
-        (circe-server-message
-         (format "Quit: %s (%s@%s) - %s"
-                 nick user host reason)))))))
+           (format "Quit: %s (%s@%s) - %s"
+                   nick user host reason))))))))
 
 (circe-set-display-handler "QUIT" 'circe-display-QUIT)
 (defun circe-display-QUIT (nick user host command args)
