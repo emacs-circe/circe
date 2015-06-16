@@ -1304,7 +1304,7 @@ The substitutions are identified by braces ('{' and '}')."
     (insert format)
     (goto-char (point-min))
     (while (re-search-forward "{\\([^}]*\\)}" nil t)
-      (replace-match (plist-get args (intern (match-string 1)))))
+      (replace-match (format "%s" (plist-get args (intern (match-string 1))))))
     (buffer-string)))
 
 ;;;;;;;;;;;;;;;;;;;;;;

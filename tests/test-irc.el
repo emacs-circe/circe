@@ -1788,7 +1788,12 @@
                         'greeting "Hello"
                         'world "World")
             :to-equal
-            "Hello, World!")))
+            "Hello, World!"))
+
+  (it "should use string formatting for objects"
+    (expect (irc-format "{obj}" 'obj (list 1 2 3))
+            :to-equal
+            "(1 2 3)")))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Auto join
