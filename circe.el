@@ -1552,9 +1552,10 @@ users, which is a pretty rough heuristic, but it works."
   (let* ((channel (irc-connection-channel (circe-server-process)
                                           circe-chat-target))
          (nicks nil))
-    (maphash (lambda (folded-nick user)
-               (push (irc-user-nick user) nicks))
-             (irc-channel-users channel))
+    (when channel
+      (maphash (lambda (folded-nick user)
+                 (push (irc-user-nick user) nicks))
+               (irc-channel-users channel)))
     nicks))
 
 (defun circe-user-channels (nick)
@@ -1575,8 +1576,10 @@ users, which is a pretty rough heuristic, but it works."
   "Return a true value if this nick is regarded inactive."
   (let* ((channel (irc-connection-channel (circe-server-process)
                                           circe-chat-target))
-         (user (irc-channel-user channel nick))
-         (recent-user (irc-channel-recent-user channel nick))
+         (user (when channel
+                 (irc-channel-user channel nick)))
+         (recent-user (when channel
+                        (irc-channel-recent-user channel nick)))
          (last-active (cond
                        (user
                         (irc-user-last-activity-time user))
@@ -1614,21 +1617,22 @@ users, which is a pretty rough heuristic, but it works."
   "Show that this user is active if they are a lurker."
   (let* ((channel (irc-connection-channel (circe-server-process)
                                           circe-chat-target))
-         (user (irc-channel-user channel nick))
+         (user (when channel
+                 (irc-channel-user channel nick)))
          (join-time (when user
                       (irc-user-join-time user))))
     (when (and (circe-lurker-p nick)
                ;; If we saw them when we joined the channel, no need to
                ;; say "they're suddenly active!!111one".
                join-time)
-     (circe-display 'circe-format-server-lurker-activity
-                    :nick nick
-                    :user user
-                    :host host
-                    :jointime join-time
-                    :joindelta (circe-duration-string
-                                (- (float-time)
-                                   join-time))))))
+      (circe-display 'circe-format-server-lurker-activity
+                     :nick nick
+                     :user user
+                     :host host
+                     :jointime join-time
+                     :joindelta (circe-duration-string
+                                 (- (float-time)
+                                    join-time))))))
 
 ;;;;;;;;;;;;;;;
 ;;; Queries ;;;
