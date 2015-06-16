@@ -1238,22 +1238,23 @@ Events emitted:
       password)))
 
 (defun irc-handle-nickserv--registered (conn event current-nick)
-  (let ((wanted-nick (irc-connection-get conn :nickserv-nick))
-        (ghost-command (irc-connection-get conn :nickserv-ghost-command)))
-    (when (and wanted-nick
-               ghost-command
+  (let ((ghost-command (irc-connection-get conn :nickserv-ghost-command))
+        (wanted-nick (irc-connection-get conn :nickserv-nick))
+        (password (irc-handle-nickserv--password conn)))
+    (when (and ghost-command
+               wanted-nick
+               password
                (not (irc-string-equal-p conn current-nick wanted-nick)))
       (irc-send-raw conn
                     (irc-format ghost-command
-                                'nick (irc-connection-get
-                                       conn :nickserv-nick)
-                                'password (irc-handle-nickserv--password
-                                           conn))))))
+                                'nick wanted-nick
+                                'password password)))))
 
 (defun irc-handle-nickserv--NOTICE (conn event sender target message)
   (let ((nickserv-mask (irc-connection-get conn :nickserv-mask))
         identify-challenge identify-command identify-confirmation
-        ghost-confirmation)
+        ghost-confirmation
+        nickserv-nick nickserv-password)
     (when (and nickserv-mask (string-match nickserv-mask sender))
       (setq identify-challenge
             (irc-connection-get conn :nickserv-identify-challenge))
@@ -1263,17 +1264,19 @@ Events emitted:
             (irc-connection-get conn :nickserv-identify-confirmation))
       (setq ghost-confirmation
             (irc-connection-get conn :nickserv-ghost-confirmation))
-
+      (setq nickserv-nick (irc-connection-get conn :nickserv-nick))
+      (setq nickserv-password (irc-handle-nickserv--password conn))
       (cond
        ;; Identify
        ((and identify-challenge
+             identify-command
+             nickserv-nick
+             nickserv-password
              (string-match identify-challenge message))
         (irc-send-raw conn
                       (irc-format identify-command
-                                  'nick (irc-connection-get
-                                         conn :nickserv-nick)
-                                  'password (irc-handle-nickserv--password
-                                             conn))))
+                                  'nick nickserv-nick
+                                  'password nickserv-password)))
        ;; Identification confirmed
        ((and identify-confirmation
              (string-match identify-confirmation message))
@@ -1283,8 +1286,8 @@ Events emitted:
              (string-match ghost-confirmation message))
         (irc-event-emit conn "nickserv.ghosted")
         (irc-connection-put conn :nickserv-regaining-nick t)
-        (when (irc-connection-get conn :nickserv-nick)
-          (irc-send-NICK conn (irc-connection-get conn :nickserv-nick))))))))
+        (when nickserv-nick
+          (irc-send-NICK conn nickserv-nick)))))))
 
 (defun irc-handle-nickserv--NICK (conn event sender new-nick)
   (when (and (irc-connection-get conn :nickserv-regaining-nick)

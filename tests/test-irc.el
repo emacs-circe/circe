@@ -1729,6 +1729,12 @@
         (irc-connection-put proc :nickserv-mask nil)
 
         (irc-event-emit proc "PRIVMSG" "NickServ!n@s" "mynick"
+                        "Please identify"))
+
+      (it "should not fail if no password is given"
+        (irc-connection-put proc :nickserv-password nil)
+
+        (irc-event-emit proc "PRIVMSG" "NickServ!n@s" "mynick"
                         "Please identify")))
 
     (describe "ghosting"
@@ -1769,7 +1775,12 @@
 
         (expect regained-args
                 :to-equal
-                (list proc "nickserv.regained"))))))
+                (list proc "nickserv.regained")))
+
+      (it "should not fail if no password is given"
+        (irc-connection-put proc :nickserv-password nil)
+
+        (irc-event-emit proc "irc.registered" "othernick")))))
 
 (describe "The `irc-format' function"
   (it "should format simple strings"
