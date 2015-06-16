@@ -2794,14 +2794,20 @@ as arguments."
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (let ((buf (circe-server-get-chat-buffer (car args))))
-    (when buf
-      (with-current-buffer buf
-        (when (not (circe-lurker-p nick))
-          (circe-server-message
-           (if (null (cdr args))
-               (format "Part: %s (%s@%s)" nick user host)
-             (format "Part: %s (%s@%s) - %s"
-                     nick user host (cadr args)))))))))
+    (if buf
+        (with-current-buffer buf
+          (when (not (circe-lurker-p nick))
+            (circe-server-message
+             (if (null (cdr args))
+                 (format "Part: %s (%s@%s)" nick user host)
+               (format "Part: %s (%s@%s) - %s"
+                       nick user host (cadr args))))))
+      (with-circe-server-buffer
+        (circe-server-message
+         (if (null (cdr args))
+             (format "Part from %s: %s (%s@%s)" (car args) nick user host)
+           (format "Part from %s: %s (%s@%s) - %s" (car args) nick user host
+                   (cadr args))))))))
 
 (defun circe-duration-string (duration)
   "Return a description of a DURATION in seconds."
