@@ -187,7 +187,7 @@ start the lag monitor if it has not been started."
           (run-at-time nil circe-lagmon-timer-tick
                        'circe-lagmon-timer-tick))))
 
-(defun circe-lagmon--rpl-welcome-handler (&rest ignored)
+(defun circe-lagmon--rpl-welcome-handler (conn &rest ignored)
   (with-current-buffer (irc-connection-get conn :server-buffer)
     (circe-lagmon-init)))
 

@@ -1,4 +1,4 @@
-;;; circe.el --- Client for IRC in Emacs
+;;; circe.el --- Client for IRC in Emacs -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2005 - 2015  Jorgen Schaefer
 
@@ -478,6 +478,12 @@ strings."
 (defcustom circe-format-notice "-{nick}- {body}"
   "The format for a notice.
 {nick} - The originator.
+{body} - The notice."
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-notice "-Server Notice- {body}"
+  "The format for a server notice.
 {body} - The notice."
   :type 'string
   :group 'circe-format)
@@ -2197,6 +2203,9 @@ Do not use this directly. Instead, call `circe-irc-handler-table'.")
             (match-string 2 sender)
             (match-string 3 sender))
     (list sender nil nil)))
+
+(defvar circe-format-server-numeric "*** %s"
+  "The format to use for server messages. Do not set this.")
 
 (defun circe-server-display-message (nick user host command args)
   "Display an IRC message.

@@ -1,4 +1,4 @@
-;;; irc.el --- Library to handle IRC connections
+;;; irc.el --- Library to handle IRC connections -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2015  Jorgen Schaefer <contact@jorgenschaefer.de>
 

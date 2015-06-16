@@ -1,4 +1,4 @@
-;;; lui.el --- Linewise User Interface
+;;; lui.el --- Linewise User Interface -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2005 - 2015  Jorgen Schaefer
 
