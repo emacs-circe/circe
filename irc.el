@@ -246,8 +246,8 @@ USERSTRING is a typical nick!user@host prefix as used by IRC."
       (condition-case err
           (apply handler args)
         (error
-         (message "Error running event %S handler %S: %s"
-                  event handler err))))))
+         (message "Error running event %S handler %S: %s (args were %S)"
+                  event handler err args))))))
 
 ;;;;;;;;;;;
 ;;; Sending
