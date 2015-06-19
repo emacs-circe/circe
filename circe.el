@@ -829,22 +829,24 @@ server's chat buffers."
           (setq result (cons buf result)))))
     (nreverse result)))
 
+(defun circe-server-buffer ()
+  "Return the server buffer for the current buffer."
+  (let ((buf (if (eq major-mode 'circe-server-mode)
+                 (current-buffer)
+               circe-server-buffer)))
+    (cond
+     ((not buf)
+      (error "Not in a Circe buffer"))
+     ((not (buffer-live-p buf))
+      (error "The server buffer died, functionality is limited"))
+     (t
+      buf))))
+
 (defmacro with-circe-server-buffer (&rest body)
   "Run BODY with the current buffer being the current server buffer."
-  (let ((server (make-symbol "server")))
-    `(let ((,server (cond
-                      ((eq major-mode 'circe-server-mode)
-                       (current-buffer))
-                      (circe-server-buffer
-                       circe-server-buffer)
-                      (t
-                       (error "`with-circe-server-buffer' outside of an circe buffer")))))
-       (when (and ,server ;; Might be dead!
-                  (bufferp ,server)
-                  (buffer-live-p ,server))
-         (with-current-buffer ,server
-           ,@body)))))
-(put 'with-circe-server-buffer 'lisp-indent-function 0)
+  (declare (indent 0))
+  `(with-current-buffer (circe-server-buffer)
+     ,@body))
 
 (defun circe-server-last-active-buffer ()
   "Return the last active buffer of this server."
