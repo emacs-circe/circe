@@ -219,7 +219,7 @@ in the mode-line."
       (irc-handler-remove table "irc.ctcp.LAGMON"
                           'circe-lagmon--ctcp-lagmon-handler)
       (irc-handler-remove table "NICK" 'circe-lagmon--nick-handler))
-    (circe-set-display-handler "CTCP-LAGMON" nil)
+    (circe-set-display-handler "irc.ctcp.LAGMON" nil)
     (when circe-lagmon-timer
       (cancel-timer circe-lagmon-timer)
       (setq circe-lagmon-timer nil))
@@ -230,7 +230,7 @@ in the mode-line."
         (irc-handler-add table "irc.ctcp.LAGMON"
                          'circe-lagmon--ctcp-lagmon-handler)
         (irc-handler-add table "NICK" 'circe-lagmon--nick-handler))
-      (circe-set-display-handler "CTCP-LAGMON" 'circe-display-ignore)
+      (circe-set-display-handler "irc.ctcp.LAGMON" 'circe-display-ignore)
       (dolist (buffer (circe-server-buffers))
         (with-current-buffer buffer
           (setq circe-lagmon-server-lag nil)
