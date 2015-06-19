@@ -599,27 +599,8 @@ If a function is set it will be called with the value of
   "The last active circe buffer.")
 (make-variable-buffer-local 'circe-server-last-active-buffer)
 
-(defvar circe-server-processing-p nil
-  "Non-nil when we're currently processing a message.
-Yep, this is a mutex. Why would one need a mutex in Emacs, a
-single-threaded application, you ask? Easy!
-
-When Circe receives a private message, it sets up a new buffer
-for this query. This involves calling the LUI setup functions.
-These in turn, though, do start flyspell. This involves starting
-an external process, in which case Emacs will wait - and when it
-waits, it does accept other stuff from, say, network exceptions.
-So, if someone sends you two messages quickly after each other,
-the word checker is started for the first, but might take long
-enough for the second message to be processed first. Nice, isn't
-it.")
-(make-variable-buffer-local 'circe-server-processing-p)
-
 (defvar circe-display-table nil
   "A hash table mapping commands to their display functions.")
-
-(defvar circe-message-handler-table nil
-  "A hash table mapping commands to their handler function lists.")
 
 (defvar circe-server-quitting-p nil
   "Non-nil when quitting from the server.
