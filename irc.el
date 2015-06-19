@@ -196,6 +196,14 @@ USERSTRING is a typical nick!user@host prefix as used by IRC."
       (match-string 1 userstring)
     userstring))
 
+(defun irc-userstring-userhost (userstring)
+  "Return the nick in a given USERSTRING.
+
+USERSTRING is a typical nick!user@host prefix as used by IRC."
+  (if (string-match "\\`\\([^!]+\\)!\\([^@]+@.*\\)\\'" userstring)
+      (match-string 2 userstring)
+    nil))
+
 (defun irc-event-emit (conn event &rest args)
   "Run the event handlers for EVENT in CONN with ARGS."
   (irc-debug-out conn

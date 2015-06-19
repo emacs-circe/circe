@@ -276,6 +276,17 @@
             :to-equal
             "nick!usernoathost")))
 
+(describe "The `irc-userstring-userhost' function"
+  (it "should return the user@host of a nick!user@host userstring"
+    (expect (irc-userstring-userhost "nick!user@host")
+            :to-equal
+            "user@host"))
+
+  (it "should return nil if it's something else"
+    (expect (irc-userstring-userhost "nick!usernoathost")
+            :to-equal
+            nil)))
+
 (describe "The `irc-event-emit' function"
   (let (proc handler-table)
     (before-each
