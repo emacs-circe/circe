@@ -1984,7 +1984,7 @@ as arguments."
       (cond
        ;; Functions get called
        ((functionp display)
-        (funcall display nick userhost event args))
+        (apply display nick userhost event args))
        ;; Lists describe patterns
        ((consp display)
         (circe--irc-display-format (elt display 1)
@@ -2508,7 +2508,7 @@ number, it shows the missing people due to that split."
 ;;; Display Handlers ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun circe-display-ignore (nick userhost command args)
+(defun circe-display-ignore (nick userhost command &rest args)
   "Don't show a this message.
 
 NICK and USERHOST are the originator of COMMAND which had ARGS as
@@ -2516,7 +2516,7 @@ arguments."
   'noop)
 
 (circe-set-display-handler "317" 'circe-display-317)
-(defun circe-display-317 (nick userhost command args)
+(defun circe-display-317 (nick userhost command &rest args)
   "Show a 317 numeric (idle since).
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2533,7 +2533,7 @@ as arguments."
                                          time)))))))
 
 (circe-set-display-handler "329" 'circe-display-329)
-(defun circe-display-329 (nick userhost command args)
+(defun circe-display-329 (nick userhost command &rest args)
   "Show a 329 numeric (topic set on...).
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2547,7 +2547,7 @@ as arguments."
                                          time)))))))
 
 (circe-set-display-handler "333" 'circe-display-333)
-(defun circe-display-333 (nick userhost command args)
+(defun circe-display-333 (nick userhost command &rest args)
   "Show a 333 numeric (topic set by...).
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2577,7 +2577,7 @@ as arguments."
 (circe-set-display-handler "irc.ctcpreply" 'circe-display-ignore)
 
 (circe-set-display-handler "irc.ctcp.ACTION" 'circe-ctcp-display-ACTION)
-(defun circe-ctcp-display-ACTION (nick userhost command args)
+(defun circe-ctcp-display-ACTION (nick userhost command &rest args)
   "Show an ACTION.
 
 NICK, USER and HOST are the originators, COMMAND the command and
@@ -2606,7 +2606,7 @@ ARGS the arguments to the command."
 (circe-set-display-handler "irc.ctcp.CLIENTINFO" 'circe-ctcp-display-general)
 
 (circe-set-display-handler "irc.ctcp.PING" 'circe-ctcp-display-PING)
-(defun circe-ctcp-display-PING (nick userhost command args)
+(defun circe-ctcp-display-PING (nick userhost command &rest args)
   "Show a CTCP PING request.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2628,7 +2628,7 @@ as arguments."
                  ""))))))
 
 (circe-set-display-handler "irc.ctcpreply.PING" 'circe-ctcp-display-PING-reply)
-(defun circe-ctcp-display-PING-reply (nick userhost command args)
+(defun circe-ctcp-display-PING-reply (nick userhost command &rest args)
   "Show a CTCP PING reply.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2651,7 +2651,7 @@ as arguments."
 (circe-set-display-handler "irc.ctcp.SOURCE" 'circe-ctcp-display-general)
 (circe-set-display-handler "irc.ctcp.TIME" 'circe-ctcp-display-general)
 (circe-set-display-handler "irc.ctcp.VERSION" 'circe-ctcp-display-general)
-(defun circe-ctcp-display-general (nick userhost command args)
+(defun circe-ctcp-display-general (nick userhost command &rest args)
   "Show a CTCP request that does not require special handling.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2668,7 +2668,7 @@ as arguments."
                                     ctcp target nick userhost argstring)))))
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
-(defun circe-display-JOIN (nick userhost command args)
+(defun circe-display-JOIN (nick userhost command &rest args)
   "Show a JOIN message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2715,7 +2715,7 @@ as arguments."
                  nick userhost (car args)))))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
-(defun circe-display-MODE (nick userhost command args)
+(defun circe-display-MODE (nick userhost command &rest args)
   "Show a MODE message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2734,7 +2734,7 @@ as arguments."
                  ""))))))
 
 (circe-set-display-handler "NICK" 'circe-display-NICK)
-(defun circe-display-NICK (nick userhost command args)
+(defun circe-display-NICK (nick userhost command &rest args)
   "Show a NICK message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2763,7 +2763,7 @@ as arguments."
 
 (circe-set-display-handler "NOTICE" 'circe-display-ignore)
 (circe-set-display-handler "irc.notice" 'circe-display-NOTICE)
-(defun circe-display-NOTICE (nick userhost command args)
+(defun circe-display-NOTICE (nick userhost command &rest args)
   "Show a NOTICE message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2786,7 +2786,7 @@ as arguments."
                        :body (cadr args))))))
 
 (circe-set-display-handler "PART" 'circe-display-PART)
-(defun circe-display-PART (nick userhost command args)
+(defun circe-display-PART (nick userhost command &rest args)
   "Show a PART message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2812,7 +2812,7 @@ as arguments."
 
 (circe-set-display-handler "PRIVMSG" 'circe-display-ignore)
 (circe-set-display-handler "irc.message" 'circe-display-PRIVMSG)
-(defun circe-display-PRIVMSG (nick userhost command args)
+(defun circe-display-PRIVMSG (nick userhost command &rest args)
   "Show a PRIVMSG message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2841,7 +2841,7 @@ as arguments."
                      :body (cadr args))))))
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
-(defun circe-display-topic (nick userhost command args)
+(defun circe-display-topic (nick userhost command &rest args)
   "Show a TOPIC message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2911,7 +2911,7 @@ The list consists of words and spaces."
     (nreverse lis)))
 
 (circe-set-display-handler "channel.quit" 'circe-display-channel-quit)
-(defun circe-display-channel-quit (nick userhost command args)
+(defun circe-display-channel-quit (nick userhost command &rest args)
   "Show a QUIT message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
@@ -2935,7 +2935,7 @@ as arguments."
                    nick userhost reason))))))))
 
 (circe-set-display-handler "QUIT" 'circe-display-QUIT)
-(defun circe-display-QUIT (nick userhost command args)
+(defun circe-display-QUIT (nick userhost command &rest args)
   "Show a QUIT message.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
