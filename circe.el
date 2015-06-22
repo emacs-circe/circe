@@ -564,7 +564,9 @@ The following format arguments are available:
   signon-time     - The time (in seconds since the epoch) when this user
                     signed on
   signon-date     - A date string describing this time
-  signon-ago      - A textual description of the duraction since signon")
+  signon-ago      - A textual description of the duraction since signon"
+  :type 'string
+  :group 'circe-format)
 
 (defcustom circe-format-server-whois-idle "*** {whois-nick} is {idle-duration} idle"
   "Format for RPL_WHOISIDLE messages.
@@ -573,7 +575,41 @@ The following format arguments are available:
 
   whois-nick      - The nick this is about
   idle-seconds    - The number of seconds this nick has been idle
-  idle-duration   - A textual description of the duration of the idle time")
+  idle-duration   - A textual description of the duration of the idle time"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-topic-time "*** Topic set by {setter} on {topic-date}, {topic-ago} ago"
+  "Format for RPL_TOPICWHOTIME messages for the current channel.
+
+The following format arguments are available:
+
+  nick            - Our nick
+  channel         - The channel the topic is for
+  setter          - The nick of the person who set the topic
+  setter-userhost - The user@host string of the person who set the topic
+  topic-time      - The time the topic was set, in seconds since the epoch
+  topic-date      - A date string describing this time
+  topic-ago       - A textual description of the duration since the topic
+                    was set"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-topic-time-for-channel "*** Topic for {channel} set by {setter} on {topic-date}, {topic-ago} ago"
+  "Format for RPL_TOPICWHOTIME messages for a channel we are not on.
+
+The following format arguments are available:
+
+  nick            - Our nick
+  channel         - The channel the topic is for
+  setter          - The nick of the person who set the topic
+  setter-userhost - The user@host string of the person who set the topic
+  topic-time      - The time the topic was set, in seconds since the epoch
+  topic-date      - A date string describing this time
+  topic-ago       - A textual description of the duration since the topic
+                    was set"
+  :type 'string
+  :group 'circe-format)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private variables ;;;
@@ -2566,28 +2602,31 @@ Arguments are either of the two:
                        :idle-duration (circe-duration-string seconds-idle))))))
 
 (circe-set-display-handler "333" 'circe-display-333)
-(defun circe-display-333 (nick userhost command &rest args)
-  "Show a 333 numeric (topic set by...).
+(defun circe-display-333 (server ignored numeric target
+                                 channel setter topic-time)
+  "Show a 333 numeric (RPL_TOPICWHOTIME).
 
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (with-current-buffer (or (circe-server-get-chat-buffer (cadr args))
-                           (circe-server-last-active-buffer))
-    (let* ((time (string-to-number (nth 3 args)))
-           (timestring (if (> time 0)
-                           (format "on %s (%s ago)"
-                                   (current-time-string (seconds-to-time time))
-                                   (circe-duration-string (- (float-time)
-                                                             time)))
-                         "at the beginning of time"))
-           (prefix (if (circe-server-get-chat-buffer (cadr args))
-                       ""
-                     (format "[%s] " (cadr args)))))
-      (circe-display-server-message
-       (format "%sTopic set by %s %s"
-               prefix
-               (nth 2 args)
-               timestring)))))
+Arguments are either of the two:
+
+:<server> 333 <target> <channel> <nick> 1434996762
+:<server> 333 <target> <channel> <nick>!<user>@<host> 1434996803"
+  (let ((channel-buffer (circe-server-get-chat-buffer channel))
+        (topic-time (string-to-number topic-time)))
+    (with-current-buffer (or channel-buffer
+                             (circe-server-last-active-buffer))
+      (circe-display (if channel-buffer
+                         'circe-format-server-topic-time
+                       'circe-format-server-topic-time-for-channel)
+                     :nick target
+                     :channel channel
+                     :setter (irc-userstring-nick setter)
+                     :setter-userhost (or (irc-userstring-userhost setter)
+                                          "(unknown)")
+                     :topic-time topic-time
+                     :topic-date (current-time-string
+                                  (seconds-to-time topic-time))
+                     :topic-ago (circe-duration-string (- (float-time)
+                                                          topic-time))))))
 
 (circe-set-display-handler "AUTHENTICATE" 'circe-display-ignore)
 (circe-set-display-handler "CAP" 'circe-display-ignore)

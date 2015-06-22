@@ -91,40 +91,87 @@
               :to-equal "some stuff testnick "))))
 
 (describe "Display of"
-  (before-each
-    (spy-on 'circe-display)
-    (set-buffer (get-buffer-create "*Test*"))
-    (spy-on 'circe-server-last-active-buffer
-            :and-return-value (current-buffer)))
+  (let ((current-time 1434995549))
+    (before-each
+      (spy-on 'circe-display)
+      (spy-on 'float-time :and-return-value (+ current-time 5))
+      (set-buffer (get-buffer-create "*Test*"))
+      (spy-on 'circe-server-last-active-buffer
+              :and-return-value (current-buffer)))
 
-  (after-each
-    (kill-buffer (current-buffer)))
+    (after-each
+      (kill-buffer (current-buffer)))
 
-  (describe "RPL_WHOISREPLY"
-    (it "should show idle time"
-      (circe-display-317 "sender" nil "317" "target" "nick"
-                         "23" "seconds idle")
+    (describe "RPL_WHOISREPLY"
+      (it "should show idle time"
+        (circe-display-317 "sender" nil "317" "target" "nick"
+                           "23" "seconds idle")
 
-      (expect 'circe-display
-              :to-have-been-called-with
-              'circe-format-server-whois-idle
-              :whois-nick "nick"
-              :idle-seconds 23
-              :idle-duration "23 seconds"))
+        (expect 'circe-display
+                :to-have-been-called-with
+                'circe-format-server-whois-idle
+                :whois-nick "nick"
+                :idle-seconds 23
+                :idle-duration "23 seconds"))
 
-    (it "should show idle time and signon time"
-      (spy-on 'float-time :and-return-value (+ 1434995549 5))
+      (it "should show idle time and signon time"
+        (circe-display-317 "sender" nil "317" "target" "nick"
+                           "23" (format "%s" current-time)
+                           "seconds idle, signon time")
 
-      (circe-display-317 "sender" nil "317" "target" "nick"
-                         "23" "1434995549" "seconds idle, signon time")
+        (expect 'circe-display
+                :to-have-been-called-with
+                'circe-format-server-whois-idle-with-signon
+                :whois-nick "nick"
+                :idle-seconds 23
+                :idle-duration "23 seconds"
+                :signon-time current-time
+                :signon-date (current-time-string
+                              (seconds-to-time current-time))
+                :signon-ago "5 seconds")))
 
-      (expect 'circe-display
-              :to-have-been-called-with
-              'circe-format-server-whois-idle-with-signon
-              :whois-nick "nick"
-              :idle-seconds 23
-              :idle-duration "23 seconds"
-              :signon-time 1434995549
-              :signon-date (current-time-string
-                            (seconds-to-time 1434995549))
-              :signon-ago "5 seconds"))))
+    (describe "RPL_TOPICWHOTIME"
+      (it "should show current topic time"
+        (spy-on 'circe-server-get-chat-buffer
+                :and-return-value (current-buffer))
+
+        (circe-display-333 "sender" nil "333" "target"
+                           "#channel" "setter!user@host"
+                           (format "%s" current-time))
+
+        (expect 'circe-display
+                :to-have-been-called-with
+                'circe-format-server-topic-time
+                :nick "target"
+                :channel "#channel"
+                :setter "setter"
+                :setter-userhost "user@host"
+                :topic-time current-time
+                :topic-date (current-time-string
+                             (seconds-to-time current-time))
+                :topic-ago "5 seconds"))
+
+      (it "should show current topic time in a different channel"
+        (spy-on 'circe-server-get-chat-buffer
+                :and-return-value nil)
+        (spy-on 'circe-server-last-active-buffer
+                :and-return-value (current-buffer))
+
+        (circe-display-333 "sender" nil "333" "target"
+                           "#channel" "setter!user@host"
+                           (format "%s" current-time))
+
+        (expect 'circe-server-last-active-buffer
+                :to-have-been-called)
+
+        (expect 'circe-display
+                :to-have-been-called-with
+                'circe-format-server-topic-time-for-channel
+                :nick "target"
+                :channel "#channel"
+                :setter "setter"
+                :setter-userhost "user@host"
+                :topic-time current-time
+                :topic-date (current-time-string
+                             (seconds-to-time current-time))
+                :topic-ago "5 seconds")))))
