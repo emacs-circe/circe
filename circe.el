@@ -2565,21 +2565,6 @@ Arguments are either of the two:
                        :idle-seconds seconds-idle
                        :idle-duration (circe-duration-string seconds-idle))))))
 
-(circe-set-display-handler "329" 'circe-display-329)
-(defun circe-display-329 (nick userhost command &rest args)
-  "Show a 329 numeric (topic set on...).
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (with-current-buffer (or (circe-server-get-chat-buffer (cadr args))
-                           (circe-server-last-active-buffer))
-    (let ((time (string-to-number (nth 2 args))))
-      (circe-display-server-message
-       (format "Topic set on %s (%s ago)"
-               (current-time-string (seconds-to-time time))
-               (circe-duration-string (- (float-time)
-                                         time)))))))
-
 (circe-set-display-handler "333" 'circe-display-333)
 (defun circe-display-333 (nick userhost command &rest args)
   "Show a 333 numeric (topic set by...).
