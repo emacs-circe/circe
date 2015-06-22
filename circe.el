@@ -553,6 +553,28 @@ The following format arguments are available:
   :type 'string
   :group 'circe-format)
 
+(defcustom circe-format-server-whois-idle-with-signon "*** {whois-nick} is {idle-duration} idle (signon on {signon-date}, {signon-ago} ago)"
+  "Format for RPL_WHOISIDLE messages.
+
+The following format arguments are available:
+
+  whois-nick      - The nick this is about
+  idle-seconds    - The number of seconds this nick has been idle
+  idle-duration   - A textual description of the duration of the idle time
+  signon-time     - The time (in seconds since the epoch) when this user
+                    signed on
+  signon-date     - A date string describing this time
+  signon-ago      - A textual description of the duraction since signon")
+
+(defcustom circe-format-server-whois-idle "*** {whois-nick} is {idle-duration} idle"
+  "Format for RPL_WHOISIDLE messages.
+
+The following format arguments are available:
+
+  whois-nick      - The nick this is about
+  idle-seconds    - The number of seconds this nick has been idle
+  idle-duration   - A textual description of the duration of the idle time")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private variables ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2516,21 +2538,32 @@ arguments."
   'noop)
 
 (circe-set-display-handler "317" 'circe-display-317)
-(defun circe-display-317 (nick userhost command &rest args)
-  "Show a 317 numeric (idle since).
+(defun circe-display-317 (sender ignored numeric target nick
+                                 idletime &optional signon-time body)
+  "Show a 317 numeric (RPL_WHOISIDLE).
 
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
+Arguments are either of the two:
+
+:<server> 317 <ournick> <nick> <idle> :seconds idle
+:<server> 317 <ournick> <nick> <idle> <signon> :seconds idle, signon time"
   (with-current-buffer (circe-server-last-active-buffer)
-    (let ((idle (string-to-number (nth 2 args)))
-          (time (string-to-number (nth 3 args))))
-      (circe-display-server-message
-       (format "%s is %s idle (Signon on %s, %s ago)"
-               (nth 1 args)
-               (circe-duration-string idle)
-               (current-time-string (seconds-to-time time))
-               (circe-duration-string (- (float-time)
-                                         time)))))))
+    (let ((seconds-idle (string-to-number idletime))
+          (signon-time (when body
+                         (string-to-number signon-time))))
+      (if signon-time
+          (circe-display 'circe-format-server-whois-idle-with-signon
+                         :whois-nick nick
+                         :idle-seconds seconds-idle
+                         :idle-duration (circe-duration-string seconds-idle)
+                         :signon-time signon-time
+                         :signon-date (current-time-string
+                                       (seconds-to-time signon-time))
+                         :signon-ago (circe-duration-string (- (float-time)
+                                                               signon-time)))
+        (circe-display 'circe-format-server-whois-idle
+                       :whois-nick nick
+                       :idle-seconds seconds-idle
+                       :idle-duration (circe-duration-string seconds-idle))))))
 
 (circe-set-display-handler "329" 'circe-display-329)
 (defun circe-display-329 (nick userhost command &rest args)
@@ -2538,7 +2571,8 @@ as arguments."
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
-  (with-current-buffer (circe-server-get-chat-buffer (cadr args))
+  (with-current-buffer (or (circe-server-get-chat-buffer (cadr args))
+                           (circe-server-last-active-buffer))
     (let ((time (string-to-number (nth 2 args))))
       (circe-display-server-message
        (format "Topic set on %s (%s ago)"

@@ -89,3 +89,40 @@
       (completion-at-point)
       (expect (buffer-substring lui-input-marker (point-max))
               :to-equal "some stuff testnick "))))
+
+(describe "Display of"
+  (before-each
+    (spy-on 'circe-display)
+    (set-buffer (get-buffer-create "*Test*"))
+    (spy-on 'float-time :and-return-value (+ 1434995549 5))
+    (spy-on 'circe-server-last-active-buffer
+            :and-return-value (current-buffer)))
+
+  (after-each
+    (kill-buffer (current-buffer)))
+
+  (describe "RPL_WHOISREPLY"
+    (it "should show idle time"
+      (circe-display-317 "sender" nil "317" "target" "nick"
+                         "23" "seconds idle")
+
+      (expect 'circe-display
+              :to-have-been-called-with
+              'circe-format-server-whois-idle
+              :whois-nick "nick"
+              :idle-seconds 23
+              :idle-duration "23 seconds"))
+
+    (it "should show idle time and signon time"
+      (circe-display-317 "sender" nil "317" "target" "nick"
+                         "23" "1434995549" "seconds idle, signon time")
+
+      (expect 'circe-display
+              :to-have-been-called-with
+              'circe-format-server-whois-idle-with-signon
+              :whois-nick "nick"
+              :idle-seconds 23
+              :idle-duration "23 seconds"
+              :signon-time 1434995549
+              :signon-date "Mon Jun 22 19:52:29 2015"
+              :signon-ago "5 seconds"))))
