@@ -2641,32 +2641,30 @@ Arguments are either of the two:
 (circe-set-display-handler "irc.ctcp" 'circe-display-ignore)
 (circe-set-display-handler "irc.ctcpreply" 'circe-display-ignore)
 
-(circe-set-display-handler "irc.ctcp.ACTION" 'circe-ctcp-display-ACTION)
-(defun circe-ctcp-display-ACTION (nick userhost command &rest args)
-  "Show an ACTION.
-
-NICK, USER and HOST are the originators, COMMAND the command and
-ARGS the arguments to the command."
-  (if (circe-server-my-nick-p (car args)) ; Query
-      (let ((buf (circe-query-auto-query-buffer nick)))
-        (if buf
-            (with-current-buffer buf
-              (circe-display 'circe-format-action
-                             :nick nick
-                             :userhost userhost
-                             :body (cadr args)))
-          (with-current-buffer (circe-server-last-active-buffer)
-            (circe-display 'circe-format-message-action
-                           :nick nick
-                           :userhost userhost
-                           :body (cadr args)))))
+(circe-set-display-handler "irc.ctcp.ACTION" 'circe-display-ctcp-action)
+(defun circe-display-ctcp-action (nick userhost command target text)
+  "Show an ACTION."
+  (cond
+   ;; Query
+   ((circe-server-my-nick-p target)
+    (let ((query-buffer (circe-query-auto-query-buffer nick)))
+      (with-current-buffer (or query-buffer
+                               (circe-server-last-active-buffer))
+        (circe-display (if query-buffer
+                           'circe-format-action
+                         'circe-format-message-action)
+                       :nick nick
+                       :userhost userhost
+                       :body text))))
+   ;; Channel
+   (t
     (with-current-buffer (circe-server-get-or-create-chat-buffer
-                          (car args) 'circe-channel-mode)
+                          target 'circe-channel-mode)
       (circe-lurker-display-active nick userhost)
       (circe-display 'circe-format-action
                      :nick nick
                      :userhost userhost
-                     :body (cadr args)))))
+                     :body text)))))
 
 (circe-set-display-handler "irc.ctcp.CLIENTINFO" 'circe-ctcp-display-general)
 

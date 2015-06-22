@@ -174,4 +174,48 @@
                 :topic-time current-time
                 :topic-date (current-time-string
                              (seconds-to-time current-time))
-                :topic-ago "5 seconds")))))
+                :topic-ago "5 seconds")))
+
+    (describe "CTCP ACTION"
+      (it "should show a query in a query buffer"
+        (spy-on 'circe-query-auto-query-buffer
+                :and-return-value (current-buffer))
+        (spy-on 'circe-server-my-nick-p :and-return-value t)
+
+        (circe-display-ctcp-action "nick" "user@host" "irc.ctcp.ACTION"
+                                   "my-nick" "the text")
+
+        (expect 'circe-display
+                :to-have-been-called-with
+                'circe-format-action
+                :nick "nick" :userhost "user@host" :body "the text"))
+
+      (it "should show a query in the current buffer"
+        (spy-on 'circe-server-my-nick-p :and-return-value t)
+        (spy-on 'circe-query-auto-query-buffer
+                :and-return-value nil)
+        (spy-on 'circe-server-last-active-buffer
+                :and-return-value (current-buffer))
+
+        (circe-display-ctcp-action "nick" "user@host" "irc.ctcp.ACTION"
+                                   "my-nick" "the text")
+
+        (expect 'circe-display
+                :to-have-been-called-with
+                'circe-format-message-action
+                :nick "nick" :userhost "user@host" :body "the text"))
+
+      (it "should show a channel action"
+        (spy-on 'circe-server-my-nick-p :and-return-value nil)
+        (spy-on 'circe-server-get-or-create-chat-buffer
+                :and-return-value (current-buffer))
+        (spy-on 'circe-lurker-display-active)
+
+        (circe-display-ctcp-action "nick" "user@host" "irc.ctcp.ACTION"
+                                   "#channel" "the text")
+
+        (expect 'circe-lurker-display-active :to-have-been-called)
+        (expect 'circe-display
+                :to-have-been-called-with
+                'circe-format-action
+                :nick "nick" :userhost "user@host" :body "the text")))))
