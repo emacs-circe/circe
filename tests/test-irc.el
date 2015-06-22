@@ -123,6 +123,13 @@
             :to-have-been-called-with
             'proc "conn.disconnected"))
 
+  (it "should emit conn.disconnected for an exiting process"
+    (irc--sentinel 'proc "exited abnormally with code 54\n")
+
+    (expect 'irc-event-emit
+            :to-have-been-called-with
+            'proc "conn.disconnected"))
+
   (it "should ignore deleted processes"
     (irc--sentinel 'proc "deleted\n")
 
