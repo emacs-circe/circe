@@ -125,5 +125,6 @@
               :idle-seconds 23
               :idle-duration "23 seconds"
               :signon-time 1434995549
-              :signon-date "Mon Jun 22 19:52:29 2015"
+              :signon-date (current-time-string
+                            (seconds-to-time 1434995549))
               :signon-ago "5 seconds"))))
