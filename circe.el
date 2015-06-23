@@ -306,8 +306,7 @@ Each regular expression is matched against nick!user@host."
 Each regular expression is matched against nick!user@host.
 
 Messages from such people are still inserted, but not shown. They
-can be displayed using \\[lui-toggle-ignored]. If this is not
-wanted, set `circe-ignore-hard-p'."
+can be displayed using \\[lui-toggle-ignored]."
   :type '(repeat regexp)
   :group 'circe)
 
