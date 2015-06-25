@@ -438,7 +438,9 @@ strings."
                                       circe--irc-format-server-numeric
                                       circe-format-server-topic
                                       circe-format-server-rejoin
-                                      circe-format-server-lurker-activity)
+                                      circe-format-server-lurker-activity
+                                      circe-format-server-topic-time
+                                      circe-format-server-topic-time-for-channel)
   "A list of formats that should not trigger tracking."
   :type '(repeat symbol)
   :group 'circe-format)
