@@ -232,16 +232,7 @@ If this is not nil, Circe will set `completion-cycle-threshold'
 to t locally in Circe buffers, enabling cycle completion for
 nicks no matter what completion style you use in the rest of
 Emacs. If you set this to nil, Circe will not touch your default
-completion style.
-
-NOTE: Emacs 24.2 and before have a bug related to cycle
-completion. If you enable cycle completion in those Emacsen, you
-should also (require 'circe-fix-minibuffer). This is a backported
-minibuffer.el from 24.3, though, so do this at your own
-discretion.
-
-See http://debbugs.gnu.org/cgi/bugreport.cgi?bug=12619 for a
-discussion of the bug."
+completion style."
   :type 'boolean
   :group 'circe)
 
