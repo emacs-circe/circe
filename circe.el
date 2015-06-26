@@ -428,7 +428,7 @@ See `circe-server-auto-join-channels' for more details."
 
 (defgroup circe-format nil
   "Format strings for Circe.
-All these formats always allow the {mynick} and {target} format
+All these formats always allow the {mynick} and {chattarget} format
 strings."
   :prefix "circe-format-"
   :group 'circe)
@@ -465,9 +465,9 @@ strings."
   :type 'string
   :group 'circe-format)
 
-(defcustom circe-format-self-message "-> *{target}* {body}"
+(defcustom circe-format-self-message "-> *{chattarget}* {body}"
   "The format for messages sent to other people outside of queries.
-{target} - The target nick.
+{chattarget} - The target nick.
 {body} - The body of the message."
   :type 'string
   :group 'circe-format)
@@ -590,7 +590,6 @@ The following format arguments are available:
 
 The following format arguments are available:
 
-  nick            - Our nick
   channel         - The channel the topic is for
   setter          - The nick of the person who set the topic
   setter-userhost - The user@host string of the person who set the topic
@@ -606,7 +605,6 @@ The following format arguments are available:
 
 The following format arguments are available:
 
-  nick            - Our nick
   channel         - The channel the topic is for
   setter          - The nick of the person who set the topic
   setter-userhost - The user@host string of the person who set the topic
@@ -614,6 +612,34 @@ The following format arguments are available:
   topic-date      - A date string describing this time
   topic-ago       - A textual description of the duration since the topic
                     was set"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-ctcp-ping "*** CTCP PING request from {nick} ({userhost}) to {target}: {body} ({ago} ago)"
+  "Format for CTCP PING requests.
+
+The following format arguments are available:
+
+  nick      - The nick of the user who sent this PING request
+  userhost  - The user@host string of the user who sent this request
+  target    - The target of the message, usually us, but can be a channel
+  body      - The argument of the PING request, usually a number
+  ago       - A textual description of the duration since the request
+              was sent, if parseable"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-ctcp-ping-reply "*** CTCP PING reply from {nick} ({userhost}) to {target}: {ago} ago ({body})"
+  "Format for CTCP PING replies.
+
+The following format arguments are available:
+
+  nick      - The nick of the user who sent this PING request
+  userhost  - The user@host string of the user who sent this request
+  target    - The target of the message, usually us, but can be a channel
+  body      - The argument of the PING request, usually a number
+  ago       - A textual description of the duration since the request
+              was sent, if parseable"
   :type 'string
   :group 'circe-format)
 
@@ -1169,7 +1195,7 @@ It is always possible to use the mynick or target formats."
                   ((string-match "\\<self\\>" name)
                    'circe-my-message-face)))
            (keywords (append `(:mynick ,(circe-server-nick)
-                                       :target ,circe-chat-target)
+                                       :chattarget ,circe-chat-target)
                              (circe--display-add-nick-property
                               (if (and (not (null keywords))
                                        (null (cdr keywords)))
@@ -2668,55 +2694,40 @@ Arguments are either of the two:
                      :userhost userhost
                      :body text)))))
 
-(circe-set-display-handler "irc.ctcp.CLIENTINFO" 'circe-ctcp-display-general)
+(circe-set-display-handler "irc.ctcp.CLIENTINFO" 'circe-display-ctcp)
 
-(circe-set-display-handler "irc.ctcp.PING" 'circe-ctcp-display-PING)
-(defun circe-ctcp-display-PING (nick userhost command &rest args)
-  "Show a CTCP PING request.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
+(circe-set-display-handler "irc.ctcp.PING" 'circe-display-ctcp-ping)
+(defun circe-display-ctcp-ping (nick userhost command target text)
+  "Show a CTCP PING request."
   (with-current-buffer (circe-server-last-active-buffer)
-    (circe-display-server-message
-     (format "CTCP PING request%s from %s (%s): %s%s"
-             (if (circe-server-my-nick-p (car args))
-                 ""
-               (format " to %s" (car args)))
-             nick userhost
-             (cadr args)
-             (let ((number (string-to-number
-                            (cadr args))))
-               (if number
-                   (format " (%.2f seconds ago)"
-                           (- (float-time)
-                              number))
-                 ""))))))
+    (circe-display 'circe-format-server-ctcp-ping
+                   :nick nick
+                   :userhost userhost
+                   :target target
+                   :body text
+                   :ago (let ((time (string-to-number text)))
+                          (if time
+                              (format "%.2f seconds" (- (float-time) time))
+                            "unknown seconds")))))
 
-(circe-set-display-handler "irc.ctcpreply.PING" 'circe-ctcp-display-PING-reply)
-(defun circe-ctcp-display-PING-reply (nick userhost command &rest args)
-  "Show a CTCP PING reply.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
+(circe-set-display-handler "irc.ctcpreply.PING" 'circe-display-ctcp-ping-reply)
+(defun circe-display-ctcp-ping-reply (nick userhost command target text)
+  "Show a CTCP PING reply."
   (with-current-buffer (circe-server-last-active-buffer)
-    (let ((ping-time (string-to-number (cadr args))))
-      (if ping-time
-          (circe-display-server-message
-           (format (concat "CTCP PING reply from %s (%s):"
-                           " %.2f seconds")
-                   nick userhost
-                   (- (float-time)
-                      ping-time)))
-        (circe-display-server-message
-         (format (concat "CTCP PING reply (unparseable)"
-                         " from %s (%s): %s"
-                         nick userhost
-                         (cadr args))))))))
+    (circe-display 'circe-format-server-ctcp-ping-reply
+                   :nick nick
+                   :userhost userhost
+                   :target target
+                   :body text
+                   :ago (let ((time (string-to-number text)))
+                          (if time
+                              (format "%.2f seconds" (- (float-time) time))
+                            "unknown seconds")))))
 
-(circe-set-display-handler "irc.ctcp.SOURCE" 'circe-ctcp-display-general)
-(circe-set-display-handler "irc.ctcp.TIME" 'circe-ctcp-display-general)
-(circe-set-display-handler "irc.ctcp.VERSION" 'circe-ctcp-display-general)
-(defun circe-ctcp-display-general (nick userhost command &rest args)
+(circe-set-display-handler "irc.ctcp.SOURCE" 'circe-display-ctcp)
+(circe-set-display-handler "irc.ctcp.TIME" 'circe-display-ctcp)
+(circe-set-display-handler "irc.ctcp.VERSION" 'circe-display-ctcp)
+(defun circe-display-ctcp (nick userhost command &rest args)
   "Show a CTCP request that does not require special handling.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
