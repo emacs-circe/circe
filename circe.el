@@ -643,6 +643,19 @@ The following format arguments are available:
   :type 'string
   :group 'circe-format)
 
+(defcustom circe-format-server-ctcp "*** CTCP {command} request from {nick} ({userhost}) to {target}: {body}"
+  "Format for CTCP requests.
+
+The following format arguments are available:
+
+  nick      - The nick of the user who sent this PING request
+  userhost  - The user@host string of the user who sent this request
+  target    - The target of the message, usually us, but can be a channel
+  command   - The CTCP command used
+  body      - The argument of the PING request, usually a number"
+  :type 'string
+  :group 'circe-format)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private variables ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2727,21 +2740,18 @@ Arguments are either of the two:
 (circe-set-display-handler "irc.ctcp.SOURCE" 'circe-display-ctcp)
 (circe-set-display-handler "irc.ctcp.TIME" 'circe-display-ctcp)
 (circe-set-display-handler "irc.ctcp.VERSION" 'circe-display-ctcp)
-(defun circe-display-ctcp (nick userhost command &rest args)
+(defun circe-display-ctcp (nick userhost command target text)
   "Show a CTCP request that does not require special handling.
 
 NICK, USER, and HOST are the originator of COMMAND which had ARGS
 as arguments."
   (with-current-buffer (circe-server-last-active-buffer)
-    (let ((ctcp (substring command 5))
-          (target (if (circe-server-my-nick-p (car args))
-                      ""
-                    (format " to %s" (car args))))
-          (argstring (if (equal (cadr args) "")
-                         ""
-                       (concat ": " (cadr args)))))
-      (circe-display-server-message (format "CTCP %s request%s from %s (%s)%s"
-                                    ctcp target nick userhost argstring)))))
+    (circe-display 'circe-format-server-ctcp
+                   :nick nick
+                   :userhost userhost
+                   :target target
+                   :command (substring command 9)
+                   :body text)))
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick userhost command &rest args)
