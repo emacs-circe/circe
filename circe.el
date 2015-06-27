@@ -424,14 +424,18 @@ strings."
   :prefix "circe-format-"
   :group 'circe)
 
-(defcustom circe-format-not-tracked '(circe-format-server-message
-                                      circe-format-server-notice
-                                      circe--irc-format-server-numeric
-                                      circe-format-server-topic
-                                      circe-format-server-rejoin
-                                      circe-format-server-lurker-activity
-                                      circe-format-server-topic-time
-                                      circe-format-server-topic-time-for-channel)
+(defcustom circe-format-not-tracked
+  '(circe-format-server-message
+    circe-format-server-notice
+    circe--irc-format-server-numeric
+    circe-format-server-topic
+    circe-format-server-rejoin
+    circe-format-server-lurker-activity
+    circe-format-server-topic-time
+    circe-format-server-topic-time-for-channel
+    circe-format-server-netmerge
+    circe-format-server-join
+    circe-format-server-join-in-channel)
   "A list of formats that should not trigger tracking."
   :type '(repeat symbol)
   :group 'circe-format)
@@ -644,6 +648,47 @@ The following format arguments are available:
   target    - The target of the message, usually us, but can be a channel
   command   - The CTCP command used
   body      - The argument of the PING request, usually a number"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-netmerge "*** Netmerge: {split}, split {ago} ago (Use /WL to see who's still missing)"
+  "Format for netmerge notifications.
+
+The following format arguments are available:
+
+  split   - The name of the split, usually describing the servers involved
+  time    - The time when this split happened, in seconds
+  date    - A date string describing this time
+  ago     - A textual description of the duration since the split happened"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-join "*** Join: {nick} ({userinfo})"
+  "Format for join messages in a channel buffer.
+
+The following format arguments are available:
+
+  nick         - The name of the split, usually describing the servers
+                 involved
+  userhost     - The time when this split happened, in seconds
+  accountname  - The account name, if the server supports this
+  realname     - The real name, if the server supports this
+  userinfo     - A combination of userhost, accountname, and realname
+  channel      - A date string describing this time"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-join-in-channel "*** Join: {nick} ({userinfo}) joined {channel}"
+  "Format for join messages in query buffers of the joining user.
+
+The following format arguments are available:
+
+  nick     - The name of the split, usually describing the servers involved
+  userhost - The time when this split happened, in seconds
+  accountname  - The account name, if the server supports this
+  realname     - The real name, if the server supports this
+  userinfo     - A combination of userhost, accountname, and realname
+  channel  - A date string describing this time"
   :type 'string
   :group 'circe-format)
 
@@ -950,9 +995,10 @@ See `circe-server-max-reconnect-attempts'.")
              :pass (if (functionp circe-server-pass)
                        (funcall circe-server-pass circe-server-name)
                      circe-server-pass)
-             :cap-req (when (and circe-sasl-username
-                                 circe-sasl-password)
-                        '("sasl"))
+             :cap-req (append (when (and circe-sasl-username
+                                         circe-sasl-password)
+                                '("sasl"))
+                              '("extended-join"))
              :nickserv-nick circe-nickserv-nick
              :nickserv-password (if (functionp circe-nickserv-password)
                                     (funcall circe-nickserv-password circe-server-name)
@@ -1959,6 +2005,18 @@ users, which is a pretty rough heuristic, but it works."
      (t
       nil))))
 
+(defun circe-lurker-rejoin-p (nick channel)
+  "Return true if NICK is rejoining CHANNEL.
+
+A user is considered to be rejoining if they were on the channel
+shortly before, and were active then."
+  (let* ((channel (irc-connection-channel (circe-server-process)
+                                          circe-chat-target))
+         (user (when channel
+                 (irc-channel-recent-user channel nick))))
+    (when user
+      (irc-user-last-activity-time user))))
+
 (defun circe-lurker-display-active (nick userhost)
   "Show that this user is active if they are a lurker."
   (let* ((channel (irc-connection-channel (circe-server-process)
@@ -2745,51 +2803,66 @@ as arguments."
                    :body text)))
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
-(defun circe-display-JOIN (nick userhost command &rest args)
+(defun circe-display-JOIN (nick userhost command channel
+                                &optional accountname realname)
   "Show a JOIN message.
 
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  ;; First, channel buffers for this user.
-  (let ((split (circe--netsplit-join nick)))
+The command receives an extra argument, the account name, on some
+IRC servers."
+  (let* ((accountname (if (equal accountname "*")
+                          "(unauthenticated)"
+                        accountname))
+         (all-info (if accountname
+                       (format "%s, %s: %s" userhost accountname realname)
+                     userhost))
+         (split (circe--netsplit-join nick)))
+    ;; First, update the channel
     (with-current-buffer (circe-server-get-or-create-chat-buffer
-                          (car args) 'circe-channel-mode)
+                          channel 'circe-channel-mode)
       (cond
        (split
-        (when (< (+ (cadr split) circe-netsplit-delay)
-                 (float-time))
-          (circe-display-server-message
-           (format "Netmerge: %s (Use /WL to see who's still missing)"
-                   (car split)))))
+        (circe-display 'circe-format-server-netmerge
+                       :split (car split)
+                       :time (cadr split)
+                       :date (current-time-string
+                              (seconds-to-time (cadr split)))
+                       :ago (circe-duration-string
+                             (- (float-time) (cadr split)))))
        ((and circe-reduce-lurker-spam
-             (let* ((channel (irc-connection-channel (circe-server-process)
-                                                    circe-chat-target))
-                    (user (irc-channel-recent-user channel nick)))
-               (when user
-                 (irc-user-last-activity-time user))))
+             (circe-lurker-rejoin-p nick circe-chat-target))
         (let* ((channel (irc-connection-channel (circe-server-process)
-                                                    circe-chat-target))
-               (user (irc-channel-recent-user channel nick))
+                                                circe-chat-target))
+               (user (when channel
+                       (irc-channel-recent-user channel nick)))
                (departed (when user
                            (irc-user-part-time user))))
           (circe-display 'circe-format-server-rejoin
                          :nick nick
                          :userhost userhost
+                         :accountname accountname
+                         :realname realname
+                         :userinfo userinfo
                          :departuretime departed
                          :departuredelta (circe-duration-string
                                           (- (float-time)
                                              departed)))))
        ((not circe-reduce-lurker-spam)
-        (circe-display-server-message
-         (format "Join: %s (%s)" nick userhost))))))
-  ;; Next, query buffers. We do this even when the message should be
-  ;; ignored by a netsplit, since this can't flood.
-  (dolist (buf (circe-user-channels nick))
-    (with-current-buffer buf
-      (when (eq major-mode 'circe-query-mode)
-        (circe-display-server-message
-         (format "Join: %s (%s) is now on %s"
-                 nick userhost (car args)))))))
+        (circe-display 'circe-format-server-join
+                       :nick nick
+                       :userhost userhost
+                       :accountname accountname
+                       :realname realname
+                       :userinfo userinfo
+                       :channel circe-chat-target)))))
+  ;; Next, a possible query buffer. We do this even when the message
+  ;; should be ignored by a netsplit, since this can't flood.
+  (let ((buf (circe-server-get-chat-buffer nick)))
+    (when buf
+      (with-current-buffer buf
+        (circe-display 'circe-format-server-join-in-channel
+                       :nick nick
+                       :userhost userhost
+                       :channel circe-chat-target)))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (nick userhost command &rest args)
@@ -3054,7 +3127,10 @@ of that user. If the NICK isn't split, this returns nil."
                       (delq entry circe-netsplit-list)))
               (setcar (cdr entry)
                       (float-time))
-              (throw 'return (list name time))))))
+              (if (< (+ time circe-netsplit-delay)
+                     (float-time))
+                  (throw 'return (list name time))
+                (throw 'return nilnil))))))
       nil)))
 
 (defun circe--netsplit-quit (reason nick)
