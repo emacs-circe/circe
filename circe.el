@@ -533,12 +533,20 @@ strings."
   :group 'circe-format)
 
 (defcustom circe-format-server-rejoin
-  "*** Re-join: {nick} ({userhost})"
+  "*** Re-join: {nick} ({userinfo}), left {departuredelta} ago"
   "The format for the re-join notice of a user.
-{nick} - The originator.
-{userhost} - The user@host string of the originator.
-{departuretime} - Time in seconds when the originator had left.
-{departuredelta} - Description of the time delta since the originator left."
+
+The following format arguments are available:
+
+  nick           - The name of the split, usually describing the servers
+                   involved
+  userhost       - The time when this split happened, in seconds
+  accountname    - The account name, if the server supports this
+  realname       - The real name, if the server supports this
+  userinfo       - A combination of userhost, accountname, and realname
+  channel        - A date string describing this time
+  departuretime  - Time in seconds when the originator had left.
+  departuredelta - Description of the time delta since the originator left."
   :type 'string
   :group 'circe-format)
 
