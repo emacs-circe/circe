@@ -2727,6 +2727,8 @@ Arguments are either of the two:
 
 (circe-set-display-handler "AUTHENTICATE" 'circe-display-ignore)
 (circe-set-display-handler "CAP" 'circe-display-ignore)
+(circe-set-display-handler "conn.connected" 'circe-display-ignore)
+(circe-set-display-handler "conn.disconnected" 'circe-display-ignore)
 
 (circe-set-display-handler "irc.ctcp" 'circe-display-ignore)
 (circe-set-display-handler "irc.ctcpreply" 'circe-display-ignore)
@@ -2801,6 +2803,8 @@ as arguments."
                    :target target
                    :command (substring command 9)
                    :body text)))
+
+(circe-set-display-handler "irc.registered" 'circe-display-ignore)
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick userhost command channel
@@ -2910,6 +2914,8 @@ as arguments."
           (circe-display-server-message
            (format "Nick change: %s (%s) is now known as %s"
                    nick userhost (car args)))))))))
+
+(circe-set-display-handler "nickserv.identified" 'circe-display-ignore)
 
 (circe-set-display-handler "NOTICE" 'circe-display-ignore)
 (circe-set-display-handler "irc.notice" 'circe-display-NOTICE)
