@@ -507,12 +507,6 @@ strings."
   :type 'string
   :group 'circe-format)
 
-(defcustom circe-format-server-notice "-Server Notice- {body}"
-  "The format for a server notice.
-{body} - The notice."
-  :type 'string
-  :group 'circe-format)
-
 (defcustom circe-format-server-topic "*** Topic change by {origin}: {new-topic}"
   "The format for topic changes.
 {channel} - Where the topic change happened.
@@ -2972,27 +2966,28 @@ IRC servers."
 
 (circe-set-display-handler "NOTICE" 'circe-display-ignore)
 (circe-set-display-handler "irc.notice" 'circe-display-NOTICE)
-(defun circe-display-NOTICE (nick userhost command &rest args)
-  "Show a NOTICE message.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (let ((queryp (circe-server-my-nick-p (car args))))
-    (if (and nick (not (string-match "\\." nick)))
-        (with-current-buffer (or (circe-server-get-chat-buffer
-                                  (if queryp
-                                      nick
-                                    (car args)))
-                                 (circe-server-last-active-buffer))
-          (when (eq major-mode 'circe-channel-mode)
-            (circe-lurker-display-active nick userhost))
-          (circe-display 'circe-format-notice
-                         :nick nick
-                         :userhost userhost
-                         :body (cadr args)))
-      (with-circe-server-buffer
-        (circe-display 'circe-format-server-notice
-                       :body (cadr args))))))
+(defun circe-display-NOTICE (sender userhost command target text)
+  "Show a NOTICE message."
+  (cond
+   ((not userhost)
+    (with-current-buffer (circe-server-last-active-buffer)
+      (circe-display 'circe-format-server-notice
+                     :server sender
+                     :body text)))
+   ((circe-server-my-nick-p target)
+    (with-current-buffer (or (circe-query-auto-query-buffer sender)
+                             (circe-server-last-active-buffer))
+      (circe-display 'circe-format-notice
+                     :nick sender
+                     :userhost userhost
+                     :body text)))
+   (t
+    (with-current-buffer (circe-server-get-or-create-chat-buffer
+                          target 'circe-channel-mode)
+      (circe-display 'circe-format-notice
+                     :nick sender
+                     :userhost userhost
+                     :body text)))))
 
 (circe-set-display-handler "PART" 'circe-display-PART)
 (defun circe-display-PART (nick userhost command &rest args)
