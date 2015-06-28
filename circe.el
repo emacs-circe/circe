@@ -2917,13 +2917,17 @@ IRC servers."
                           channel 'circe-channel-mode)
       (cond
        (split
-        (circe-display 'circe-format-server-netmerge
-                       :split (car split)
-                       :time (cadr split)
-                       :date (current-time-string
-                              (seconds-to-time (cadr split)))
-                       :ago (circe-duration-string
-                             (- (float-time) (cadr split)))))
+        (let ((split-name (car split))
+              (split-time (cadr split)))
+          (when (< (+ split-time circe-netsplit-delay)
+                   (float-time))
+            (circe-display 'circe-format-server-netmerge
+                           :split (car split)
+                           :time (cadr split)
+                           :date (current-time-string
+                                  (seconds-to-time (cadr split)))
+                           :ago (circe-duration-string
+                                 (- (float-time) (cadr split)))))))
        ((and circe-reduce-lurker-spam
              (circe-lurker-rejoin-p nick circe-chat-target))
         (let* ((channel (irc-connection-channel (circe-server-process)
@@ -3202,10 +3206,7 @@ of that user. If the NICK isn't split, this returns nil."
                       (delq entry circe-netsplit-list)))
               (setcar (cdr entry)
                       (float-time))
-              (if (< (+ time circe-netsplit-delay)
-                     (float-time))
-                  (throw 'return (list name time))
-                (throw 'return nil))))))
+              (throw 'return (list name time))))))
       nil)))
 
 (defun circe--netsplit-quit (reason nick)
