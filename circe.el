@@ -431,7 +431,10 @@ strings."
     circe-format-server-topic-time-for-channel
     circe-format-server-netmerge
     circe-format-server-join
-    circe-format-server-join-in-channel)
+    circe-format-server-join-in-channel
+    circe-format-server-nick-change-self
+    circe-format-server-nick-change
+    circe-format-server-nick-regain)
   "A list of formats that should not trigger tracking."
   :type '(repeat symbol)
   :group 'circe-format)
@@ -704,6 +707,39 @@ The following format arguments are available:
   userhost     - The user@host string for the user
   target       - The target of this mode change
   change       - The actual changed modes"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-nick-change-self "*** Nick change: You are now known as {new-nick}"
+  "Format for nick changes of the current user.
+
+The following format arguments are available:
+
+  old-nick - The old nick this change was from
+  new-nick - The new nick this change was to
+  userhost - The user@host string for the user"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-nick-change "*** Nick change: {old-nick} ({userhost}) is now known as {new-nick}"
+  "Format for nick changes of the current user.
+
+The following format arguments are available:
+
+  old-nick - The old nick this change was from
+  new-nick - The new nick this change was to
+  userhost - The user@host string for the user"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-nick-regain "*** Nick regain: {old-nick} ({userhost}) is now known as {new-nick}"
+  "Format for nick changes of the current user.
+
+The following format arguments are available:
+
+  old-nick - The old nick this change was from
+  new-nick - The new nick this change was to
+  userhost - The user@host string for the user"
   :type 'string
   :group 'circe-format)
 
@@ -1808,7 +1844,8 @@ This is used by Circe to know where to put spurious messages."
         (remhash old-target-name circe-server-chat-buffer-table)
         (puthash new-target-name buf circe-server-chat-buffer-table)
         (with-current-buffer buf
-          (setq circe-chat-target new-name))))))
+          (setq circe-chat-target new-name)
+          (rename-buffer new-name t))))))
 
 (defun circe-server-chat-buffer-target (&optional buffer)
   "Return the chat target of BUFFER, or the current buffer if none."
@@ -2869,16 +2906,19 @@ IRC servers."
                        :accountname accountname
                        :realname realname
                        :userinfo userinfo
-                       :channel circe-chat-target)))))
-  ;; Next, a possible query buffer. We do this even when the message
-  ;; should be ignored by a netsplit, since this can't flood.
-  (let ((buf (circe-server-get-chat-buffer nick)))
-    (when buf
-      (with-current-buffer buf
-        (circe-display 'circe-format-server-join-in-channel
-                       :nick nick
-                       :userhost userhost
-                       :channel circe-chat-target)))))
+                       :channel circe-chat-target))))
+    ;; Next, a possible query buffer. We do this even when the message
+    ;; should be ignored by a netsplit, since this can't flood.
+    (let ((buf (circe-server-get-chat-buffer nick)))
+      (when buf
+        (with-current-buffer buf
+          (circe-display 'circe-format-server-join-in-channel
+                         :nick nick
+                         :userhost userhost
+                         :accountname accountname
+                         :realname realname
+                         :userinfo userinfo
+                         :channel circe-chat-target))))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
 (defun circe-display-MODE (setter userhost command target &rest modes)
@@ -2892,32 +2932,41 @@ IRC servers."
                    :change (mapconcat #'identity modes " "))))
 
 (circe-set-display-handler "NICK" 'circe-display-NICK)
-(defun circe-display-NICK (nick userhost command &rest args)
-  "Show a NICK message.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (if (circe-server-my-nick-p (car args))
+(defun circe-display-NICK (old-nick userhost command new-nick)
+  "Show a nick change."
+  (if (circe-server-my-nick-p new-nick)
       (dolist (buf (cons (or circe-server-buffer
                              (current-buffer))
                          (circe-server-chat-buffers)))
         (with-current-buffer buf
-          (circe-display-server-message
-           (format "Nick change: You are now known as %s"
-                   (car args)))))
-    (dolist (buf (circe-user-channels nick))
+          (circe-display 'circe-format-server-nick-change-self
+                         :old-nick old-nick
+                         :userhost userhost
+                         :new-nick new-nick)))
+    (let ((query-buffer (circe-server-get-chat-buffer old-nick)))
+      (when query-buffer
+        (with-current-buffer query-buffer
+          (circe-server-rename-chat-buffer old-nick new-nick)
+          (circe-display 'circe-format-server-nick-change
+                         :old-nick old-nick
+                         :new-nick new-nick
+                         :userhost userhost))))
+    (dolist (buf (circe-user-channels new-nick))
       (with-current-buffer buf
         (cond
-         ((circe-lurker-p nick)
+         ((and circe-reduce-lurker-spam
+               (circe-lurker-p new-nick))
           nil)
-         ((circe-channel-user-nick-regain-p nick (car args))
-          (circe-display-server-message
-           (format "Nick re-gain: %s (%s) is now known as %s"
-                   nick userhost (car args))))
+         ((circe-channel-user-nick-regain-p old-nick new-nick)
+          (circe-display 'circe-format-server-nick-regain
+                         :old-nick old-nick
+                         :new-nick new-nick
+                         :userhost userhost))
          (t
-          (circe-display-server-message
-           (format "Nick change: %s (%s) is now known as %s"
-                   nick userhost (car args)))))))))
+          (circe-display 'circe-format-server-nick-change
+                         :old-nick old-nick
+                         :new-nick new-nick
+                         :userhost userhost)))))))
 
 (circe-set-display-handler "nickserv.identified" 'circe-display-ignore)
 
