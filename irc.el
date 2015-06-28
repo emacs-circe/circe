@@ -521,7 +521,8 @@ Connection options set:
 (defun irc-handle-registration--disconnected (conn event)
   (irc-connection-put conn :connection-state 'disconnected))
 
-(defun irc-handle-registration--rpl-welcome (conn event sender target text)
+(defun irc-handle-registration--rpl-welcome (conn event sender target
+                                                  &rest ignored)
   (irc-connection-put conn :connection-state 'registered)
   (irc-event-emit conn "irc.registered" target))
 
@@ -1069,8 +1070,8 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
       (setf (irc-user-folded-nick user) newnick-folded)
       (puthash (irc-user-folded-nick user) user user-table))))
 
-(defun irc-handle-state-tracking--rpl-welcome (conn event sender
-                                                           target text)
+(defun irc-handle-state-tracking--rpl-welcome (conn event sender target
+                                                    &rest ignored)
   (irc-connection-put conn :current-nick target))
 
 (defun irc-handle-state-tracking--JOIN (conn event sender target

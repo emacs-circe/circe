@@ -772,7 +772,11 @@
 
           (irc-event-emit proc "001" "irc.server" "My_Nick" "Welcome!")
 
-          (expect registered :to-equal "My_Nick"))))
+          (expect registered :to-equal "My_Nick")))
+
+      (it "should not fail when there are spurious arguments"
+        (irc-event-emit proc "001" "irc.server" "My_Nick"
+                        "Some" "broken" "arguments")))
 
     (describe "on a CAP message"
       (it "should do the full negotiation"
@@ -1341,6 +1345,10 @@
         (expect (irc-current-nick-p proc "new-nick")
                 :to-equal
                 t))
+
+      (it "should not fail when there are spurious arguments to 001"
+        (irc-event-emit proc "001" "irc.server" "My_Nick"
+                        "Some" "broken" "arguments"))
 
       (it "should change the nick on NICK"
         (irc-event-emit proc "001" "irc.server" "initial-nick" "Welcome to IRC")
