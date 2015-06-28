@@ -507,12 +507,17 @@ strings."
   :type 'string
   :group 'circe-format)
 
-(defcustom circe-format-server-topic "*** Topic change by {origin}: {new-topic}"
+(defcustom circe-format-server-topic "*** Topic change by {nick} ({userhost}): {new-topic}"
   "The format for topic changes.
-{channel} - Where the topic change happened.
-{new-topic} - The new topic.
-{old-topic} - The previous topic.
-{topic-diff} - A colorized diff of the topics."
+
+The following format arguments are available:
+
+  nick       - The nick of the user who changed the topic
+  userhost   - The user@host string of that user
+  channel    - Where the topic change happened
+  new-topic  - The new topic
+  old-topic  - The previous topic
+  topic-diff - A colorized diff of the topics"
   :type 'string
   :group 'circe-format)
 
@@ -531,9 +536,8 @@ strings."
 
 The following format arguments are available:
 
-  nick           - The name of the split, usually describing the servers
-                   involved
-  userhost       - The time when this split happened, in seconds
+  nick           - The nick of the user who joined
+  userhost       - The user@host string of the user who joined
   accountname    - The account name, if the server supports this
   realname       - The real name, if the server supports this
   userinfo       - A combination of userhost, accountname, and realname
@@ -3051,30 +3055,18 @@ IRC servers."
                      :body text)))))
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
-(defun circe-display-topic (nick userhost command &rest args)
-  "Show a TOPIC message.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (let* ((channel-name (car args))
-         (new-topic (cadr args))
-         (buf (circe-server-get-chat-buffer channel-name))
-         (channel (irc-connection-channel (circe-server-process)
-                                          channel-name))
-         (old-topic (or (when channel
-                          (irc-channel-last-topic channel))
-                        "")))
-    (with-current-buffer buf
+(defun circe-display-topic (nick userhost command channel new-topic)
+  "Show a TOPIC change."
+  (with-current-buffer (circe-server-get-or-create-chat-buffer
+                        channel 'circe-channel-mode)
+    (let* ((channel-obj (irc-connection-channel (circe-server-process)
+                                                channel-name))
+           (old-topic (when channel
+                        (irc-channel-last-topic channel-obj))))
       (circe-display 'circe-format-server-topic
-                     :nick (or nick "(unknown)")
-                     :userhost (or userhost "(unknown")
-                     :origin (if userhost
-                                 (format "%s (%s)"
-                                         nick
-                                         userhost)
-                               (or nick "(unknown)"))
-                     :target channel-name
-                     :channel channel-name
+                     :nick nick
+                     :userhost (or userhost "(unknown)")
+                     :channel channel
                      :new-topic new-topic
                      :old-topic old-topic
                      :topic-diff (circe--topic-diff old-topic new-topic)))))
