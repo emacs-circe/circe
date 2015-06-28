@@ -656,6 +656,15 @@ The following format arguments are available:
   :type 'string
   :group 'circe-format)
 
+(defcustom circe-format-server-netsplit "*** Netsplit: {split} (Use /WL to see who left)"
+  "Format for netsplit notifications.
+
+The following format arguments are available:
+
+  split   - The name of the split, usually describing the servers involved"
+  :type 'string
+  :group 'circe-format)
+
 (defcustom circe-format-server-netmerge "*** Netmerge: {split}, split {ago} ago (Use /WL to see who's still missing)"
   "Format for netmerge notifications.
 
@@ -749,6 +758,29 @@ The following format arguments are available:
   nick     - The nick of the user who left
   userhost - The user@host string for this user
   channel  - The channel they left
+  reason   - The reason they gave for leaving"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-quit-channel "*** Quit: {nick} ({userhost}) left {channel}: {reason}"
+  "Format for users quitting from a channel.
+
+The following format arguments are available:
+
+  nick     - The nick of the user who left
+  userhost - The user@host string for this user
+  channel  - The channel they left
+  reason   - The reason they gave for leaving"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-quit "*** Quit: {nick} ({userhost}) left IRC: {reason}"
+  "Format for users quitting.
+
+The following format arguments are available:
+
+  nick     - The nick of the user who left
+  userhost - The user@host string for this user
   reason   - The reason they gave for leaving"
   :type 'string
   :group 'circe-format)
@@ -3111,44 +3143,37 @@ The list consists of words and spaces."
     (nreverse lis)))
 
 (circe-set-display-handler "channel.quit" 'circe-display-channel-quit)
-(defun circe-display-channel-quit (nick userhost command &rest args)
-  "Show a QUIT message.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (let* ((channel (car args))
-         (reason (cadr args))
-         (split (circe--netsplit-quit reason nick))
-         (buf (circe-server-get-chat-buffer channel)))
-    (when buf
-      (with-current-buffer buf
-        (cond
-         (split
-          (when (< (+ split circe-netsplit-delay)
-                   (float-time))
-            (circe-display-server-message
-             (format "Netsplit: %s (Use /WL to see who left)"
-                     reason))))
-         ((not (circe-lurker-p nick))
-          (circe-display-server-message
-           (format "Quit: %s (%s) - %s"
-                   nick userhost reason))))))))
+(defun circe-display-channel-quit (nick userhost command channel
+                                        &optional reason)
+  "Show a QUIT message."
+  (let ((split (circe--netsplit-quit reason nick)))
+    (with-current-buffer (circe-server-get-or-create-chat-buffer
+                          channel 'circe-channel-mode)
+      (cond
+       (split
+        (when (< (+ split circe-netsplit-delay)
+                 (float-time))
+          (circe-display 'circe-format-server-netsplit
+                         :split reason)))
+       ((not (circe-lurker-p nick))
+        (circe-display 'circe-format-server-quit-channel
+                       :nick nick
+                       :userhost userhost
+                       :channel channel
+                       :reason (or reason "[no reason given]")))))))
 
 (circe-set-display-handler "QUIT" 'circe-display-QUIT)
-(defun circe-display-QUIT (nick userhost command &rest args)
+(defun circe-display-QUIT (nick userhost command &optional reason)
   "Show a QUIT message.
 
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments.
-
 Channel quits are shown already, so just show quits in queries."
-  (let* ((reason (car args))
-         (buf (circe-server-get-chat-buffer nick)))
+  (let ((buf (circe-server-get-chat-buffer nick)))
     (when buf
       (with-current-buffer buf
-        (circe-display-server-message
-         (format "Quit: %s (%s) - %s"
-                 nick userhost reason))))))
+        (circe-display 'circe-format-server-quit
+                       :nick nick
+                       :userhost userhost
+                       :reason (or reason "[no reason given]"))))))
 
 (defvar circe-netsplit-list nil
   "A list of recorded netsplits.
