@@ -434,7 +434,11 @@ strings."
     circe-format-server-join-in-channel
     circe-format-server-nick-change-self
     circe-format-server-nick-change
-    circe-format-server-nick-regain)
+    circe-format-server-nick-regain
+    circe-format-server-part
+    circe-format-server-netsplit
+    circe-format-server-quit-channel
+    circe-format-server-quit)
   "A list of formats that should not trigger tracking."
   :type '(repeat symbol)
   :group 'circe-format)
