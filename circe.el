@@ -2979,26 +2979,26 @@ IRC servers."
 
 (circe-set-display-handler "NOTICE" 'circe-display-ignore)
 (circe-set-display-handler "irc.notice" 'circe-display-NOTICE)
-(defun circe-display-NOTICE (sender userhost command target text)
+(defun circe-display-NOTICE (nick userhost command target text)
   "Show a NOTICE message."
   (cond
    ((not userhost)
     (with-current-buffer (circe-server-last-active-buffer)
       (circe-display 'circe-format-server-notice
-                     :server sender
+                     :server nick
                      :body text)))
    ((circe-server-my-nick-p target)
-    (with-current-buffer (or (circe-query-auto-query-buffer sender)
+    (with-current-buffer (or (circe-query-auto-query-buffer nick)
                              (circe-server-last-active-buffer))
       (circe-display 'circe-format-notice
-                     :nick sender
+                     :nick nick
                      :userhost userhost
                      :body text)))
    (t
     (with-current-buffer (circe-server-get-or-create-chat-buffer
                           target 'circe-channel-mode)
       (circe-display 'circe-format-notice
-                     :nick sender
+                     :nick nick
                      :userhost userhost
                      :body text)))))
 
@@ -3019,33 +3019,30 @@ IRC servers."
 
 (circe-set-display-handler "PRIVMSG" 'circe-display-ignore)
 (circe-set-display-handler "irc.message" 'circe-display-PRIVMSG)
-(defun circe-display-PRIVMSG (nick userhost command &rest args)
-  "Show a PRIVMSG message.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
+(defun circe-display-PRIVMSG (nick userhost command target text)
+  "Show a PRIVMSG message."
   (cond
-   ((circe-server-my-nick-p (car args)) ; Query
+   ((circe-server-my-nick-p target)
     (let ((buf (circe-query-auto-query-buffer nick)))
       (if buf
           (with-current-buffer buf
             (circe-display 'circe-format-say
                            :nick nick
                            :userhost userhost
-                           :body (cadr args)))
+                           :body text))
         (with-current-buffer (circe-server-last-active-buffer)
           (circe-display 'circe-format-message
                          :nick nick
                          :userhost userhost
-                         :body (cadr args))))))
-   (t                                   ; Channel talk
+                         :body text)))))
+   (t
     (with-current-buffer (circe-server-get-or-create-chat-buffer
-                          (car args) 'circe-channel-mode)
+                          target 'circe-channel-mode)
       (circe-lurker-display-active nick userhost)
       (circe-display 'circe-format-say
                      :nick nick
                      :userhost userhost
-                     :body (cadr args))))))
+                     :body text)))))
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
 (defun circe-display-topic (nick userhost command &rest args)
