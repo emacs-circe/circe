@@ -270,6 +270,9 @@ To change the prompt dynamically or just in specific buffers, use
   "How to highlight occurrences of our own nick.
 
   'sender     - Highlight the nick of the sender
+                (messages without a sender and your
+                own are highlighted with the occurrence
+                type instead)
   'occurrence - Highlight the occurrences of the nick
   'message    - Highlight the message without the sender
   'all        - Highlight the whole line"
