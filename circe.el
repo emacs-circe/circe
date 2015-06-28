@@ -3139,7 +3139,7 @@ of that user. If the NICK isn't split, this returns nil."
               (if (< (+ time circe-netsplit-delay)
                      (float-time))
                   (throw 'return (list name time))
-                (throw 'return nilnil))))))
+                (throw 'return nil))))))
       nil)))
 
 (defun circe--netsplit-quit (reason nick)
