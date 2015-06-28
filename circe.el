@@ -737,6 +737,18 @@ The following format arguments are available:
   :type 'string
   :group 'circe-format)
 
+(defcustom circe-format-server-part "*** Part: {nick} ({userhost}) left {channel}: {reason}"
+  "Format for users parting a channel.
+
+The following format arguments are available:
+
+  nick     - The nick of the user who left
+  userhost - The user@host string for this user
+  channel  - The channel they left
+  reason   - The reason they gave for leaving"
+  :type 'string
+  :group 'circe-format)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private variables ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2991,26 +3003,16 @@ IRC servers."
                      :body text)))))
 
 (circe-set-display-handler "PART" 'circe-display-PART)
-(defun circe-display-PART (nick userhost command &rest args)
-  "Show a PART message.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (let ((buf (circe-server-get-chat-buffer (car args))))
-    (if buf
-        (with-current-buffer buf
-          (when (not (circe-lurker-p nick))
-            (circe-display-server-message
-             (if (null (cdr args))
-                 (format "Part: %s (%s)" nick userhost)
-               (format "Part: %s (%s) - %s"
-                       nick userhost (cadr args))))))
-      (with-circe-server-buffer
-        (circe-display-server-message
-         (if (null (cdr args))
-             (format "Part from %s: %s (%s)" (car args) nick userhost)
-           (format "Part from %s: %s (%s) - %s" (car args) nick userhost
-                   (cadr args))))))))
+(defun circe-display-PART (nick userhost command channel &optional reason)
+  "Show a PART message."
+  (with-current-buffer (circe-server-get-or-create-chat-buffer
+                        channel 'circe-channel-mode)
+    (when (not (circe-lurker-p nick))
+      (circe-display 'circe-format-server-part
+                     :nick nick
+                     :userhost userhost
+                     :channel channel
+                     :reason (or reason "[No reason given]")))))
 
 (circe-set-display-handler "PING" 'circe-display-ignore)
 (circe-set-display-handler "PONG" 'circe-display-ignore)
