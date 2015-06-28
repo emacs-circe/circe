@@ -325,13 +325,6 @@ Good luck."
   :type 'integer
   :group 'circe)
 
-(defcustom circe-show-server-modes-p nil
-  "Whether Circe should show server modes.
-This is disabled by default, since server mode changes are almost
-always channel modes after a split."
-  :type 'boolean
-  :group 'circe)
-
 (defcustom circe-server-max-reconnect-attempts 5
   "How often Circe should attempt to reconnect to the server.
 If this is 0, Circe will not reconnect at all. If this is nil,
@@ -699,6 +692,18 @@ The following format arguments are available:
   realname     - The real name, if the server supports this
   userinfo     - A combination of userhost, accountname, and realname
   channel      - The channel this user is joining"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-mode-change "*** Mode change: {change} on {target} by {setter} ({userhost})"
+  "Format for mode changes.
+
+The following format arguments are available:
+
+  setter       - The name of the split, usually describing the servers involved
+  userhost     - The user@host string for the user
+  target       - The target of this mode change
+  change       - The actual changed modes"
   :type 'string
   :group 'circe-format)
 
@@ -2876,23 +2881,15 @@ IRC servers."
                        :channel circe-chat-target)))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
-(defun circe-display-MODE (nick userhost command &rest args)
-  "Show a MODE message.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
-  (when (or circe-show-server-modes-p
-            userhost) ; If this is set, it is not a server mode
-    (with-current-buffer (or (circe-server-get-chat-buffer (car args))
-                             circe-server-last-active-buffer
-                             circe-server-buffer)
-      (circe-display-server-message
-       (format "Mode change: %s by %s%s"
-               (mapconcat #'identity (cdr args) " ")
-               nick
-               (if userhost
-                   (format " (%s)" userhost)
-                 ""))))))
+(defun circe-display-MODE (setter userhost command target &rest modes)
+  "Show a MODE message."
+  (with-current-buffer (or (circe-server-get-chat-buffer target)
+                           (circe-server-last-active-buffer))
+    (circe-display 'circe-format-server-mode-change
+                   :setter setter
+                   :userhost (or userhost "server")
+                   :target target
+                   :change (mapconcat #'identity modes " "))))
 
 (circe-set-display-handler "NICK" 'circe-display-NICK)
 (defun circe-display-NICK (nick userhost command &rest args)
