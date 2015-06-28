@@ -679,13 +679,12 @@ The following format arguments are available:
 
 The following format arguments are available:
 
-  nick         - The name of the split, usually describing the servers
-                 involved
-  userhost     - The time when this split happened, in seconds
+  nick         - The nick of the user joining
+  userhost     - The user@host string for the user
   accountname  - The account name, if the server supports this
   realname     - The real name, if the server supports this
   userinfo     - A combination of userhost, accountname, and realname
-  channel      - A date string describing this time"
+  channel      - The channel this user is joining"
   :type 'string
   :group 'circe-format)
 
@@ -694,12 +693,12 @@ The following format arguments are available:
 
 The following format arguments are available:
 
-  nick     - The name of the split, usually describing the servers involved
-  userhost - The time when this split happened, in seconds
+  nick         - The nick of the user joining
+  userhost     - The user@host string for the user
   accountname  - The account name, if the server supports this
   realname     - The real name, if the server supports this
   userinfo     - A combination of userhost, accountname, and realname
-  channel  - A date string describing this time"
+  channel      - The channel this user is joining"
   :type 'string
   :group 'circe-format)
 
