@@ -2029,7 +2029,8 @@ users, which is a pretty rough heuristic, but it works."
       nil)
      ;; Someone who isn't even on the channel (e.g. NickServ) isn't a
      ;; lurker, either.
-     ((not (circe-channel-user-p nick))
+     ((and (not user)
+           (not recent-user))
       nil)
      ;; If someone has never been active, they most definitely *are* a
      ;; lurker.
