@@ -2127,7 +2127,7 @@ shortly before, and were active then."
                join-time)
       (circe-display 'circe-format-server-lurker-activity
                      :nick nick
-                     :userhost userhost
+                     :userhost (or userhost "server")
                      :jointime join-time
                      :joindelta (circe-duration-string
                                  (- (float-time)
@@ -2263,7 +2263,7 @@ as arguments."
                (format "*** [%s] %s" name format))))
         (circe-display 'circe--irc-format-server-numeric
                        :nick (or nick "(unknown)")
-                       :userhost (or userhost "(unknown)")
+                       :userhost (or userhost "server")
                        :origin origin
                        :event event
                        :command event
@@ -2842,7 +2842,7 @@ Arguments are either of the two:
                            'circe-format-action
                          'circe-format-message-action)
                        :nick nick
-                       :userhost userhost
+                       :userhost (or userhost "server")
                        :body text))))
    ;; Channel
    (t
@@ -2851,7 +2851,7 @@ Arguments are either of the two:
       (circe-lurker-display-active nick userhost)
       (circe-display 'circe-format-action
                      :nick nick
-                     :userhost userhost
+                     :userhost (or userhost "server")
                      :body text)))))
 
 (circe-set-display-handler "irc.ctcp.CLIENTINFO" 'circe-display-ctcp)
@@ -2862,7 +2862,7 @@ Arguments are either of the two:
   (with-current-buffer (circe-server-last-active-buffer)
     (circe-display 'circe-format-server-ctcp-ping
                    :nick nick
-                   :userhost userhost
+                   :userhost (or userhost "server")
                    :target target
                    :body text
                    :ago (let ((time (string-to-number text)))
@@ -2876,7 +2876,7 @@ Arguments are either of the two:
   (with-current-buffer (circe-server-last-active-buffer)
     (circe-display 'circe-format-server-ctcp-ping-reply
                    :nick nick
-                   :userhost userhost
+                   :userhost (or userhost "server")
                    :target target
                    :body text
                    :ago (let ((time (string-to-number text)))
@@ -2895,7 +2895,7 @@ as arguments."
   (with-current-buffer (circe-server-last-active-buffer)
     (circe-display 'circe-format-server-ctcp
                    :nick nick
-                   :userhost userhost
+                   :userhost (or userhost "server")
                    :target target
                    :command (substring command 9)
                    :body text)))
@@ -2942,7 +2942,7 @@ IRC servers."
                            (irc-user-part-time user))))
           (circe-display 'circe-format-server-rejoin
                          :nick nick
-                         :userhost userhost
+                         :userhost (or userhost "server")
                          :accountname accountname
                          :realname realname
                          :userinfo userinfo
@@ -2953,7 +2953,7 @@ IRC servers."
        ((not circe-reduce-lurker-spam)
         (circe-display 'circe-format-server-join
                        :nick nick
-                       :userhost userhost
+                       :userhost (or userhost "server")
                        :accountname accountname
                        :realname realname
                        :userinfo userinfo
@@ -2965,7 +2965,7 @@ IRC servers."
         (with-current-buffer buf
           (circe-display 'circe-format-server-join-in-channel
                          :nick nick
-                         :userhost userhost
+                         :userhost (or userhost "server")
                          :accountname accountname
                          :realname realname
                          :userinfo userinfo
@@ -2992,7 +2992,7 @@ IRC servers."
         (with-current-buffer buf
           (circe-display 'circe-format-server-nick-change-self
                          :old-nick old-nick
-                         :userhost userhost
+                         :userhost (or userhost "server")
                          :new-nick new-nick)))
     (let ((query-buffer (circe-server-get-chat-buffer old-nick)))
       (when query-buffer
@@ -3001,7 +3001,7 @@ IRC servers."
           (circe-display 'circe-format-server-nick-change
                          :old-nick old-nick
                          :new-nick new-nick
-                         :userhost userhost))))
+                         :userhost (or userhost "server")))))
     (dolist (buf (circe-user-channels new-nick))
       (with-current-buffer buf
         (cond
@@ -3012,12 +3012,12 @@ IRC servers."
           (circe-display 'circe-format-server-nick-regain
                          :old-nick old-nick
                          :new-nick new-nick
-                         :userhost userhost))
+                         :userhost (or userhost "server")))
          (t
           (circe-display 'circe-format-server-nick-change
                          :old-nick old-nick
                          :new-nick new-nick
-                         :userhost userhost)))))))
+                         :userhost (or userhost "server"))))))))
 
 (circe-set-display-handler "nickserv.identified" 'circe-display-ignore)
 
@@ -3039,14 +3039,14 @@ IRC servers."
                              (circe-server-last-active-buffer))
       (circe-display 'circe-format-notice
                      :nick nick
-                     :userhost userhost
+                     :userhost (or userhost "server")
                      :body text)))
    (t
     (with-current-buffer (circe-server-get-or-create-chat-buffer
                           target 'circe-channel-mode)
       (circe-display 'circe-format-notice
                      :nick nick
-                     :userhost userhost
+                     :userhost (or userhost "server")
                      :body text)))))
 
 (circe-set-display-handler "PART" 'circe-display-PART)
@@ -3057,7 +3057,7 @@ IRC servers."
     (when (not (circe-lurker-p nick))
       (circe-display 'circe-format-server-part
                      :nick nick
-                     :userhost userhost
+                     :userhost (or userhost "server")
                      :channel channel
                      :reason (or reason "[No reason given]")))))
 
@@ -3078,12 +3078,12 @@ IRC servers."
           (with-current-buffer buf
             (circe-display 'circe-format-say
                            :nick nick
-                           :userhost userhost
+                           :userhost (or userhost "server")
                            :body text))
         (with-current-buffer (circe-server-last-active-buffer)
           (circe-display 'circe-format-message
                          :nick nick
-                         :userhost userhost
+                         :userhost (or userhost "server")
                          :body text)))))
    (t
     (with-current-buffer (circe-server-get-or-create-chat-buffer
@@ -3091,7 +3091,7 @@ IRC servers."
       (circe-lurker-display-active nick userhost)
       (circe-display 'circe-format-say
                      :nick nick
-                     :userhost userhost
+                     :userhost (or userhost "server")
                      :body text)))))
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
@@ -3105,7 +3105,7 @@ IRC servers."
                         (irc-channel-last-topic channel-obj))))
       (circe-display 'circe-format-server-topic
                      :nick nick
-                     :userhost (or userhost "(unknown)")
+                     :userhost (or userhost "server")
                      :channel channel
                      :new-topic new-topic
                      :old-topic old-topic
@@ -3166,7 +3166,7 @@ The list consists of words and spaces."
        ((not (circe-lurker-p nick))
         (circe-display 'circe-format-server-quit-channel
                        :nick nick
-                       :userhost userhost
+                       :userhost (or userhost "server")
                        :channel channel
                        :reason (or reason "[no reason given]")))))))
 
@@ -3180,7 +3180,7 @@ Channel quits are shown already, so just show quits in queries."
       (with-current-buffer buf
         (circe-display 'circe-format-server-quit
                        :nick nick
-                       :userhost userhost
+                       :userhost (or userhost "server")
                        :reason (or reason "[no reason given]"))))))
 
 (defvar circe-netsplit-list nil
