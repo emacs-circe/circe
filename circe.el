@@ -1261,16 +1261,14 @@ It is always possible to use the mynick or target formats."
                                 keywords))))
            (text (lui-format format keywords)))
       (when (circe--display-fool-p format keywords)
-        (font-lock-append-text-property 0 (length text)
-                                        'face 'circe-fool-face
-                                        text)
+        (add-face-text-property 0 (length text)
+                                'circe-fool-face t text)
         (put-text-property 0 (length text)
                            'lui-fool t
                            text))
       (when face
-        (font-lock-append-text-property 0 (length text)
-                                        'face face
-                                        text))
+        (add-face-text-property 0 (length text)
+                                face t text))
       (lui-insert text
                   (memq format circe-format-not-tracked)))))
 
@@ -1374,17 +1372,17 @@ This is used in `lui-pre-output-hook'."
                                  (point-max)
                                  'face 'circe-originator-face)
               (when (re-search-forward nick-regex nil t)
-                (circe--highlight-extend-properties
+                (circe--extend-text-having-face
                  (point-min) (point-max)
-                 'face 'circe-originator-face
-                 '(face circe-highlight-nick-face)))
+                 'circe-originator-face
+                 'circe-highlight-nick-face))
             (let ((circe-highlight-nick-type 'occurrence))
               (circe--output-highlight-nick))))
          ((eq circe-highlight-nick-type 'occurrence)
           (while (re-search-forward nick-regex nil t)
-            (add-text-properties (match-beginning 1)
-                                 (match-end 1)
-                                 '(face circe-highlight-nick-face))))
+            (add-face-text-property (match-beginning 1)
+                                    (match-end 1)
+                                    'circe-highlight-nick-face)))
          ((eq circe-highlight-nick-type 'message)
           (when (re-search-forward nick-regex nil t)
             (let* ((start (text-property-any (point-min)
@@ -1394,25 +1392,24 @@ This is used in `lui-pre-output-hook'."
                           (next-single-property-change start
                                                        'lui-format-argument))))
               (when (and start end)
-                (add-text-properties start end
-                                     '(face circe-highlight-nick-face))))))
+                (add-face-text-property start end
+                                        'circe-highlight-nick-face)))))
          ((eq circe-highlight-nick-type 'all)
           (when (re-search-forward nick-regex nil t)
-            (add-text-properties (point-min)
-                                 (point-max)
-                                 '(face circe-highlight-nick-face)))))))))
+            (add-face-text-property (point-min) (point-max)
+                                    'circe-highlight-nick-face))))))))
 
-(defun circe--highlight-extend-properties (from to prop val properties)
+(defun circe--extend-text-having-face (from to existing new)
   "Extend property values.
 
-In the text between FROM and TO, find any text that has property
-PROP set to VAL, and extend the properties of that range of text
-with all properties in PROPERTIES."
-  (let ((beg (text-property-any from to prop val)))
+In the text between FROM and TO, find any text that has its face
+property set to EXISTING, and prepend NEW to the value of its
+face property, when necessary by turning it into a list."
+  (let ((beg (text-property-any from to 'face existing)))
     (while beg
-      (let ((end (next-single-property-change beg prop)))
-        (add-text-properties beg end properties)
-        (setq beg (text-property-any end to prop val))))))
+      (let ((end (next-single-property-change beg 'face)))
+        (add-face-text-property beg end new)
+        (setq beg (text-property-any end to 'face existing))))))
 
 ;;;;;;;;;;;;;;;
 ;;;; Input ;;;;
@@ -3039,15 +3036,13 @@ as arguments."
                (cond
                 ((eq '+ (car elt))
                  (let ((s (cadr elt)))
-                   (font-lock-prepend-text-property 0 (length s)
-                                                    'face 'circe-topic-diff-new-face
-                                                    s)
+                   (add-face-text-property 0 (length s)
+                                           'circe-topic-diff-new-face nil s)
                    s))
                 ((eq '- (car elt))
                  (let ((s (cadr elt)))
-                   (font-lock-prepend-text-property 0 (length s)
-                                                    'face 'circe-topic-diff-removed-face
-                                                    s)
+                   (add-face-text-property 0 (length s)
+                                           'circe-topic-diff-removed-face nil s)
                    s))
                 (t
                  (cadr elt))))
