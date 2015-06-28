@@ -432,6 +432,7 @@ strings."
     circe-format-server-netmerge
     circe-format-server-join
     circe-format-server-join-in-channel
+    circe-format-server-mode-change
     circe-format-server-nick-change-self
     circe-format-server-nick-change
     circe-format-server-nick-regain
