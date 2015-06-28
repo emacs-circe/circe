@@ -2824,7 +2824,7 @@ IRC servers."
   (let* ((accountname (if (equal accountname "*")
                           "(unauthenticated)"
                         accountname))
-         (all-info (if accountname
+         (userinfo (if accountname
                        (format "%s, %s: %s" userhost accountname realname)
                      userhost))
          (split (circe--netsplit-join nick)))
