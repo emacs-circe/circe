@@ -426,6 +426,7 @@ It can be customized for an application by specifying a
   (add-hook 'window-scroll-functions 'lui-scroll-window nil t)
   (add-hook 'post-command-hook 'lui-scroll-post-command)
   (add-hook 'change-major-mode-hook 'lui-change-major-mode nil t)
+  (lui-paren-highlighting)
   (lui-time-stamp-enable-filtering)
   (tracking-mode 1)
   (auto-fill-mode 0)
@@ -754,6 +755,47 @@ make the whole thing invisible."
   ;; For some reason, after this, the display does not always update
   ;; (issue #31). Force an update just in case.
   (force-mode-line-update t))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Blink Paren and Show Paren Mode ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun lui-paren-highlighting ()
+  "Enable sane parenthesis highlighting in this buffer."
+  (set (make-local-variable 'blink-paren-function)
+       'lui-blink-paren-function)
+  (set (make-local-variable 'show-paren-data-function)
+       'lui-show-paren-data-function))
+
+(defun lui-blink-paren-function ()
+  "Do not blink opening parens outside of the lui input area.
+
+When point is within the lui input area, inserting a closing
+parenthesis should only blink parens within the input area, not
+outside of it.
+
+This is a suitable value for `blink-paren-function', which see."
+  (if (> (point) lui-input-marker)
+      (let ((blink-matching-paren-distance (- (point)
+                                              lui-input-marker)))
+        (blink-matching-open))
+    (blink-matching-open)))
+
+(defun lui-show-paren-data-function ()
+  "Show parens only within the input area.
+
+When `show-paren-mode' is enabled, and point is in the input
+area, parenthesis highlighting should only happen within the
+input area, not include the rest of the buffer.
+
+This is a suitable value for `show-paren-data-function', which see."
+  (let ((range (show-paren--default)))
+    (if (or (< (point) lui-input-marker)
+            (not (elt range 2))
+            (>= (elt range 2) lui-input-marker))
+        range
+      nil)))
 
 
 ;;;;;;;;;;;;;;;;
