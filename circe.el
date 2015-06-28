@@ -2977,6 +2977,9 @@ IRC servers."
 
 (circe-set-display-handler "nickserv.identified" 'circe-display-ignore)
 
+;; NOTICE is also used to encode CTCP replies. irc.el will send
+;; irc.notice events for NOTICEs without CTCP replies, so we show
+;; that, not the raw notice.
 (circe-set-display-handler "NOTICE" 'circe-display-ignore)
 (circe-set-display-handler "irc.notice" 'circe-display-NOTICE)
 (defun circe-display-NOTICE (nick userhost command target text)
@@ -3017,6 +3020,9 @@ IRC servers."
 (circe-set-display-handler "PING" 'circe-display-ignore)
 (circe-set-display-handler "PONG" 'circe-display-ignore)
 
+;; PRIVMSG is also used to encode CTCP requests. irc.el will send
+;; irc.message events for PRIVMSGs without CTCP messages, so we show
+;; that, not the raw message.
 (circe-set-display-handler "PRIVMSG" 'circe-display-ignore)
 (circe-set-display-handler "irc.message" 'circe-display-PRIVMSG)
 (defun circe-display-PRIVMSG (nick userhost command target text)
