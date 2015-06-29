@@ -101,10 +101,10 @@ COMMAND conn sender args... -- An IRC command message was received"
     (irc-event-emit proc "conn.failed"))
    ((string-match "\\`open" event)
     (irc-event-emit proc "conn.connected"))
-   ((string-match "\\`\\(connection broken\\|killed\\|finished\\|exited abnormally\\)"
+   ((string-match "\\`\\(connection broken\\|finished\\|exited abnormall\\)"
                   event)
     (irc-event-emit proc "conn.disconnected"))
-   ((string-match "\\`deleted" event)
+   ((string-match "\\`\\(deleted\\|killed\\)" event)
     nil)
    (t
     (error "Unknown event in IRC sentinel: %S" event))))

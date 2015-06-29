@@ -109,13 +109,6 @@
             :to-have-been-called-with
             'proc "conn.disconnected"))
 
-  (it "should emit conn.disconnected for a killed process"
-    (irc--sentinel 'proc "killed\n")
-
-    (expect 'irc-event-emit
-            :to-have-been-called-with
-            'proc "conn.disconnected"))
-
   (it "should emit conn.disconnected for a finished process"
     (irc--sentinel 'proc "finished\n")
 
@@ -129,6 +122,12 @@
     (expect 'irc-event-emit
             :to-have-been-called-with
             'proc "conn.disconnected"))
+
+  (it "should ignored killed processes"
+    (irc--sentinel 'proc "killed\n")
+
+    (expect 'irc-event-emit
+            :not :to-have-been-called-with))
 
   (it "should ignore deleted processes"
     (irc--sentinel 'proc "deleted\n")

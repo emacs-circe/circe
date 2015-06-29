@@ -858,11 +858,12 @@ If a function is set it will be called with the value of
 (defvar circe-display-table nil
   "A hash table mapping commands to their display functions.")
 
-(defvar circe-server-quitting-p nil
-  "Non-nil when quitting from the server.
-This is only non-nil when the user is quitting the current
-server. See `circe-command-QUIT'.")
-(make-variable-buffer-local 'circe-server-quitting-p)
+(defvar circe-server-inhibit-auto-reconnect-p nil
+  "Non-nil when Circe should not reconnect.
+
+This can be set from commands to avoid reconnecting when the
+server disconnects.")
+(make-variable-buffer-local 'circe-server-inhibit-auto-reconnect-p)
 
 (defvar circe-chat-calling-server-buffer-and-target nil
   "Internal variable to pass the server buffer and target to chat modes.")
@@ -1062,69 +1063,80 @@ See `circe-server-max-reconnect-attempts'.")
   "Reconnect the current server."
   (interactive)
   (with-circe-server-buffer
-    (when (or (called-interactively-p 'any) ;; Always reconnect if the user wants it
+    (when (or (called-interactively-p 'any)
+              (not circe-server-inhibit-auto-reconnect-p)
               (not circe-server-max-reconnect-attempts)
               (<= circe-server-reconnect-attempts
                   circe-server-max-reconnect-attempts))
-      (setq circe-server-reconnect-attempts (+ circe-server-reconnect-attempts
+      (setq circe-server-inhibit-auto-reconnect-p t
+            circe-server-reconnect-attempts (+ circe-server-reconnect-attempts
                                                1))
-      (when (and circe-server-process
-                 (process-live-p circe-server-process))
-        (delete-process circe-server-process))
-      (circe-display-server-message "Connecting...")
-      (dolist (buf (circe-server-chat-buffers))
-        (with-current-buffer buf
-          (circe-display-server-message "Connecting...")))
-      (setq circe-server-process
-            (irc-connect
-             :host circe-server-name
-             :service circe-server-service
-             :tls circe-server-use-tls
-             :ip-family circe-server-ip-family
-             :handler-table (circe-irc-handler-table)
-             :server-buffer (current-buffer)
-             :nick circe-server-nick
-             :nick-alternatives (list (circe--nick-next circe-server-nick)
-                                      (circe--nick-next
-                                       (circe--nick-next circe-server-nick)))
-             :user circe-server-user
-             :mode 8
-             :realname circe-server-realname
-             :pass (if (functionp circe-server-pass)
-                       (funcall circe-server-pass circe-server-name)
-                     circe-server-pass)
-             :cap-req (append (when (and circe-sasl-username
-                                         circe-sasl-password)
-                                '("sasl"))
-                              '("extended-join"))
-             :nickserv-nick circe-nickserv-nick
-             :nickserv-password (if (functionp circe-nickserv-password)
-                                    (funcall circe-nickserv-password circe-server-name)
-                                  circe-nickserv-password)
-             :nickserv-mask circe-nickserv-mask
-             :nickserv-identify-challenge circe-nickserv-identify-challenge
-             :nickserv-identify-command circe-nickserv-identify-command
-             :nickserv-identify-confirmation
-             circe-nickserv-identify-confirmation
-             :nickserv-ghost-command circe-nickserv-ghost-command
-             :nickserv-ghost-confirmation circe-nickserv-ghost-confirmation
-             :sasl-username circe-sasl-username
-             :sasl-password (if (functionp circe-sasl-password)
-                                (funcall circe-sasl-password
-                                         circe-server-name)
-                              circe-sasl-password)
-             :ctcp-version (format "Circe: Client for IRC in Emacs, version %s"
-                                   circe-version)
-             :ctcp-source circe-source-url
-             :ctcp-clientinfo "CLIENTINFO PING SOURCE TIME VERSION"
-             :auto-join-after-registration
-             (circe--auto-join-list :immediate)
-             :auto-join-after-host-hiding
-             (circe--auto-join-list :after-cloak)
-             :auto-join-after-nick-acquisition
-             (circe--auto-join-list :after-nick)
-             :auto-join-after-nickserv-identification
-             (circe--auto-join-list :after-auth))))))
+      (unwind-protect
+          (circe-reconnect--internal)
+        (setq circe-server-inhibit-auto-reconnect-p nil)))))
+
+(defun circe-reconnect--internal ()
+  "The internal function called for reconnecting unconditionally.
+
+Do not use this directly, use `circe-reconnect'"
+  (when (and circe-server-process
+             (process-live-p circe-server-process))
+    (delete-process circe-server-process)
+    (setq circe-server-process nil))
+  (circe-display-server-message "Connecting...")
+  (dolist (buf (circe-server-chat-buffers))
+    (with-current-buffer buf
+      (circe-display-server-message "Connecting...")))
+  (setq circe-server-process
+        (irc-connect
+         :host circe-server-name
+         :service circe-server-service
+         :tls circe-server-use-tls
+         :ip-family circe-server-ip-family
+         :handler-table (circe-irc-handler-table)
+         :server-buffer (current-buffer)
+         :nick circe-server-nick
+         :nick-alternatives (list (circe--nick-next circe-server-nick)
+                                  (circe--nick-next
+                                   (circe--nick-next circe-server-nick)))
+         :user circe-server-user
+         :mode 8
+         :realname circe-server-realname
+         :pass (if (functionp circe-server-pass)
+                   (funcall circe-server-pass circe-server-name)
+                 circe-server-pass)
+         :cap-req (append (when (and circe-sasl-username
+                                     circe-sasl-password)
+                            '("sasl"))
+                          '("extended-join"))
+         :nickserv-nick circe-nickserv-nick
+         :nickserv-password (if (functionp circe-nickserv-password)
+                                (funcall circe-nickserv-password circe-server-name)
+                              circe-nickserv-password)
+         :nickserv-mask circe-nickserv-mask
+         :nickserv-identify-challenge circe-nickserv-identify-challenge
+         :nickserv-identify-command circe-nickserv-identify-command
+         :nickserv-identify-confirmation
+         circe-nickserv-identify-confirmation
+         :nickserv-ghost-command circe-nickserv-ghost-command
+         :nickserv-ghost-confirmation circe-nickserv-ghost-confirmation
+         :sasl-username circe-sasl-username
+         :sasl-password (if (functionp circe-sasl-password)
+                            (funcall circe-sasl-password
+                                     circe-server-name)
+                          circe-sasl-password)
+         :ctcp-version (format "Circe: Client for IRC in Emacs, version %s"
+                               circe-version)
+         :ctcp-source circe-source-url
+         :ctcp-clientinfo "CLIENTINFO PING SOURCE TIME VERSION"
+         :auto-join-after-registration
+         (circe--auto-join-list :immediate)
+         :auto-join-after-host-hiding
+         (circe--auto-join-list :after-cloak)
+         :auto-join-after-nick-acquisition
+         (circe--auto-join-list :after-nick)
+         :auto-join-after-nickserv-identification
+         (circe--auto-join-list :after-auth))))
 
 (defun circe-reconnect-all ()
   "Reconnect all Circe connections."
@@ -1765,7 +1777,7 @@ server's chat buffers."
                     "Really kill all buffers of this server? (if not, try `circe-reconnect') "
                   "Really kill the IRC connection? (if not, try `circe-reconnect') ")))
       (error "Buffer not killed as per user request")))
-  (setq circe-server-quitting-p t)
+  (setq circe-server-inhibit-auto-reconnect-p t)
   (ignore-errors
     (irc-send-QUIT circe-server-process circe-default-quit-message))
   (ignore-errors
@@ -2217,10 +2229,7 @@ Do not use this directly. Instead, call `circe-irc-handler-table'.")
       (with-current-buffer buf
         (circe-chat-disconnected)))
 
-    (when (not circe-server-quitting-p)
-      (circe-reconnect))
-
-    (setq circe-server-quitting-p nil)))
+    (circe-reconnect)))
 
 (defun circe--irc-display-event (conn event &optional sender &rest args)
   "Display an IRC message.
