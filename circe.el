@@ -3101,7 +3101,7 @@ IRC servers."
   (with-current-buffer (circe-server-get-or-create-chat-buffer
                         channel 'circe-channel-mode)
     (let* ((channel-obj (irc-connection-channel (circe-server-process)
-                                                channel-name))
+                                                channel))
            (old-topic (when channel
                         (irc-channel-last-topic channel-obj))))
       (circe-display 'circe-format-server-topic
