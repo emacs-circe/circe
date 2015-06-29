@@ -343,11 +343,13 @@ This is usually called via `window-configuration-changed-hook'."
   (interactive)
   (dolist (buffer-name tracking-buffers)
     (let ((buffer (get-buffer buffer-name)))
-      (when (or (not buffer)
-                (get-buffer-window buffer
-                                   tracking-frame-behavior))
-        (tracking-remove-buffer buffer))))
-  (setq tracking-mode-line-buffers (tracking-status)))
+      (cond
+       ((not buffer)
+        (setq tracking-buffers (delete buffer-name tracking-buffers))
+        (setq tracking-mode-line-buffers (tracking-status))
+        (sit-for 0))
+       ((get-buffer-window buffer tracking-frame-behavior)
+        (tracking-remove-buffer buffer))))))
 
 ;;; Helper functions
 (defun tracking-shorten (buffers)
