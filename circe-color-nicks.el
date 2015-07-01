@@ -243,8 +243,8 @@ be mutated."
 
 (defun circe-nick-color-nick-list ()
   "Return list of all nicks that have a color assigned to them.
-Own nick is excluded."
   (let (nicks)
+Own and blacklisted nicks are excluded."
     (maphash
      (lambda (nick color)
        (when (and (not (circe-server-my-nick-p nick))
