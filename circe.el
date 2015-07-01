@@ -1081,8 +1081,7 @@ See `circe-server-max-reconnect-attempts'.")
 Do not use this directly, use `circe-reconnect'"
   (when (and circe-server-process
              (process-live-p circe-server-process))
-    (delete-process circe-server-process)
-    (setq circe-server-process nil))
+    (delete-process circe-server-process))
   (circe-display-server-message "Connecting...")
   (dolist (buf (circe-server-chat-buffers))
     (with-current-buffer buf
@@ -1657,9 +1656,9 @@ See `minibuffer-completion-table' for details."
 
 (defun circe--completion-sort (collection)
   "Sort the COLLECTION by channel activity for nicks."
-  (let* ((channel (when circe-chat-target
-                    (irc-connection-channel (circe-server-process)
-                                            circe-chat-target)))
+  (let* ((proc (circe-server-process))
+         (channel (when (and circe-chat-target proc)
+                    (irc-connection-channel proc circe-chat-target)))
          (decorated (mapcar (lambda (entry)
                               (let* ((nick (circe--completion-clean-nick
                                             entry))
@@ -1803,14 +1802,15 @@ server's chat buffers."
 
 (defun circe-server-my-nick-p (nick)
   "Return non-nil when NICK is our current nick."
-  (irc-current-nick-p (circe-server-process) nick))
+  (let ((proc (circe-server-process)))
+    (when proc
+      (irc-current-nick-p proc nick))))
 
 (defun circe-server-nick ()
   "Return our current nick."
   (let ((proc (circe-server-process)))
-    (if proc
-        (irc-current-nick proc)
-      nil)))
+    (when proc
+      (irc-current-nick proc))))
 
 (defun circe-server-last-active-buffer ()
   "Return the last active buffer of this server."
