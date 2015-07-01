@@ -1051,8 +1051,8 @@ See `circe-network-options' for a list of common options."
             (circe-display-server-message
              (format "Unknown variable %s, re-check your configuration."
                      var))))
-        (circe-reconnect)
-        (switch-to-buffer server-buffer)))))
+        (circe-reconnect))
+      (pop-to-buffer-same-window server-buffer))))
 
 (defvar circe-server-reconnect-attempts 0
   "The number of reconnect attempts that Circe has done so far.
