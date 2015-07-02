@@ -377,13 +377,6 @@ server."
   :type 'boolean
   :group 'circe)
 
-(defcustom circe-receive-message-functions nil
-  "Functions called when a message from the IRC server arrives.
-Each function is called with 5 arguments: NICK, USER, HOST,
-COMMAND, and ARGS."
-  :type 'hook
-  :group 'circe)
-
 (defcustom circe-server-connected-hook nil
   "Hook run when we successfully connected to a server.
 This is run from a 001 (RPL_WELCOME) message handler."
