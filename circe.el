@@ -305,8 +305,9 @@ can be displayed using \\[lui-toggle-ignored]."
 
 (defcustom circe-ignore-functions nil
   "A list of functions to check whether we should ignore a message.
-These functions get five arguments: NICK, USER, HOST, COMMAND, and ARGS.
-If one of them returns a non-nil value, the message is ignored."
+
+These functions get five arguments: NICK, USERHOST, and BODY. If
+one of them returns a non-nil value, the message is ignored."
   :type 'hook
   :group 'circe)
 
@@ -2296,9 +2297,11 @@ arguments."
 
 A handler is either a function or a list.
 
-A function gets called in the server buffer with five arguments,
-NICK, USER, HOST, COMMAND and ARGS, and is expected to display
-this message however it wants.
+A function gets called in the server buffer with at least three
+arguments, but possibly more. There's at least NICK and USERHOST
+of the sender, which can be nil, and COMMAND, which is the event
+which triggered this. Further arguments are arguments to the
+event.
 
 Alternatively, the handler can be a list of two elements:
 
@@ -2859,10 +2862,7 @@ Arguments are either of the two:
 (circe-set-display-handler "irc.ctcp.TIME" 'circe-display-ctcp)
 (circe-set-display-handler "irc.ctcp.VERSION" 'circe-display-ctcp)
 (defun circe-display-ctcp (nick userhost command target text)
-  "Show a CTCP request that does not require special handling.
-
-NICK, USER, and HOST are the originator of COMMAND which had ARGS
-as arguments."
+  "Show a CTCP request that does not require special handling."
   (with-current-buffer (circe-server-last-active-buffer)
     (circe-display 'circe-format-server-ctcp
                    :nick nick
