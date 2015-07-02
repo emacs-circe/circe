@@ -37,7 +37,7 @@
 (require 'circe)
 
 ;;; User variables
-;;;
+
 (defgroup circe-lagmon nil
   "Lag Monitor for Circe"
   :prefix "circe-lagmon-"
@@ -141,7 +141,7 @@ send a request if it's time for that. See
                 circe-lagmon-check-interval)))
       (irc-send-raw (circe-server-process)
                     (format "PRIVMSG %s :\C-aLAGMON %s\C-a"
-                            (circe-server-nick) now)
+                            (circe-nick) now)
                     :nowait)
       (setq circe-lagmon-last-send-time now
             circe-lagmon-last-receive-time nil))

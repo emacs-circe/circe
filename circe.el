@@ -150,18 +150,17 @@ Common options:
   :nick - The nick name to use (defaults to `circe-default-nick')
   :user - The user name to use (defaults to `circe-default-user')
   :realname - The real name to use (defaults to `circe-default-realname')
-  :channels - A plist of channels to join
-              (see `circe-server-auto-join-channels').
+  :channels - A plist of channels to join (see `circe-channels').
   :server-buffer-name - Format to be used for the server buffer name
                         (see `circe-server-buffer-name')
 
   :host - The host name of the server to connect to.
-  :service - The service name or port for the server.
+  :port - The port or service name for the server.
   :tls - A boolean indicating as to whether to use TLS or
          not (defaults to nil). If you set this, you'll likely
-         have to set :service as well.
-  :family - Option to enforce a specific IP version
-            (defaults to `circe-default-ip-family')
+         have to set :port as well.
+  :ip-family - Option to enforce a specific IP version
+               (defaults to `circe-default-ip-family')
 
   :nickserv-nick - The nick to authenticate with to nickserv, if configured.
                    (defaults to the value of :nick)
@@ -173,7 +172,7 @@ Common options:
   :type '(alist :key-type string :value-type plist)
   :group 'circe)
 
-(defvar circe-networks
+(defvar circe-network-defaults
   '(("Freenode" :host "irc.freenode.net" :port (6667 . 6697)
      :nickserv-mask "^NickServ!NickServ@services\\.$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
@@ -401,8 +400,7 @@ Possible options:
 :after-nick - After we regained our preferred nick. See
               `circe-nickserv-ghost-style'.
 
-
-See `circe-server-auto-join-channels' for more details."
+See `circe-channels' for more details."
   :type '(choice (const :tag "Immediately" :immediate)
                  (const :tag "After Authentication" :after-auth)
                  (const :tag "After Cloaking" :after-cloak)
@@ -552,15 +550,15 @@ The following format arguments are available:
   :type 'string
   :group 'circe-format)
 
-(defcustom circe-server-buffer-name "{host}:{service}"
+(defcustom circe-server-buffer-name "{host}:{port}"
   "The format for the server buffer name.
 
 The following format arguments are available:
 
   network  - The name of the network
   host     - The host name of the server
-  service  - The service or port number
-  port     - Alias for service"
+  port     - The port number or service name
+  service  - Alias for port"
   :type 'string
   :group 'circe-format)
 
@@ -797,39 +795,39 @@ The following format arguments are available:
 (defvar circe-source-url "https://github.com/jorgenschaefer/circe"
   "URL to Circe's source repository")
 
-(defvar circe-server-name nil
+(defvar circe-host nil
   "The name of the server we're currently connected to.")
-(make-variable-buffer-local 'circe-server-name)
+(make-variable-buffer-local 'circe-host)
 
-(defvar circe-server-service nil
-  "The service name or port of the server we're currently connected to.")
-(make-variable-buffer-local 'circe-server-service)
+(defvar circe-port nil
+  "The port number or service name of the server.")
+(make-variable-buffer-local 'circe-host)
 
-(defvar circe-server-network nil
+(defvar circe-network nil
   "The network name of the server we're currently connected to.")
-(make-variable-buffer-local 'circe-server-network)
+(make-variable-buffer-local 'circe-network)
 
-(defvar circe-server-ip-family nil
+(defvar circe-ip-family nil
   "The IP family in use.
 See `make-network-process' and :family for valid values.")
-(make-variable-buffer-local 'circe-server-ip-family)
+(make-variable-buffer-local 'circe-ip-family)
 
-(defvar circe-server-nick nil
+(defvar circe-nick nil
   "Our current nick.")
-(make-variable-buffer-local 'circe-server-nick)
+(make-variable-buffer-local 'circe-nick)
 
-(defvar circe-server-user nil
+(defvar circe-user nil
   "The current user name.")
-(make-variable-buffer-local 'circe-server-user)
+(make-variable-buffer-local 'circe-user)
 
-(defvar circe-server-realname nil
+(defvar circe-realname nil
   "The current real name.")
-(make-variable-buffer-local 'circe-server-realname)
+(make-variable-buffer-local 'circe-realname)
 
 (defvar circe-server-pass nil
   "The password for the current server or a function to recall it.
 
-If a function is set it will be called with the value of `circe-server-name'.")
+If a function is set it will be called with the value of `circe-host'.")
 (make-variable-buffer-local 'circe-server-pass)
 
 (defvar circe-sasl-username nil
@@ -840,12 +838,12 @@ If a function is set it will be called with the value of `circe-server-name'.")
   "The password for SASL authentication.
 
 If a function is set it will be called with the value of
-`circe-server-name'.")
+`circe-host'.")
 (make-variable-buffer-local 'circe-sasl-password)
 
-(defvar circe-server-use-tls nil
+(defvar circe-use-tls nil
   "If non-nil, use `open-tls-stream' to connect to the server.")
-(make-variable-buffer-local 'circe-server-use-tls)
+(make-variable-buffer-local 'circe-use-tls)
 
 (defvar circe-server-process nil
   "The process of the server connection.")
@@ -941,7 +939,7 @@ Do not set this variable directly. Use `circe-network-options' or
 pass an argument to the `circe' function for this.")
 (make-variable-buffer-local 'circe-nickserv-password)
 
-(defvar circe-server-auto-join-channels nil
+(defvar circe-channels nil
   "The default channels to join on this server.
 
 Don't set this variable by hand, use `circe-network-options'.
@@ -966,7 +964,7 @@ The default is set in `circe-server-auto-join-default-type'.
 A keyword in the first position of the channels list overrides
 `circe-server-auto-join-default-type' for re-joining manually
 joined channels.")
-(make-variable-buffer-local 'circe-server-auto-join-channels)
+(make-variable-buffer-local 'circe-channels)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Editor Commands ;;;
@@ -996,63 +994,113 @@ joined channels.")
                    0 -1)))))
 
 ;;;###autoload
-(defun circe (network-or-server &rest options)
+(defun circe (network-or-server &rest server-options)
   "Connect to IRC.
 
 Connect to the given network specified by NETWORK-OR-SERVER.
 
 When this function is called, it collects options from the
-OPTIONS argument, the user variable `circe-network-options', and
-the defaults found in `circe-networks', in this order.
+SERVER-OPTIONS argument, the user variable
+`circe-network-options', and the defaults found in
+`circe-network-defaults', in this order.
 
 If NETWORK-OR-SERVER is not found in any of these variables, the
 argument is assumed to be the host name for the server, and all
-relevant settings must be passed via OPTIONS.
+relevant settings must be passed via SERVER-OPTIONS.
 
-All OPTIONS are treated as variables by getting the string
+All SERVER-OPTIONS are treated as variables by getting the string
 \"circe-\" prepended to their name. This variable is then set
 locally in the server buffer.
 
 See `circe-network-options' for a list of common options."
   (interactive (list (circe--read-network)))
-  (let ((variables (circe--parse-options network-or-server options))
-        host service)
-    (setq host (gethash 'circe-server-name variables)
-          service (gethash 'circe-server-service variables))
-    (when (not service)
-      (if (called-interactively-p 'any)
-          (let* ((input (read-from-minibuffer "Port: " "6667"))
-                 (port (string-to-number input)))
-            (setq service (if (= port 0)
-                              input
-                            port)))
-        (setq service 6667))
-      (puthash 'circe-server-service service variables))
-    (let* ((buffer-name-format (or (gethash 'circe-server-buffer-name
-                                            variables)
-                                   circe-server-buffer-name))
-           (buffer-name (lui-format buffer-name-format
-                                    :network network-or-server
-                                    :host host
-                                    :service service
-                                    :port service))
-           (server-buffer (generate-new-buffer buffer-name)))
-      (with-current-buffer server-buffer
-        (circe-server-mode)
-        (let ((unknown-variables nil))
-          (maphash (lambda (variable value)
-                     (if (not (boundp variable))
-                         (setq unknown-variables (cons variable
-                                                       unknown-variables))
-                       (set (make-local-variable variable)
-                            value)))
-                   variables)
-          (dolist (var unknown-variables)
-            (circe-display-server-message
-             (format "Unknown variable %s, re-check your configuration."
-                     var))))
-        (circe-reconnect))
-      (pop-to-buffer-same-window server-buffer))))
+  (let* ((options (circe--server-get-network-options network-or-server
+                                                     server-options))
+         (buffer (circe--server-generate-buffer options)))
+    (with-current-buffer buffer
+      (circe-server-mode)
+      (circe--server-set-variables options)
+      (circe-reconnect))
+    (pop-to-buffer-same-window buffer)))
+
+(defun circe--read-network ()
+  "Read a host or network name with completion.
+
+This uses `circe-network-defaults' and `circe-network-options' for
+network names."
+  (let ((default-network (if (null circe-network-options)
+                             (caar circe-network-defaults)
+                           (caar circe-network-options)))
+        (networks nil)
+        (completion-ignore-case t))
+    (dolist (network-spec (append circe-network-options
+                                  circe-network-defaults))
+      (push (car network-spec) networks))
+    (completing-read "Network or host: "
+                     (sort networks 'string-lessp)
+                     nil nil nil nil
+                     default-network)))
+
+(defun circe--server-get-network-options (network server-options)
+  "Combine server and network options with network defaults.
+
+See `circe-network-options' and `circe-network-defaults'."
+  (let ((options (mapcar 'circe--translate-option-names
+                         (append server-options
+                                 (cdr (assoc network circe-network-options))
+                                 (cdr (assoc network circe-network-defaults))
+                                 (list :network network)))))
+    (when (not (plist-get options :host))
+      (plist-put options :host network))
+    options))
+
+(defun circe--translate-option-names (option)
+  "Translate option names to make them unique.
+
+Some options have multiple names, mainly for historical reasons.
+Unify them here."
+  (cond
+   ((eq option :service) :port)
+   ((eq option :tls) :use-tls)
+   ((eq option :family) :ip-family)
+   (t option)))
+
+(defun circe--server-generate-buffer (options)
+  "Return the server buffer for the connection described in OPTIONS."
+  (let* ((network (plist-get options :network))
+         (host (plist-get options :host))
+         (port (or (plist-get options :port)
+                   (read-number "Port: " 6667)))
+         (buffer-name (lui-format (or (plist-get options :server-buffer-name)
+                                      circe-server-buffer-name)
+                                  :network network
+                                  :host host
+                                  :port port
+                                  :service port)))
+    (generate-new-buffer buffer-name)))
+
+(defun circe--server-set-variables (options)
+  "Set buffer-local variables described in OPTIONS.
+
+OPTIONS is a plist as passed to `circe'. All options therein are
+set as buffer-local variables. Only the first occurrence of each
+variable is set."
+  (setq circe-nick circe-default-nick
+        circe-user circe-default-user
+        circe-realname circe-default-realname
+        circe-ip-family circe-default-ip-family)
+  (let ((done nil)
+        (todo options))
+    (while todo
+      (when (not (memq (car todo) done))
+        (push (car todo) done)
+        (let ((var (intern (format "circe-%s"
+                                   (substring (symbol-name (car todo)) 1))))
+              (val (cadr todo)))
+          (if (boundp var)
+              (set (make-local-variable var) val)
+            (warn "Unknown option %s, ignored" (car todo)))))
+      (setq todo (cddr todo)))))
 
 (defvar circe-server-reconnect-attempts 0
   "The number of reconnect attempts that Circe has done so far.
@@ -1088,21 +1136,21 @@ Do not use this directly, use `circe-reconnect'"
       (circe-display-server-message "Connecting...")))
   (setq circe-server-process
         (irc-connect
-         :host circe-server-name
-         :service circe-server-service
-         :tls circe-server-use-tls
-         :ip-family circe-server-ip-family
+         :host circe-host
+         :service circe-port
+         :tls circe-use-tls
+         :ip-family circe-ip-family
          :handler-table (circe-irc-handler-table)
          :server-buffer (current-buffer)
-         :nick circe-server-nick
-         :nick-alternatives (list (circe--nick-next circe-server-nick)
+         :nick circe-nick
+         :nick-alternatives (list (circe--nick-next circe-nick)
                                   (circe--nick-next
-                                   (circe--nick-next circe-server-nick)))
-         :user circe-server-user
+                                   (circe--nick-next circe-nick)))
+         :user circe-user
          :mode 8
-         :realname circe-server-realname
+         :realname circe-realname
          :pass (if (functionp circe-server-pass)
-                   (funcall circe-server-pass circe-server-name)
+                   (funcall circe-server-pass circe-host)
                  circe-server-pass)
          :cap-req (append (when (and circe-sasl-username
                                      circe-sasl-password)
@@ -1110,7 +1158,7 @@ Do not use this directly, use `circe-reconnect'"
                           '("extended-join"))
          :nickserv-nick circe-nickserv-nick
          :nickserv-password (if (functionp circe-nickserv-password)
-                                (funcall circe-nickserv-password circe-server-name)
+                                (funcall circe-nickserv-password circe-host)
                               circe-nickserv-password)
          :nickserv-mask circe-nickserv-mask
          :nickserv-identify-challenge circe-nickserv-identify-challenge
@@ -1122,7 +1170,7 @@ Do not use this directly, use `circe-reconnect'"
          :sasl-username circe-sasl-username
          :sasl-password (if (functionp circe-sasl-password)
                             (funcall circe-sasl-password
-                                     circe-server-name)
+                                     circe-host)
                           circe-sasl-password)
          :ctcp-version (format "Circe: Client for IRC in Emacs, version %s"
                                circe-version)
@@ -1146,104 +1194,11 @@ Do not use this directly, use `circe-reconnect'"
           (call-interactively 'circe-reconnect)
         (circe-reconnect)))))
 
-(defun circe--read-network ()
-  "Read a host or network name with completion.
-
-This uses `circe-networks' and `circe-network-options' for
-network names."
-  (let ((default-network (if (null circe-network-options)
-                             (caar circe-networks)
-                           (caar circe-network-options)))
-        (networks nil)
-        (completion-ignore-case t))
-    (dolist (network-spec (append circe-network-options
-                                  circe-networks))
-      (push (car network-spec) networks))
-    (completing-read "Network or host: "
-                     (sort networks 'string-lessp)
-                     nil nil nil nil
-                     default-network)))
-
-(defun circe--parse-options (network-or-server options)
-  "Turn the arguments to `circe' into hash mapping variable names to values.
-
-NETWORK-OR-SERVER is a string selection a network name. If it's
-not found as a network name, it's assumed to be the name of a
-server.
-
-OPTIONS is a property list with keyword options. See
-`circe-network-options' for a list and further explanation."
-  (let ((options (append options
-                         (cdr (assoc-string network-or-server
-                                            circe-network-options
-                                            t))
-                         (cdr (assoc-string network-or-server
-                                            circe-networks
-                                            t))))
-        (variables (make-hash-table :test 'eq))
-        (not-in-hash (make-symbol "not-in-hash/uninterned")))
-    (while options
-      (when (not (keywordp (car options)))
-        (error "Bad options to `circe', expected plist with keywords"))
-      (let ((keyword (car options))
-            (value (cadr options))
-            (variable nil))
-        (cond
-         ((eq keyword :host)
-          (setq variable 'circe-server-name))
-         ((memq keyword '(:service :port))
-          (setq variable 'circe-server-service))
-         ((memq keyword '(:tls :use-tls))
-          (setq variable 'circe-server-use-tls))
-         ((eq keyword :family)
-          (setq variable 'circe-server-ip-family))
-         ((eq keyword :channels)
-          (setq variable 'circe-server-auto-join-channels))
-         ((memq keyword '(:pass :nick :user :realname :network))
-          (setq variable (intern (concat "circe-server-"
-                                         (substring (symbol-name keyword)
-                                                    1)))))
-         (t
-          (setq variable (intern (concat "circe-"
-                                         (substring (symbol-name keyword)
-                                                    1))))))
-        (when (eq not-in-hash (gethash variable variables not-in-hash))
-          (puthash variable value variables)))
-      (setq options (cddr options)))
-    ;; Host and network defaults from the main argument
-    (when (not (gethash 'circe-server-network variables))
-      (puthash 'circe-server-network network-or-server variables))
-    (when (not (gethash 'circe-server-name variables))
-      (puthash 'circe-server-name network-or-server variables))
-    ;; Other defaults from global variables
-    (when (not (gethash 'circe-server-nick variables))
-      (puthash 'circe-server-nick circe-default-nick variables))
-    (when (not (gethash 'circe-server-user variables))
-      (puthash 'circe-server-user circe-default-user variables))
-    (when (not (gethash 'circe-server-realname variables))
-      (puthash 'circe-server-realname circe-default-realname variables))
-    (when (not (gethash 'circe-server-ip-family variables))
-      (puthash 'circe-server-ip-family circe-default-ip-family variables))
-    ;; Default values that depend on other variables
-    (let ((service (gethash 'circe-server-service variables))
-          (use-tls (gethash 'circe-server-use-tls variables)))
-      (when (consp service)
-        (puthash 'circe-server-service
-                 (if use-tls
-                     (cdr service)
-                   (car service))
-                 variables)))
-    (when (not (gethash 'circe-nickserv-nick variables))
-      (puthash 'circe-nickserv-nick
-               (gethash 'circe-server-nick variables)
-               variables))
-    variables))
-
 (defun circe--auto-join-list (type)
   "Return the list of channels to join for type TYPE."
   (let ((result nil)
         (current-type circe-server-auto-join-default-type))
-    (dolist (channel circe-server-auto-join-channels)
+    (dolist (channel circe-channels)
       (cond
        ((keywordp channel)
         (setq current-type channel))
@@ -1353,7 +1308,7 @@ It is always possible to use the mynick or target formats."
                    'circe-server-face)
                   ((string-match "\\<self\\>" name)
                    'circe-my-message-face)))
-           (keywords (append `(:mynick ,(circe-server-nick)
+           (keywords (append `(:mynick ,(circe-nick)
                                        :chattarget ,circe-chat-target)
                              (circe--display-add-nick-property
                               (if (and (not (null keywords))
@@ -1455,7 +1410,7 @@ This is used in `lui-pre-output-hook'."
   (goto-char (or (text-property-any (point-min) (point-max)
                                     'lui-format-argument 'body)
                  (point-min)))
-  (let* ((nick (circe-server-nick))
+  (let* ((nick (circe-nick))
          (nicks (append (and nick (list nick))
                         circe-extra-nicks)))
     (when nicks
@@ -1717,7 +1672,7 @@ See `minibuffer-completion-table' for details."
                                       completions))))))
        ;; In a channel buffer, only complete nicks in this channel
        ((eq major-mode 'circe-channel-mode)
-        (setq completions (append (delete (concat (circe-server-nick)
+        (setq completions (append (delete (concat (circe-nick)
                                                   nick-suffix)
                                           (mapcar (lambda (nick)
                                                     (concat nick nick-suffix))
@@ -1806,7 +1761,7 @@ server's chat buffers."
     (when proc
       (irc-current-nick-p proc nick))))
 
-(defun circe-server-nick ()
+(defun circe-nick ()
   "Return our current nick."
   (let ((proc (circe-server-process)))
     (when proc
@@ -1962,7 +1917,7 @@ SERVER-BUFFER is the server buffer of this chat buffer."
   (setq circe-server-buffer (car circe-chat-calling-server-buffer-and-target)
         circe-chat-target (cdr circe-chat-calling-server-buffer-and-target))
   (let ((network (with-circe-server-buffer
-                   circe-server-network)))
+                   circe-network)))
     (make-local-variable 'mode-line-buffer-identification)
     (setq mode-line-buffer-identification
           (list (format "%%b@%-8s" network)))
@@ -2509,7 +2464,7 @@ consisting of two words, the nick and the channel."
       (circe-display-server-message "No target for current buffer")
     (circe-display 'circe-format-self-action
                    :body line
-                   :nick (circe-server-nick))
+                   :nick (circe-nick))
     (irc-send-ctcp (circe-server-process)
                    circe-chat-target
                    "ACTION" line)))
@@ -2620,7 +2575,7 @@ message separated by a space."
     (dolist (line (circe--split-line line))
       (circe-display 'circe-format-self-say
                      :body line
-                     :nick (circe-server-nick))
+                     :nick (circe-nick))
       (irc-send-PRIVMSG (circe-server-process)
                         circe-chat-target
                         ;; Some IRC servers give an error if there is
@@ -2709,7 +2664,7 @@ Arguments are IGNORED."
 Arguments are IGNORED."
   (interactive)
   (irc-send-WHOIS (circe-server-process)
-                  (circe-server-nick)))
+                  (circe-nick)))
 
 (defun circe-command-WHOIS (whom)
   "Request WHOIS information about WHOM."
@@ -3473,6 +3428,43 @@ regular expression."
                    (nreverse result)
                    " ")
       "a moment")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Deprecated functions and variables
+
+(define-obsolete-function-alias 'circe-server-nick 'circe-nick
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-networks 'circe-network-defaults
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-name 'circe-host
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-service 'circe-port
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-network 'circe-network
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-ip-family 'circe-ip-family
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-nick 'circe-nick
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-user 'circe-user
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-realname 'circe-realname
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-use-tls 'circe-use-tls
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-auto-join-channels
+  'circe-channels
+  "Circe 2.0")
 
 (provide 'circe)
 ;;; circe.el ends here

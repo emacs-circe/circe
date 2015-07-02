@@ -88,7 +88,7 @@
     (irc-send-raw (circe-server-process)
                   (format "MODE %s -o %s"
                           circe-chat-target
-                          (circe-server-nick)))))
+                          (circe-nick)))))
 
 ;; For KICKBAN (requested by Riastradh), we'd need a callback on a
 ;; USERHOST command.
