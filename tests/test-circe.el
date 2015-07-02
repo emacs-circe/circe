@@ -69,7 +69,7 @@
                             "test" 'circe-channel-mode))
       (set-buffer channel-buffer)
       (setq circe-channel-killed-confirmation nil)
-      (spy-on 'circe-server-nick :and-return-value "mynick")
+      (spy-on 'circe-nick :and-return-value "mynick")
       (spy-on 'circe-channel-nicks :and-return-value '("testnick"))
       (spy-on 'irc-connection-channel))
 
