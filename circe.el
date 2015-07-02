@@ -1052,6 +1052,12 @@ See `circe-network-options' and `circe-network-defaults'."
                                  (list :network network)))))
     (when (not (plist-get options :host))
       (plist-put options :host network))
+    (let ((port (plist-get options :port))
+          (use-tls (plist-get options :use-tls)))
+      (when (consp port)
+        (if use-tls
+            (plist-put options :port (cdr port))
+          (plist-put options :port (car port)))))
     options))
 
 (defun circe--translate-option-names (option)
