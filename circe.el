@@ -3000,15 +3000,15 @@ IRC servers."
                      :server nick
                      :body text)))
    ((circe-server-my-nick-p target)
-    (with-current-buffer (or (circe-query-auto-query-buffer nick)
+    (with-current-buffer (or (circe-server-get-chat-buffer nick)
                              (circe-server-last-active-buffer))
       (circe-display 'circe-format-notice
                      :nick nick
                      :userhost (or userhost "server")
                      :body text)))
    (t
-    (with-current-buffer (circe-server-get-or-create-chat-buffer
-                          target 'circe-channel-mode)
+    (with-current-buffer (or (circe-server-get-chat-buffer target)
+                             (circe-server-last-active-buffer))
       (circe-display 'circe-format-notice
                      :nick nick
                      :userhost (or userhost "server")
