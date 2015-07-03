@@ -818,11 +818,11 @@ See `make-network-process' and :family for valid values.")
   "The current real name.")
 (make-variable-buffer-local 'circe-realname)
 
-(defvar circe-server-pass nil
+(defvar circe-pass nil
   "The password for the current server or a function to recall it.
 
 If a function is set it will be called with the value of `circe-host'.")
-(make-variable-buffer-local 'circe-server-pass)
+(make-variable-buffer-local 'circe-pass)
 
 (defvar circe-sasl-username nil
   "The username for SASL authentication.")
@@ -1149,9 +1149,9 @@ Do not use this directly, use `circe-reconnect'"
          :user circe-user
          :mode 8
          :realname circe-realname
-         :pass (if (functionp circe-server-pass)
-                   (funcall circe-server-pass circe-host)
-                 circe-server-pass)
+         :pass (if (functionp circe-pass)
+                   (funcall circe-pass circe-host)
+                 circe-pass)
          :cap-req (append (when (and circe-sasl-username
                                      circe-sasl-password)
                             '("sasl"))
@@ -3453,6 +3453,9 @@ regular expression."
   "Circe 2.0")
 
 (define-obsolete-variable-alias 'circe-server-user 'circe-user
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-pass 'circe-pass
   "Circe 2.0")
 
 (define-obsolete-variable-alias 'circe-server-realname 'circe-realname
