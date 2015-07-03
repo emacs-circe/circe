@@ -1158,7 +1158,8 @@ Do not use this directly, use `circe-reconnect'"
                                      circe-sasl-password)
                             '("sasl"))
                           '("extended-join"))
-         :nickserv-nick circe-nickserv-nick
+         :nickserv-nick (or circe-nickserv-nick
+                            circe-nick)
          :nickserv-password (if (functionp circe-nickserv-password)
                                 (funcall circe-nickserv-password circe-host)
                               circe-nickserv-password)
