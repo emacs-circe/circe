@@ -146,19 +146,21 @@ This alist maps network names to respective options.
 
 Common options:
 
-  :pass - The IRC server password to use for this network or a function to fetch it.
+  :pass - The IRC server password to use for this network, or a
+          function to fetch it.
   :nick - The nick name to use (defaults to `circe-default-nick')
   :user - The user name to use (defaults to `circe-default-user')
   :realname - The real name to use (defaults to `circe-default-realname')
+
   :channels - A plist of channels to join (see `circe-channels').
   :server-buffer-name - Format to be used for the server buffer name
                         (see `circe-server-buffer-name')
 
   :host - The host name of the server to connect to.
   :port - The port or service name for the server.
-  :tls - A boolean indicating as to whether to use TLS or
-         not (defaults to nil). If you set this, you'll likely
-         have to set :port as well.
+  :use-tls - A boolean indicating as to whether to use TLS or
+             not (defaults to nil). If you set this, you'll likely
+             have to set :port as well.
   :ip-family - Option to enforce a specific IP version
                (defaults to `circe-default-ip-family')
 
