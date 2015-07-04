@@ -2558,7 +2558,7 @@ message separated by a space."
   "Quit the current server giving REASON."
   (interactive "sReason: ")
   (with-circe-server-buffer
-    (setq circe-server-quitting-p t)
+    (setq circe-server-inhibit-auto-reconnect-p t)
     (irc-send-QUIT (circe-server-process)
                    (if (equal "" reason)
                        circe-default-quit-message
