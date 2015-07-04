@@ -1,6 +1,6 @@
 ;;; circe-chanop.el --- Provide common channel operator commands
 
-;; Copyright (C) 2006  Jorgen Schaefer
+;; Copyright (C) 2006, 2015  Jorgen Schaefer
 
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 
@@ -48,12 +48,12 @@
     (irc-send-raw (circe-server-process)
                   (format "MODE %s %s" circe-chat-target mode)))
    (t
-    (circe-server-message "Not in a channel buffer."))))
+    (circe-display-server-message "Not in a channel buffer."))))
 
 (defun circe-command-BANS (&optional ignored)
   "Show channel bans"
   (if (not circe-chat-target)
-      (circe-server-message "No target for current buffer")
+      (circe-display-server-message "No target for current buffer")
     (irc-send-raw (circe-server-process)
                   (format "MODE %s +b" circe-chat-target))))
 
@@ -61,7 +61,7 @@
   "Kick WHO from the current channel with optional REASON."
   (interactive "sKick who: \nsWhy: ")
   (if (not (eq major-mode 'circe-channel-mode))
-      (circe-server-message "Not in a channel buffer.")
+      (circe-display-server-message "Not in a channel buffer.")
     (when (not reason)
       (if (string-match "^\\([^ ]*\\) +\\(.+\\)" nick)
           (setq reason (match-string 2 nick)
@@ -75,7 +75,7 @@
   "Ask chanserv for op on the current channel."
   (interactive)
   (if (not (eq major-mode 'circe-channel-mode))
-      (circe-server-message "Not in a channel buffer.")
+      (circe-display-server-message "Not in a channel buffer.")
     (irc-send-PRIVMSG (circe-server-process)
                       "chanserv"
                       (format "op %s" circe-chat-target))))
@@ -84,7 +84,7 @@
   "Lose op mode on the current channel."
   (interactive)
   (if (not (eq major-mode 'circe-channel-mode))
-      (circe-server-message "Not in a channel buffer.")
+      (circe-display-server-message "Not in a channel buffer.")
     (irc-send-raw (circe-server-process)
                   (format "MODE %s -o %s"
                           circe-chat-target
