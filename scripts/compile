@@ -9,4 +9,4 @@ cd "$(dirname "$0")/.."
 # that out.
 
 find -name '*.elc' -delete
-cask exec emacs -batch -L . -f batch-byte-compile *.el
+cask exec "${EMACS:-emacs}" -batch -L . -f batch-byte-compile *.el

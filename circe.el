@@ -34,6 +34,8 @@
 (defvar circe-version "1.6"
   "Circe version string.")
 
+(require 'circe-compat)
+
 (require 'ring)
 (require 'timer)
 (require 'lui)
@@ -3382,26 +3384,6 @@ easily."
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Helper Functions ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
-
-(when (not (fboundp 'string-trim))
-  (defun string-trim (string)
-    "Remove leading and trailing whitespace from STRING."
-    (if (string-match "\\` *\\(.*[^[:space:]]\\) *\\'" string)
-        (match-string 1 string)
-      string)))
-
-(when (not (fboundp 'add-face-text-property))
-  (defun add-face-text-property (start end face &optional append object)
-    (while (/= start end)
-      (let* ((next (next-single-property-change start 'face object end))
-             (prev (get-text-property start 'face object))
-             (value (if (listp prev) prev (list prev))))
-        (put-text-property start next 'face
-                           (if append
-                               (append value (list face))
-                             (append (list face) value))
-                           object)
-        (setq start next)))))
 
 (defun circe--list-drop-right (list pattern)
   "Drop elements from the right of LIST that match PATTERN.
