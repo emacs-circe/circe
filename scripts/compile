@@ -8,4 +8,5 @@ cd "$(dirname "$0")/.."
 # the future, it would be nice to have some code that actually filters
 # that out.
 
+find -name '*.elc' -delete
 cask exec emacs -batch -L . -f batch-byte-compile *.el
