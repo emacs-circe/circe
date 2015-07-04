@@ -3,11 +3,6 @@
 set -e
 cd "$(dirname "$0")/.."
 
-# This is mainly useful to get some compiler errors. A lot of them
-# ("unused lexical argument") are useless, but the rest is good. In
-# the future, it would be nice to have some code that actually filters
-# that out.
-
 find -name '*.elc' -delete
 cask exec "${EMACS:-emacs}" -batch \
      -L . \
