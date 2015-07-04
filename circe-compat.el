@@ -44,5 +44,10 @@
                            object)
         (setq start next)))))
 
+(when (not (boundp 'mode-line-misc-info))
+  (defvar mode-line-misc-info nil
+    "Misc info in the mode line.")
+  (add-to-list 'mode-line-format 'mode-line-misc-info t))
+
 (provide 'circe-compat)
 ;;; circe-compat.el ends here

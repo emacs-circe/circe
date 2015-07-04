@@ -766,8 +766,9 @@ make the whole thing invisible."
   "Enable sane parenthesis highlighting in this buffer."
   (set (make-local-variable 'blink-paren-function)
        'lui-blink-paren-function)
-  (set (make-local-variable 'show-paren-data-function)
-       'lui-show-paren-data-function))
+  (when (boundp 'show-paren-data-function)
+    (set (make-local-variable 'show-paren-data-function)
+         'lui-show-paren-data-function)))
 
 (defun lui-blink-paren-function ()
   "Do not blink opening parens outside of the lui input area.
@@ -791,12 +792,13 @@ area, parenthesis highlighting should only happen within the
 input area, not include the rest of the buffer.
 
 This is a suitable value for `show-paren-data-function', which see."
-  (let ((range (show-paren--default)))
-    (if (or (< (point) lui-input-marker)
-            (not (elt range 2))
-            (>= (elt range 2) lui-input-marker))
-        range
-      nil)))
+  (when (fboundp 'show-paren--default)
+    (let ((range (show-paren--default)))
+      (if (or (< (point) lui-input-marker)
+              (not (elt range 2))
+              (>= (elt range 2) lui-input-marker))
+          range
+        nil))))
 
 
 ;;;;;;;;;;;;;;;;

@@ -9,4 +9,7 @@ cd "$(dirname "$0")/.."
 # that out.
 
 find -name '*.elc' -delete
-cask exec "${EMACS:-emacs}" -batch -L . -f batch-byte-compile *.el
+cask exec "${EMACS:-emacs}" -batch \
+     -L . \
+     --eval "(setq byte-compile-warnings '(not cl-functions))" \
+     -f batch-byte-compile $(ls *.el|grep -v -- -pkg.el)
