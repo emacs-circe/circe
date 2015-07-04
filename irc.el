@@ -505,7 +505,7 @@ Connection options set:
   (irc-handler-add table "AUTHENTICATE"
                    #'irc-handle-registration--authenticate))
 
-(defun irc-handle-registration--connected (conn event)
+(defun irc-handle-registration--connected (conn _event)
   (irc-connection-put conn :connection-state 'connected)
   (when (irc-connection-get conn :cap-req)
     (irc-send-CAP conn "LS"))
@@ -518,15 +518,16 @@ Connection options set:
                  (irc-connection-get conn :mode)
                  (irc-connection-get conn :realname)))
 
-(defun irc-handle-registration--disconnected (conn event)
+(defun irc-handle-registration--disconnected (conn _event)
   (irc-connection-put conn :connection-state 'disconnected))
 
-(defun irc-handle-registration--rpl-welcome (conn event sender target
+(defun irc-handle-registration--rpl-welcome (conn _event _sender target
                                                   &rest ignored)
   (irc-connection-put conn :connection-state 'registered)
   (irc-event-emit conn "irc.registered" target))
 
-(defun irc-handle-registration--cap (conn event sender target subcommand arg)
+(defun irc-handle-registration--cap (conn _event _sender _target
+                                          subcommand arg)
   (cond
    ((equal subcommand "LS")
     (let ((supported (split-string arg))
@@ -546,7 +547,7 @@ Connection options set:
    (t
     (message "Unknown CAP response from server: %s %s" subcommand arg))))
 
-(defun irc-handle-registration--authenticate (conn event sender arg)
+(defun irc-handle-registration--authenticate (conn _event _sender arg)
   (if (equal arg "+")
       (let ((username (irc-connection-get conn :sasl-username))
             (password (irc-connection-get conn :sasl-password)))
@@ -570,7 +571,7 @@ Connection options set:
   "Add command handlers to respond to PING requests."
   (irc-handler-add table "PING" #'irc-handle-ping-pong--ping))
 
-(defun irc-handle-ping-pong--ping (conn event sender argument)
+(defun irc-handle-ping-pong--ping (conn _event _sender argument)
   (irc-send-PONG conn argument))
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -580,7 +581,7 @@ Connection options set:
   "Add command handlers to track 005 RPL_ISUPPORT capabilities."
   (irc-handler-add table "005" #'irc-handle-isupport--005))
 
-(defun irc-handle-isupport--005 (conn event sender target &rest args)
+(defun irc-handle-isupport--005 (conn _event _sender _target &rest args)
   (irc-connection-put
    conn :isupport
    (append (irc-connection-get conn :isupport)
@@ -684,8 +685,7 @@ RPL_ISUPPORT setting of PREFIX set by the IRC server for CONN."
   (let ((prefixes (irc-connection-get conn :nick-prefixes)))
     (when (not prefixes)
       (let ((prefix-string (or (irc-isupport conn "PREFIX")
-                               "(qaohv)~&@%+"))
-            prefix)
+                               "(qaohv)~&@%+")))
         (setq prefixes (string-to-list
                         (if (string-match "(.*)\\(.*\\)" prefix-string)
                             (match-string 1 prefix-string)
@@ -714,7 +714,7 @@ Connection options used:
                    #'irc-handle-initial-nick-acquisition--get-initial-nick))
 
 (defun irc-handle-initial-nick-acquisition--get-initial-nick
-    (conn event sender current-nick attempted-nick reason)
+    (conn _event _sender current-nick _attempted-nick _reason)
   (when (equal current-nick "*")
     (let ((alternatives (irc-connection-get conn :nick-alternatives)))
       (if (not alternatives)
@@ -780,7 +780,7 @@ Events emitted:
                    #'irc-handle-ctcp--ctcp-time)
   )
 
-(defun irc-handle-ctcp--privmsg (conn event sender target body)
+(defun irc-handle-ctcp--privmsg (conn _event sender target body)
   (if (string-match "\\`\x01\\([^ ]+\\)\\(?: \\(.*\\)\\)?\x01\\'"
                     body)
       (irc-event-emit conn "irc.ctcp" sender target
@@ -788,14 +788,14 @@ Events emitted:
                       (match-string 2 body))
     (irc-event-emit conn "irc.message" sender target body)))
 
-(defun irc-handle-ctcp--ctcp (conn event sender target verb argument)
+(defun irc-handle-ctcp--ctcp (conn _event sender target verb argument)
   (irc-event-emit conn
                   (format "irc.ctcp.%s" (upcase verb))
                   sender
                   target
                   argument))
 
-(defun irc-handle-ctcp--notice (conn event sender target body)
+(defun irc-handle-ctcp--notice (conn _event sender target body)
   (if (string-match "\\`\x01\\([^ ]+\\)\\(?: \\(.*\\)\\)?\x01\\'"
                     body)
       (irc-event-emit conn "irc.ctcpreply" sender target
@@ -803,14 +803,14 @@ Events emitted:
                       (match-string 2 body))
     (irc-event-emit conn "irc.notice" sender target body)))
 
-(defun irc-handle-ctcp--ctcpreply (conn event sender target verb argument)
+(defun irc-handle-ctcp--ctcpreply (conn _event sender target verb argument)
   (irc-event-emit conn
                   (format "irc.ctcpreply.%s" (upcase verb))
                   sender
                   target
                   argument))
 
-(defun irc-handle-ctcp--ctcp-version (conn event sender target argument)
+(defun irc-handle-ctcp--ctcp-version (conn _event sender _target _argument)
   (let ((version (irc-connection-get conn :ctcp-version)))
     (when version
       (irc-send-ctcpreply conn
@@ -818,7 +818,7 @@ Events emitted:
                           "VERSION"
                           version))))
 
-(defun irc-handle-ctcp--ctcp-clientinfo (conn event sender target argument)
+(defun irc-handle-ctcp--ctcp-clientinfo (conn _event sender _target _argument)
   (let ((clientinfo (irc-connection-get conn :ctcp-clientinfo)))
     (when clientinfo
       (irc-send-ctcpreply conn
@@ -826,7 +826,7 @@ Events emitted:
                           "CLIENTINFO"
                           clientinfo))))
 
-(defun irc-handle-ctcp--ctcp-source (conn event sender target argument)
+(defun irc-handle-ctcp--ctcp-source (conn _event sender _target _argument)
   (let ((source (irc-connection-get conn :ctcp-source)))
     (when source
       (irc-send-ctcpreply conn
@@ -834,14 +834,14 @@ Events emitted:
                           "SOURCE"
                           source))))
 
-(defun irc-handle-ctcp--ctcp-ping (conn event sender target argument)
+(defun irc-handle-ctcp--ctcp-ping (conn _event sender _target argument)
   (when argument
     (irc-send-ctcpreply conn
                         (irc-userstring-nick sender)
                         "PING"
                         argument)))
 
-(defun irc-handle-ctcp--ctcp-time (conn event sender target argument)
+(defun irc-handle-ctcp--ctcp-time (conn _event sender _target _argument)
   (irc-send-ctcpreply conn
                       (irc-userstring-nick sender)
                       "TIME"
@@ -943,7 +943,7 @@ Events emitted:
 (defun irc-connection-channel-list (conn)
   "Return the list of channel object on CONN."
   (let ((channel-list nil))
-    (maphash (lambda (folded-name channel)
+    (maphash (lambda (_folded-name channel)
                (push channel channel-list))
              (irc--connection-channel-table conn))
     channel-list))
@@ -1070,13 +1070,12 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
       (setf (irc-user-folded-nick user) newnick-folded)
       (puthash (irc-user-folded-nick user) user user-table))))
 
-(defun irc-handle-state-tracking--rpl-welcome (conn event sender target
+(defun irc-handle-state-tracking--rpl-welcome (conn _event _sender target
                                                     &rest ignored)
   (irc-connection-put conn :current-nick target))
 
-(defun irc-handle-state-tracking--JOIN (conn event sender target
-                                                        &optional
-                                                        account realname)
+(defun irc-handle-state-tracking--JOIN (conn _event sender target
+                                             &optional _account _realname)
   (let ((nick (irc-userstring-nick sender)))
     (cond
      ((irc-current-nick-p conn nick)
@@ -1088,8 +1087,8 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
             (when user
               (setf (irc-user-join-time user) (float-time))))))))))
 
-(defun irc-handle-state-tracking--PART (conn event sender target
-                                                        &optional reason)
+(defun irc-handle-state-tracking--PART (conn _event sender target
+                                             &optional _reason)
   (let ((nick (irc-userstring-nick sender)))
     (cond
      ((irc-current-nick-p conn nick)
@@ -1099,8 +1098,8 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
         (when channel
           (irc-channel-remove-user channel nick)))))))
 
-(defun irc-handle-state-tracking--KICK (conn event sender target
-                                                        nick &optional reason)
+(defun irc-handle-state-tracking--KICK (conn _event _sender target nick
+                                             &optional _reason)
   (cond
    ((irc-current-nick-p conn nick)
     (irc-connection-remove-channel conn target))
@@ -1109,7 +1108,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
       (when channel
         (irc-channel-remove-user channel nick))))))
 
-(defun irc-handle-state-tracking--QUIT (conn event sender
+(defun irc-handle-state-tracking--QUIT (conn _event sender
                                              &optional reason)
   (let ((nick (irc-userstring-nick sender)))
     (if (irc-current-nick-p conn nick)
@@ -1124,7 +1123,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
                           reason))
         (irc-channel-remove-user channel nick)))))
 
-(defun irc-handle-state-tracking--NICK (conn event sender new-nick)
+(defun irc-handle-state-tracking--NICK (conn _event sender new-nick)
   ;; Update channels
   (let ((nick (irc-userstring-nick sender)))
     (dolist (channel (irc-connection-channel-list conn))
@@ -1133,8 +1132,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
   (when (irc-current-nick-p conn (irc-userstring-nick sender))
     (irc-connection-put conn :current-nick new-nick)))
 
-(defun irc-handle-state-tracking--PRIVMSG (conn event sender
-                                                           target message)
+(defun irc-handle-state-tracking--PRIVMSG (conn _event sender target _message)
   (let ((channel (irc-connection-channel conn target))
         (nick (irc-userstring-nick sender)))
     (when channel
@@ -1143,7 +1141,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
           (setf (irc-user-last-activity-time user) (float-time)))))))
 
 (defun irc-handle-state-tracking--rpl-namreply
-    (conn event sender current-nick channel-type channel-name nicks)
+    (conn _event _sender _current-nick _channel-type channel-name nicks)
   (let ((channel (irc-connection-channel conn channel-name)))
     (when channel
       (setf (irc-channel-receiving-names channel)
@@ -1155,7 +1153,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
                             (split-string nicks)))))))
 
 (defun irc-handle-state-tracking--rpl-endofnames
-    (conn event sender current-nick channel-name description)
+    (conn _event _sender _current-nick channel-name _description)
   (let ((channel (irc-connection-channel conn channel-name)))
     (when channel
       (irc-channel--synchronize-nicks channel
@@ -1176,24 +1174,25 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
                  (irc-channel-remove-user channel
                                           (irc-user-nick user))))
              have)
-    (maphash (lambda (nick-folded nick)
+    (maphash (lambda (_nick-folded nick)
                (irc-channel-add-user channel nick))
              want)))
 
-(defun irc-handle-state-tracking--TOPIC (conn event sender channel new-topic)
+(defun irc-handle-state-tracking--TOPIC (conn _event _sender channel new-topic)
   (let ((channel (irc-connection-channel conn channel)))
     (when channel
       (setf (irc-channel-last-topic channel)
             (irc-channel-topic channel))
       (setf (irc-channel-topic channel) new-topic))))
 
-(defun irc-handle-state-tracking--rpl-notopic (conn event sender current-nick
-                                                    channel no-topic-desc)
+(defun irc-handle-state-tracking--rpl-notopic (conn _event _sender
+                                                    _current-nick channel
+                                                    _no-topic-desc)
   (let ((channel (irc-connection-channel conn channel)))
     (when channel
       (setf (irc-channel-topic channel) nil))))
 
-(defun irc-handle-state-tracking--rpl-topic (conn event sender current-nick
+(defun irc-handle-state-tracking--rpl-topic (conn _event _sender _current-nick
                                                   channel topic)
   (let ((channel (irc-connection-channel conn channel)))
     (when channel
@@ -1246,7 +1245,7 @@ Events emitted:
         (funcall password conn)
       password)))
 
-(defun irc-handle-nickserv--registered (conn event current-nick)
+(defun irc-handle-nickserv--registered (conn _event current-nick)
   (let ((ghost-command (irc-connection-get conn :nickserv-ghost-command))
         (wanted-nick (irc-connection-get conn :nickserv-nick))
         (password (irc-handle-nickserv--password conn)))
@@ -1259,7 +1258,7 @@ Events emitted:
                                 'nick wanted-nick
                                 'password password)))))
 
-(defun irc-handle-nickserv--NOTICE (conn event sender target message)
+(defun irc-handle-nickserv--NOTICE (conn _event sender _target message)
   (let ((nickserv-mask (irc-connection-get conn :nickserv-mask))
         identify-challenge identify-command identify-confirmation
         ghost-confirmation
@@ -1298,7 +1297,7 @@ Events emitted:
         (when nickserv-nick
           (irc-send-NICK conn nickserv-nick)))))))
 
-(defun irc-handle-nickserv--NICK (conn event sender new-nick)
+(defun irc-handle-nickserv--NICK (conn _event _sender new-nick)
   (when (and (irc-connection-get conn :nickserv-regaining-nick)
              (irc-string-equal-p conn new-nick
                                  (irc-connection-get conn :nickserv-nick)))
@@ -1343,21 +1342,21 @@ Connection options used:
   (irc-handler-add table "nickserv.identified"
                    #'irc-handle-auto-join--nickserv-identified))
 
-(defun irc-handle-auto-join--registered (conn event current-nick)
+(defun irc-handle-auto-join--registered (conn _event _current-nick)
   (dolist (channel (irc-connection-get conn :auto-join-after-registration))
     (irc-send-JOIN conn channel)))
 
-(defun irc-handle-auto-join--rpl-hosthidden (conn event sender target host
-                                                  description)
+(defun irc-handle-auto-join--rpl-hosthidden (conn _event _sender _target _host
+                                                  _description)
   (dolist (channel (irc-connection-get conn :auto-join-after-host-hiding))
     (irc-send-JOIN conn channel)))
 
-(defun irc-handle-auto-join--nickserv-regained (conn event)
+(defun irc-handle-auto-join--nickserv-regained (conn _event)
   (dolist (channel (irc-connection-get
                     conn :auto-join-after-nick-acquisition))
     (irc-send-JOIN conn channel)))
 
-(defun irc-handle-auto-join--nickserv-identified (conn event)
+(defun irc-handle-auto-join--nickserv-identified (conn _event)
   (dolist (channel (irc-connection-get
                     conn :auto-join-after-nickserv-identification))
     (irc-send-JOIN conn channel)))

@@ -441,7 +441,7 @@ This is a good value for a buffer-local `change-major-mode-hook'."
   (when (not (y-or-n-p "Really change major mode in a Lui buffer? "))
     (error "User disallowed mode change")))
 
-(defun lui-scroll-window (window display-start)
+(defun lui-scroll-window (window _display-start)
   "Scroll the input line to the bottom of the WINDOW.
 
 DISPLAY-START is passed by the hook `window-scroll-functions' and
@@ -984,7 +984,7 @@ unexpecting user.")
                                         front-sticky t
                                         ))))))
 
-(defun lui-prompt-end-of-line (&optional N)
+(defun lui-prompt-end-of-line (&optional _N)
   "Move past the prompt, and then to the end of the line.
 This uses `end-of-line'.
 
@@ -1088,10 +1088,9 @@ function."
    ((numberp lui-fill-type)
     (let ((right-end (save-excursion
                        (goto-char (point-min))
-                       (let ((beg (point)))
-                         (re-search-forward "\\s-" nil t)
-                         (- (point)
-                            (point-at-bol))))))
+                       (re-search-forward "\\s-" nil t)
+                       (- (point)
+                          (point-at-bol)))))
       (goto-char (point-min))
       (when (< right-end lui-fill-type)
         (insert (make-string (- lui-fill-type
@@ -1220,7 +1219,7 @@ DELETE."
 
 This is meant for the variable `buffer-substring-filters',
 which see for an explanation of the argument BUFFER-STRING."
-  (lui-filter-buffer-time-stamps (lambda (beg end delete)
+  (lui-filter-buffer-time-stamps (lambda (_beg _end _delete)
                                   buffer-string)
                                 nil nil nil))
 

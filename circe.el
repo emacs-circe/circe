@@ -1350,13 +1350,13 @@ It is always possible to use the mynick or target formats."
                 entry)))
             keywords)))
 
-(defun circe--display-ignored-p (format keywords)
+(defun circe--display-ignored-p (_format keywords)
   (let ((nick (plist-get keywords :nick))
         (userhost (plist-get keywords :userhost))
         (body (plist-get keywords :body)))
     (circe--ignored-p nick userhost body)))
 
-(defun circe--display-fool-p (format keywords)
+(defun circe--display-fool-p (_format keywords)
   (let ((nick (plist-get keywords :nick))
         (userhost (plist-get keywords :userhost))
         (body (plist-get keywords :body)))
@@ -1983,11 +1983,10 @@ state."
 ;; Channel mode buffers provide some utility functions to check if a
 ;; given user is idle or not.
 
-(defun circe-channel-user-nick-regain-p (old new)
+(defun circe-channel-user-nick-regain-p (_old new)
   "Return true if a nick change from OLD to NEW constitutes a nick regain.
 
-Currently, this uses only the existence of OLD in the recent
-users, which is a pretty rough heuristic, but it works."
+A nick was regained if the NEW nick was also a recent user."
   (let ((channel (irc-connection-channel (circe-server-process)
                                          circe-chat-target)))
     (when channel
@@ -2014,7 +2013,7 @@ users, which is a pretty rough heuristic, but it works."
                                           circe-chat-target))
          (nicks nil))
     (when channel
-      (maphash (lambda (folded-nick user)
+      (maphash (lambda (_folded-nick user)
                  (push (irc-user-nick user) nicks))
                (irc-channel-users channel)))
     nicks))
@@ -2078,7 +2077,7 @@ users, which is a pretty rough heuristic, but it works."
 A user is considered to be rejoining if they were on the channel
 shortly before, and were active then."
   (let* ((channel (irc-connection-channel (circe-server-process)
-                                          circe-chat-target))
+                                          channel))
          (user (when channel
                  (irc-channel-recent-user channel nick))))
     (when user
@@ -2176,12 +2175,12 @@ Do not use this directly. Instead, call `circe-irc-handler-table'.")
       (setq circe--irc-handler-table table)))
   circe--irc-handler-table)
 
-(defun circe--irc-conn-registered (conn event nick)
+(defun circe--irc-conn-registered (conn _event _nick)
   (with-current-buffer (irc-connection-get conn :server-buffer)
     (setq circe-server-reconnect-attempts 0)
     (run-hooks 'circe-server-connected-hook)))
 
-(defun circe--irc-conn-disconnected (conn event)
+(defun circe--irc-conn-disconnected (conn _event)
   (with-current-buffer (irc-connection-get conn :server-buffer)
     (dolist (buf (circe-server-chat-buffers))
       (with-current-buffer buf
@@ -2712,7 +2711,7 @@ number, it shows the missing people due to that split."
             (circe-display-server-message (format "No split number %s - use /WL to see a list"
                                           split))
           (let ((missing nil))
-            (maphash (lambda (key value)
+            (maphash (lambda (_key value)
                        (setq missing (cons value missing)))
                      (nth 3 entry))
             (circe-display-server-message
@@ -2729,7 +2728,7 @@ number, it shows the missing people due to that split."
 ;;; Display Handlers ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun circe-display-ignore (nick userhost command &rest args)
+(defun circe-display-ignore (_nick _userhost _command &rest _args)
   "Don't show a this message.
 
 NICK and USERHOST are the originator of COMMAND which had ARGS as
@@ -2737,8 +2736,8 @@ arguments."
   'noop)
 
 (circe-set-display-handler "317" 'circe-display-317)
-(defun circe-display-317 (sender ignored numeric target nick
-                                 idletime &optional signon-time body)
+(defun circe-display-317 (_sender ignored _numeric _target nick
+                                  idletime &optional signon-time body)
   "Show a 317 numeric (RPL_WHOISIDLE).
 
 Arguments are either of the two:
@@ -2765,8 +2764,8 @@ Arguments are either of the two:
                        :idle-duration (circe-duration-string seconds-idle))))))
 
 (circe-set-display-handler "333" 'circe-display-333)
-(defun circe-display-333 (server ignored numeric target
-                                 channel setter topic-time)
+(defun circe-display-333 (_server ignored _numeric target
+                                  channel setter topic-time)
   "Show a 333 numeric (RPL_TOPICWHOTIME).
 
 Arguments are either of the two:
@@ -2800,7 +2799,7 @@ Arguments are either of the two:
 (circe-set-display-handler "irc.ctcpreply" 'circe-display-ignore)
 
 (circe-set-display-handler "irc.ctcp.ACTION" 'circe-display-ctcp-action)
-(defun circe-display-ctcp-action (nick userhost command target text)
+(defun circe-display-ctcp-action (nick userhost _command target text)
   "Show an ACTION."
   (cond
    ;; Query
@@ -2827,7 +2826,7 @@ Arguments are either of the two:
 (circe-set-display-handler "irc.ctcp.CLIENTINFO" 'circe-display-ctcp)
 
 (circe-set-display-handler "irc.ctcp.PING" 'circe-display-ctcp-ping)
-(defun circe-display-ctcp-ping (nick userhost command target text)
+(defun circe-display-ctcp-ping (nick userhost _command target text)
   "Show a CTCP PING request."
   (with-current-buffer (circe-server-last-active-buffer)
     (circe-display 'circe-format-server-ctcp-ping
@@ -2841,7 +2840,7 @@ Arguments are either of the two:
                             "unknown seconds")))))
 
 (circe-set-display-handler "irc.ctcpreply.PING" 'circe-display-ctcp-ping-reply)
-(defun circe-display-ctcp-ping-reply (nick userhost command target text)
+(defun circe-display-ctcp-ping-reply (nick userhost _command target text)
   "Show a CTCP PING reply."
   (with-current-buffer (circe-server-last-active-buffer)
     (circe-display 'circe-format-server-ctcp-ping-reply
@@ -2870,7 +2869,7 @@ Arguments are either of the two:
 (circe-set-display-handler "irc.registered" 'circe-display-ignore)
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
-(defun circe-display-JOIN (nick userhost command channel
+(defun circe-display-JOIN (nick userhost _command channel
                                 &optional accountname realname)
   "Show a JOIN message.
 
@@ -2888,8 +2887,7 @@ IRC servers."
                           channel 'circe-channel-mode)
       (cond
        (split
-        (let ((split-name (car split))
-              (split-time (cadr split)))
+        (let ((split-time (cadr split)))
           (when (< (+ split-time circe-netsplit-delay)
                    (float-time))
             (circe-display 'circe-format-server-netmerge
@@ -2939,7 +2937,7 @@ IRC servers."
                          :channel circe-chat-target))))))
 
 (circe-set-display-handler "MODE" 'circe-display-MODE)
-(defun circe-display-MODE (setter userhost command target &rest modes)
+(defun circe-display-MODE (setter userhost _command target &rest modes)
   "Show a MODE message."
   (with-current-buffer (or (circe-server-get-chat-buffer target)
                            (circe-server-last-active-buffer))
@@ -2950,7 +2948,7 @@ IRC servers."
                    :change (mapconcat #'identity modes " "))))
 
 (circe-set-display-handler "NICK" 'circe-display-NICK)
-(defun circe-display-NICK (old-nick userhost command new-nick)
+(defun circe-display-NICK (old-nick userhost _command new-nick)
   "Show a nick change."
   (if (circe-server-my-nick-p new-nick)
       (dolist (buf (cons (or circe-server-buffer
@@ -2993,7 +2991,7 @@ IRC servers."
 ;; that, not the raw notice.
 (circe-set-display-handler "NOTICE" 'circe-display-ignore)
 (circe-set-display-handler "irc.notice" 'circe-display-NOTICE)
-(defun circe-display-NOTICE (nick userhost command target text)
+(defun circe-display-NOTICE (nick userhost _command target text)
   "Show a NOTICE message."
   (cond
    ((not userhost)
@@ -3017,7 +3015,7 @@ IRC servers."
                      :body text)))))
 
 (circe-set-display-handler "PART" 'circe-display-PART)
-(defun circe-display-PART (nick userhost command channel &optional reason)
+(defun circe-display-PART (nick userhost _command channel &optional reason)
   "Show a PART message."
   (with-current-buffer (circe-server-get-or-create-chat-buffer
                         channel 'circe-channel-mode)
@@ -3036,7 +3034,7 @@ IRC servers."
 ;; that, not the raw message.
 (circe-set-display-handler "PRIVMSG" 'circe-display-ignore)
 (circe-set-display-handler "irc.message" 'circe-display-PRIVMSG)
-(defun circe-display-PRIVMSG (nick userhost command target text)
+(defun circe-display-PRIVMSG (nick userhost _command target text)
   "Show a PRIVMSG message."
   (cond
    ((circe-server-my-nick-p target)
@@ -3062,7 +3060,7 @@ IRC servers."
                      :body text)))))
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
-(defun circe-display-topic (nick userhost command channel new-topic)
+(defun circe-display-topic (nick userhost _command channel new-topic)
   "Show a TOPIC change."
   (with-current-buffer (circe-server-get-or-create-chat-buffer
                         channel 'circe-channel-mode)
@@ -3118,7 +3116,7 @@ The list consists of words and spaces."
     (nreverse lis)))
 
 (circe-set-display-handler "channel.quit" 'circe-display-channel-quit)
-(defun circe-display-channel-quit (nick userhost command channel
+(defun circe-display-channel-quit (nick userhost _command channel
                                         &optional reason)
   "Show a QUIT message."
   (let ((split (circe--netsplit-quit reason nick)))
@@ -3138,7 +3136,7 @@ The list consists of words and spaces."
                        :reason (or reason "[no reason given]")))))))
 
 (circe-set-display-handler "QUIT" 'circe-display-QUIT)
-(defun circe-display-QUIT (nick userhost command &optional reason)
+(defun circe-display-QUIT (nick userhost _command &optional reason)
   "Show a QUIT message.
 
 Channel quits are shown already, so just show quits in queries."
