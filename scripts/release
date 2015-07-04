@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+cd "$(dirname "$0")/.."
+
+VERSION="$(sed -ne 's/^;; Version: \(.*\)/\1/p' circe.el)"
+
+mkdir -p dist
+tar -c *.el README.md \
+    --transform "s,^,circe-$VERSION/," \
+    --transform 's/README.md/README.txt/' \
+    > "dist/circe-$VERSION.tar"
+
+echo "Created dist/circe-$VERSION.tar"
