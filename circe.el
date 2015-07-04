@@ -3437,6 +3437,10 @@ regular expression."
 (define-obsolete-function-alias 'circe-server-nick 'circe-nick
   "Circe 2.0")
 
+(define-obsolete-function-alias 'circe-server-message
+  'circe-display-server-message
+  "Circe 2.0")
+
 (define-obsolete-variable-alias 'circe-networks 'circe-network-defaults
   "Circe 2.0")
 
