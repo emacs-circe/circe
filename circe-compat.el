@@ -24,12 +24,6 @@
 
 ;;; Code:
 
-(eval-when-compile
-  (require 'cl))
-
-(when (not (fboundp 'cl-defstruct))
-  (defalias 'cl-defstruct 'defstruct))
-
 (when (not (fboundp 'string-trim))
   (defun string-trim (string)
     "Remove leading and trailing whitespace from STRING."

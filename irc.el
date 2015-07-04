@@ -41,6 +41,7 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'make-tls-process)
 
 (defvar irc-debug-log nil
