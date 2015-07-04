@@ -1894,7 +1894,7 @@
               proc "JOIN #after-nickserv-identification"))
 
     (it "should join channels after sasl login"
-      (irc-event-emit proc "sasl.login")
+      (irc-event-emit proc "sasl.login" "mynick!user@host" "account")
 
       (expect 'irc-send-raw
               :to-have-been-called-with
