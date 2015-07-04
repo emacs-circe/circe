@@ -477,6 +477,9 @@ Events emitted:
   registered with the IRC server. Most commands can be used now.
   In particular, joining channels is only possible now.
 
+\"sasl.login\" nick!user@host account -- SASL log in was
+  successful.
+
 Connection options used:
 
 :nick -- The nick to use to register with the server
@@ -504,7 +507,9 @@ Connection options set:
   (irc-handler-add table "CAP"
                    #'irc-handle-registration--cap)
   (irc-handler-add table "AUTHENTICATE"
-                   #'irc-handle-registration--authenticate))
+                   #'irc-handle-registration--authenticate)
+  (irc-handler-add table "900" ;; RPL_LOGGEDIN
+                   #'irc-handle-registration--logged-in))
 
 (defun irc-handle-registration--connected (conn _event)
   (irc-connection-put conn :connection-state 'connected)
@@ -557,6 +562,10 @@ Connection options set:
                                              username username password)))
         (irc-send-CAP conn "END"))
     (message "Unknown AUTHENTICATE response from server: %s" arg)))
+
+(defun irc-handle-registration--logged-in (conn _event _sender _target
+                                                userhost account _message)
+  (irc-event-emit conn "sasl.login" userhost account))
 
 (defun irc-connection-state (conn)
   "connecting connected registered disconnected"
@@ -1341,7 +1350,9 @@ Connection options used:
   (irc-handler-add table "nickserv.regained"
                    #'irc-handle-auto-join--nickserv-regained)
   (irc-handler-add table "nickserv.identified"
-                   #'irc-handle-auto-join--nickserv-identified))
+                   #'irc-handle-auto-join--nickserv-identified)
+  (irc-handler-add table "sasl.login"
+                   #'irc-handle-auto-join--sasl-login))
 
 (defun irc-handle-auto-join--registered (conn _event _current-nick)
   (dolist (channel (irc-connection-get conn :auto-join-after-registration))
@@ -1360,6 +1371,11 @@ Connection options used:
 (defun irc-handle-auto-join--nickserv-identified (conn _event)
   (dolist (channel (irc-connection-get
                     conn :auto-join-after-nickserv-identification))
+    (irc-send-JOIN conn channel)))
+
+(defun irc-handle-auto-join--sasl-login (conn _event)
+  (dolist (channel (irc-connection-get
+                    conn :auto-join-after-sasl-login))
     (irc-send-JOIN conn channel)))
 
 (provide 'irc)

@@ -806,7 +806,22 @@
                 '("CAP REQ sasl"
                   "AUTHENTICATE PLAIN"
                   "AUTHENTICATE bXlfbmljawBteV9uaWNrAHRvcC1zZWNyZXQ="
-                  "CAP END"))))))
+                  "CAP END"))))
+
+    (describe "on SASL authentication"
+      (it "should emit sasl.login for 900 numeric"
+        (let (auth-args)
+          (irc-handler-add table "sasl.login"
+                           (lambda (&rest args)
+                             (setq auth-args args)))
+
+          (irc-event-emit proc "900" "irc.server" "mynick"
+                          "mynick!user@host" "account"
+                          "You are now logged in as mynick")
+
+          (expect auth-args
+                  :to-equal
+                  (list proc "sasl.login" "mynick!user@host" "account")))))))
 
 (describe "The `irc-connection-state' function"
   (let (proc)
@@ -1838,6 +1853,9 @@
       (irc-connection-put
        proc :auto-join-after-nickserv-identification
        '("#after-nickserv-identification"))
+      (irc-connection-put
+       proc :auto-join-after-sasl-login
+       '("#after-sasl-login"))
 
       (spy-on 'irc-send-raw)
 
@@ -1875,4 +1893,9 @@
               :to-have-been-called-with
               proc "JOIN #after-nickserv-identification"))
 
-    ))
+    (it "should join channels after sasl login"
+      (irc-event-emit proc "sasl.login")
+
+      (expect 'irc-send-raw
+              :to-have-been-called-with
+              proc "JOIN #after-sasl-login"))))

@@ -1201,6 +1201,8 @@ Do not use this directly, use `circe-reconnect'"
          :auto-join-after-nick-acquisition
          (circe--auto-join-list :after-nick)
          :auto-join-after-nickserv-identification
+         (circe--auto-join-list :after-auth)
+         :auto-join-after-sasl-login
          (circe--auto-join-list :after-auth))))
 
 (defun circe-reconnect-all ()
