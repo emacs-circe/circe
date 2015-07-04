@@ -15,4 +15,4 @@ before_install:
   - export PATH="$HOME/.cask/bin:$PATH"
   - cask
 script:
-  - make test
+  - cask exec buttercup -L .
