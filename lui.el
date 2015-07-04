@@ -1188,12 +1188,8 @@ function."
 
 (defun lui-time-stamp-enable-filtering ()
   "Enable filtering of timestamps from copied text."
-  (if (boundp 'filter-buffer-substring-functions)
-      (set (make-local-variable 'filter-buffer-substring-functions)
-           '(lui-filter-buffer-time-stamps))
-    ;; Emacs 23
-    (set (make-local-variable 'buffer-substring-filters)
-         '(lui-time-stamp-buffer-substring))))
+  (set (make-local-variable 'filter-buffer-substring-functions)
+       '(lui-filter-buffer-time-stamps)))
 
 (defun lui-filter-buffer-time-stamps (fun beg end delete)
   "Filter text from copied strings.
