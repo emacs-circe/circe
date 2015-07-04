@@ -614,6 +614,18 @@ The following format arguments are available:
   :type 'string
   :group 'circe-format)
 
+(defcustom circe-format-server-channel-creation-time "*** Channel {channel} created on {date}, {ago} ago"
+  "Format for RPL_CREATIONTIME messages for the current channel.
+
+The following format arguments are available:
+
+  channel  - The channel the topic is for
+  date     - A date string describing this time
+  ago      - A textual description of the duration since the channel
+             was created"
+  :type 'string
+  :group 'circe-format)
+
 (defcustom circe-format-server-ctcp-ping "*** CTCP PING request from {nick} ({userhost}) to {target}: {body} ({ago} ago)"
   "Format for CTCP PING requests.
 
@@ -2762,6 +2774,19 @@ Arguments are either of the two:
                        :whois-nick nick
                        :idle-seconds seconds-idle
                        :idle-duration (circe-duration-string seconds-idle))))))
+
+(circe-set-display-handler "329" 'circe-display-329)
+(defun circe-display-329 (_server ignored _numeric _target channel timestamp)
+  "Show a 329 numeric (RPL_CREATIONTIME)."
+  (with-current-buffer (or (circe-server-get-chat-buffer channel)
+                           (circe-server-last-active-buffer))
+    (let ((creation-time (string-to-number timestamp)))
+      (circe-display 'circe-format-server-channel-creation-time
+                     :channel channel
+                     :date (current-time-string
+                            (seconds-to-time creation-time))
+                     :ago (circe-duration-string (- (float-time)
+                                                    creation-time))))))
 
 (circe-set-display-handler "333" 'circe-display-333)
 (defun circe-display-333 (_server ignored _numeric target
