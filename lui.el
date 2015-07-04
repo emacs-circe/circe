@@ -45,6 +45,7 @@
 (require 'flyspell)
 (require 'help-mode)
 (require 'ispell)
+(require 'paren)
 (require 'ring)
 (require 'thingatpt)
 
