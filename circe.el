@@ -1607,8 +1607,8 @@ See `minibuffer-completion-table' for details."
   (with-temp-buffer
     (insert string)
     (goto-char (point-max))
-    (when (or (looking-back circe-completion-suffix)
-              (looking-back " "))
+    (when (or (looking-back circe-completion-suffix nil)
+              (looking-back " " nil))
       (replace-match ""))
     (buffer-string)))
 
