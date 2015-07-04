@@ -3365,6 +3365,19 @@ easily."
         (match-string 1 string)
       string)))
 
+(when (not (fboundp 'add-face-text-property))
+  (defun add-face-text-property (start end face &optional append object)
+    (while (/= start end)
+      (let* ((next (next-single-property-change start 'face object end))
+             (prev (get-text-property start 'face object))
+             (value (if (listp prev) prev (list prev))))
+        (put-text-property start next 'face
+                           (if append
+                               (append value (list face))
+                             (append (list face) value))
+                           object)
+        (setq start next)))))
+
 (defun circe--list-drop-right (list pattern)
   "Drop elements from the right of LIST that match PATTERN.
 

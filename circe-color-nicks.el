@@ -299,20 +299,6 @@ See `circe-nick-color-pick', which is where this is used."
       (setq circe-nick-color-pool (circe-nick-color-generate-pool))
       (pop circe-nick-color-pool))))
 
-;;; Pre-24.4 compatibility.
-(when (null (fboundp 'add-face-text-property))
-  (defun add-face-text-property (start end face)
-    (save-excursion
-      (goto-char start)
-      (while (< (point) end)
-        (let ((next-change (next-property-change (point) nil end)))
-          (let* ((old-props (text-properties-at start))
-                 (merged-props
-                  (circe-merge-text-properties `(face ,face) old-props))
-                 (face (plist-get merged-props 'face)))
-            (put-text-property (point) next-change 'face face))
-          (goto-char next-change))))))
-
 (defun circe-color-nicks ()
   "Color nicks on this lui output line."
   (when (eq major-mode 'circe-channel-mode)
