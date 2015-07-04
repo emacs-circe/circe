@@ -1194,7 +1194,8 @@ Do not use this directly, use `circe-reconnect'"
          :ctcp-source circe-source-url
          :ctcp-clientinfo "CLIENTINFO PING SOURCE TIME VERSION"
          :auto-join-after-registration
-         (circe--auto-join-list :immediate)
+         (append (circe--auto-join-channel-buffers)
+                 (circe--auto-join-list :immediate))
          :auto-join-after-host-hiding
          (circe--auto-join-list :after-cloak)
          :auto-join-after-nick-acquisition
@@ -1222,6 +1223,22 @@ Do not use this directly, use `circe-reconnect'"
        ((eq current-type type)
         (push channel result))))
     (nreverse result)))
+
+(defun circe--auto-join-channel-buffers ()
+  "Return a list of channels to join based on channel buffers.
+
+This includes all channel buffers of the current server, but
+excludes and channel that is already listed in
+`circe-channels'."
+  (let ((channels nil))
+    (dolist (buf (circe-server-chat-buffers))
+      (let ((name (with-current-buffer buf
+                    (when (derived-mode-p 'circe-channel-mode)
+                      circe-chat-target))))
+        (when (and name
+                   (not (member name circe-channels)))
+          (push name channels))))
+    channels))
 
 ;;;;;;;;;;;;;;;;;
 ;;; Base Mode ;;;
