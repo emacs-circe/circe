@@ -1373,7 +1373,7 @@ Connection options used:
                     conn :auto-join-after-nickserv-identification))
     (irc-send-JOIN conn channel)))
 
-(defun irc-handle-auto-join--sasl-login (conn _event)
+(defun irc-handle-auto-join--sasl-login (conn _event &rest ignored)
   (dolist (channel (irc-connection-get
                     conn :auto-join-after-sasl-login))
     (irc-send-JOIN conn channel)))
