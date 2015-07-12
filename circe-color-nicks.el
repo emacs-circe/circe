@@ -306,7 +306,8 @@ See `circe-nick-color-pick', which is where this is used."
                                         'lui-format-argument 'nick)))
       (when nickstart
         (goto-char nickstart)
-        (let ((nickend (next-property-change nickstart))
+        (let ((nickend (next-single-property-change nickstart
+                                                    'lui-format-argument))
               (nick (plist-get (plist-get (text-properties-at nickstart)
                                           'lui-keywords)
                                :nick)))
