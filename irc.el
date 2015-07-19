@@ -1340,7 +1340,7 @@ Connection options used:
   after our host was hidden
 
 :auto-join-after-nick-acquisition -- List of channels to join
-  after we gained our desired nick
+  after we gained our original nick
 
 :auto-join-after-nickserv-identification -- List of channels
   to join after we identified successfully with NickServ"
@@ -1368,14 +1368,10 @@ Connection options used:
                     conn :auto-join-after-nick-acquisition))
     (irc-send-JOIN conn channel)))
 
-(defun irc-handle-auto-join--nickserv-identified (conn event)
+(defun irc-handle-auto-join--nickserv-identified (conn _event)
   (dolist (channel (irc-connection-get
                     conn :auto-join-after-nickserv-identification))
-    (irc-send-JOIN conn channel))
-  (if (irc-string-equal-p conn
-                          (irc-connection-get conn :nick)
-                          (irc-connection-get conn :nickserv-nick))
-      (irc-handle-auto-join--nickserv-regained conn event)))
+    (irc-send-JOIN conn channel)))
 
 (defun irc-handle-auto-join--sasl-login (conn _event &rest ignored)
   (dolist (channel (irc-connection-get
