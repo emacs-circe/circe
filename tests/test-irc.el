@@ -1844,6 +1844,8 @@
       (setq proc (start-process "test" nil "cat")
             table (irc-handler-table))
       (irc-connection-put proc :handler-table table)
+      (irc-connection-put proc :nick "mynick")
+      (irc-connection-put proc :nickserv-nick "mynick")
       (irc-connection-put
        proc :auto-join-after-registration '("#after-registration"))
       (irc-connection-put

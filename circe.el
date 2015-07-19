@@ -395,8 +395,9 @@ Possible options:
 :immediate - Immediately after registering on the server
 :after-auth - After nickserv authentication succeeded
 :after-cloak - After we have acquired a cloaked host name
-:after-nick - After we regained our preferred nick. See
-              `circe-nickserv-ghost-style'.
+:after-nick - After we regained our preferred nick, or after
+              nickserv authentication if we don't need to regain
+              it. See `circe-nickserv-ghost-style'.
 
 See `circe-channels' for more details."
   :type '(choice (const :tag "Immediately" :immediate)
@@ -966,8 +967,9 @@ Possible keyword options are:
 :immediate - Immediately after registering on the server
 :after-auth - After nickserv authentication succeeded
 :after-cloak - After we have acquired a cloaked host name
-:after-nick - After we regained our preferred nick. See
-              `circe-nickserv-ghost-style'.
+:after-nick - After we regained our preferred nick, or after
+              nickserv authentication if we don't need to regain
+              it. See `circe-nickserv-ghost-style'.
 
 The default is set in `circe-server-auto-join-default-type'.
 
