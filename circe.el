@@ -1822,8 +1822,9 @@ This is used by Circe to know where to put spurious messages."
   (with-current-buffer (window-buffer window)
     (when (derived-mode-p 'circe-mode)
       (let ((buf (current-buffer)))
-        (with-circe-server-buffer
-          (setq circe-server-last-active-buffer buf))))))
+        (ignore-errors
+          (with-circe-server-buffer
+            (setq circe-server-last-active-buffer buf)))))))
 (ad-activate 'select-window)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
