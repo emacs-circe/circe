@@ -1025,7 +1025,7 @@ All SERVER-OPTIONS are treated as variables by getting the string
 locally in the server buffer.
 
 See `circe-network-options' for a list of common options."
-  (interactive (list (circe--read-network)))
+  (interactive (circe--read-network-and-options))
   (let* ((options (circe--server-get-network-options network-or-server
                                                      server-options))
          (buffer (circe--server-generate-buffer options)))
@@ -1035,8 +1035,10 @@ See `circe-network-options' for a list of common options."
       (circe-reconnect))
     (pop-to-buffer-same-window buffer)))
 
-(defun circe--read-network ()
+(defun circe--read-network-and-options ()
   "Read a host or network name with completion.
+
+If it's not a network, also read some extra options.
 
 This uses `circe-network-defaults' and `circe-network-options' for
 network names."
@@ -1044,14 +1046,21 @@ network names."
                              (caar circe-network-defaults)
                            (caar circe-network-options)))
         (networks nil)
-        (completion-ignore-case t))
+        (completion-ignore-case t)
+        network-or-host)
     (dolist (network-spec (append circe-network-options
                                   circe-network-defaults))
       (push (car network-spec) networks))
-    (completing-read "Network or host: "
-                     (sort networks 'string-lessp)
-                     nil nil nil nil
-                     default-network)))
+    (setq networks (sort networks 'string-lessp))
+    (setq network-or-host (completing-read "Network or host: "
+                                           networks
+                                           nil nil nil nil
+                                           default-network))
+    (if (member network-or-host networks)
+        (list network-or-host nil)
+      (list network-or-host
+            :host network-or-host
+            :port (read-number "Port: " 6667)))))
 
 (defun circe--server-get-network-options (network server-options)
   "Combine server and network options with network defaults.
