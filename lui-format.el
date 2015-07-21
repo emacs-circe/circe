@@ -173,7 +173,7 @@ See `lui-format' for details."
                      " ")
         (or (nth (string-to-number from)
                  indexed-args)
-            (error "Index for format out of range: %S" from)))))
+            ""))))
    (t
     (or (plist-get keywords (intern identifier))
         (error "Unknown keyword argument %S" identifier)))))
