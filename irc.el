@@ -1235,8 +1235,9 @@ Connection options used:
 :nickserv-identify-confirmation -- A regular expression matching the
   confirmation message from NickServ after successful identification
 
-:nickserv-ghost-command -- The raw IRC comment to ghost your original
-  nick; expands {nick} and {password}
+:nickserv-ghost-command -- The raw IRC comment to ghost your
+  original nick; expands {nick} and {password}. Set this to nil
+  to disable ghosting and nick regaining.
 
 :nickserv-ghost-confirmation -- A regular expression matching the
   confirmation message that the nick was ghosted
