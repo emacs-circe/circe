@@ -1056,6 +1056,10 @@ network names."
                                            networks
                                            nil nil nil nil
                                            default-network))
+    (dolist (network-name networks)
+      (when (equal (downcase network-or-host)
+                   (downcase network-name))
+        (setq network-or-host network-name)))
     (if (member network-or-host networks)
         (list network-or-host)
       (list network-or-host
