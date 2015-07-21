@@ -1057,7 +1057,7 @@ network names."
                                            nil nil nil nil
                                            default-network))
     (if (member network-or-host networks)
-        (list network-or-host nil)
+        (list network-or-host)
       (list network-or-host
             :host network-or-host
             :port (read-number "Port: " 6667)))))
