@@ -1096,8 +1096,7 @@ Unify them here."
   "Return the server buffer for the connection described in OPTIONS."
   (let* ((network (plist-get options :network))
          (host (plist-get options :host))
-         (port (or (plist-get options :port)
-                   (read-number "Port: " 6667)))
+         (port (plist-get options :port))
          (buffer-name (lui-format (or (plist-get options :server-buffer-name)
                                       circe-server-buffer-name)
                                   :network network
