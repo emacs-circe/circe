@@ -788,7 +788,17 @@
         (expect (client-messages)
                 :to-equal
                 '("CAP REQ multi-prefix"
-                  "CAP END"))))
+                  "CAP END")))
+
+      (it "should not negotiation with no common capabilities"
+        (irc-connection-put proc :cap-req '("sasl"))
+        (irc-event-emit proc "conn.registered")
+        (spy-calls-reset 'irc-send-raw)
+        (irc-event-emit proc "CAP" "irc.server" "*" "LS" "multi-prefix")
+
+        (expect (client-messages)
+                :to-equal
+                '("CAP END"))))
 
     (describe "on SASL authentication"
       (it "should do the full negotiation"

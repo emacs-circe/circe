@@ -541,7 +541,9 @@ Connection options set:
       (dolist (cap (irc-connection-get conn :cap-req))
         (when (member cap supported)
           (setq wanted (append wanted (list cap)))))
-      (irc-send-CAP conn "REQ" (mapconcat #'identity wanted " "))))
+      (if wanted
+          (irc-send-CAP conn "REQ" (mapconcat #'identity wanted " "))
+        (irc-send-CAP conn "END"))))
    ((equal subcommand "ACK")
     (let ((acked (split-string arg)))
       (irc-connection-put conn :cap-ack acked)
