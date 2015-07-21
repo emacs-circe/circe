@@ -2925,7 +2925,7 @@ Arguments are either of the two:
                    :userhost (or userhost "server")
                    :target target
                    :command (substring command 9)
-                   :body text)))
+                   :body (or text ""))))
 
 (circe-set-display-handler "irc.registered" 'circe-display-ignore)
 
