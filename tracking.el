@@ -33,6 +33,7 @@
 
 (require 'easy-mmode)
 (require 'shorten)
+(require 'cl-lib)
 
 ;;; User customization
 (defgroup tracking nil
@@ -312,7 +313,7 @@ to be ignored."
 This returns a list suitable for `mode-line-format'."
   (if (not tracking-buffers)
       ""
-    (let* ((buffer-names tracking-buffers)
+    (let* ((buffer-names (cl-remove-if-not #'get-buffer tracking-buffers))
            (shortened-names (tracking-shorten tracking-buffers))
            (result (list " [")))
       (while buffer-names
