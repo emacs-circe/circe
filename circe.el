@@ -178,6 +178,7 @@ Common options:
 
 (defvar circe-network-defaults
   '(("Freenode" :host "irc.freenode.net" :port (6667 . 6697)
+     :tls t
      :nickserv-mask "^NickServ!NickServ@services\\.$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
