@@ -44,7 +44,7 @@
 
 (defface lui-irc-colors-inverse-face
   '((t (:inverse-video t)))
-  "Face used for inverse test."
+  "Face used for inverse video."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-0-face
@@ -60,7 +60,8 @@
 
 (defface lui-irc-colors-fg-2-face
   '((((class color)) (:foreground "blue4"))
-    (t (:foreground "blue")))  "Face used for foreground IRC color 2 (blue)."
+    (t (:foreground "blue")))
+  "Face used for foreground IRC color 2 (blue)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-fg-3-face
@@ -153,7 +154,8 @@
 
 (defface lui-irc-colors-bg-2-face
   '((((class color)) (:background "blue4"))
-    (t (:background "blue")))  "Face used for background IRC color 2 (blue)."
+    (t (:background "blue")))
+  "Face used for background IRC color 2 (blue)."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-bg-3-face
