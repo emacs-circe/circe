@@ -36,7 +36,6 @@
 ;;; Code:
 
 (require 'lui)
-(require 'font-lock) ; for font-lock-prepend-text-property
 
 (defgroup lui-irc-colors nil
   "LUI IRC colors faces."
@@ -297,26 +296,25 @@ This is an appropriate function for `lui-pre-output-hook'."
 
 (defun lui-irc-propertize (start end boldp inversep italicp underlinep fg bg)
   "Propertize the region between START and END."
-  (font-lock-prepend-text-property
-   start end
-   'face (append (if boldp
-                     '(bold)
-                   nil)
-                 (if inversep
-                     '(lui-irc-colors-inverse-face)
-                   nil)
-                 (if italicp
-                     '(italic)
-                   nil)
-                 (if underlinep
-                     '(underline)
-                   nil)
-                 (if fg
-                     (list (lui-irc-colors-face 'fg fg))
-                   nil)
-                 (if bg
-                     (list (lui-irc-colors-face 'bg bg))
-                   nil))))
+  (add-face-text-property start end
+   (append (if boldp
+               '(bold)
+             nil)
+           (if inversep
+               '(lui-irc-colors-inverse-face)
+             nil)
+           (if italicp
+               '(italic)
+             nil)
+           (if underlinep
+               '(underline)
+             nil)
+           (if fg
+               (list (lui-irc-colors-face 'fg fg))
+             nil)
+           (if bg
+               (list (lui-irc-colors-face 'bg bg))
+             nil))))
 
 (defun lui-irc-colors-face (type n)
   "Return a face appropriate for face number N.
