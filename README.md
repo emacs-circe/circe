@@ -1,6 +1,7 @@
 # Circe, a Client for IRC in Emacs
 
 [![Build Status](https://api.travis-ci.org/jorgenschaefer/circe.png?branch=master)](https://travis-ci.org/jorgenschaefer/circe)
+[![MELPA Stable](http://stable.melpa.org/packages/circe-badge.svg)](http://stable.melpa.org/#/circe)
 
 ## Overview
 
@@ -22,14 +23,13 @@ Complexity-wise, it is somewhere between rcirc (very minimal) and ERC
 
 ### `package.el`
 
-Make sure you have marmalade added to your package sources. To your
+Make sure you have MELPA Stable added to your package sources. To your
 .emacs, add this:
 
 ```Lisp
 (require 'package)
 (add-to-list 'package-archives
-    '("marmalade" .
-      "http://marmalade-repo.org/packages/"))
+             '("melpa-stable" . "http://stable.melpa.org/packages/") t)
 (package-initialize)
 ```
 
