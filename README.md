@@ -87,13 +87,16 @@ RET` to connect to Freenode using these settings.
 
 ## Features
 
+- Sensible defaults
 - Tab completion
 - Nick highlighting
+- Logging
+- Spell checker
 - Ignore feature that also hides users who talk to users on your
   ignore list
 - Ignored messages can be toggled so they show up and then hidden
   again
-- SSL support
+- TLS/SSL support
 - SASL authentication support
 - Nickserv authentication, automatic ghosting, and nick re-gain
 - Auto-join
@@ -102,6 +105,16 @@ RET` to connect to Freenode using these settings.
 - Netsplit handling
 - Activity tracking in the mode line
 - Fully customizeable message display
+- Topic changes can be shown as a diff
+- Automatic linking of Emacs Lisp symbols, RFCs, PEPs, SRFIs, Github
+  issues, etc.
+- Automatic splitting of outgoing messages at word boundaries to
+  adhere to IRC protocol limitations
+- Flood protection
+- Nickname coloring (via the `circe-color-nicks` module)
+- Lag monitoring (via the `circe-lagmon` module)
+- Automatic pasting to a paste site for long messages (via the
+  `lui-autopaste` module)
 
 ## Documentation
 
