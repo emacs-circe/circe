@@ -168,7 +168,7 @@ is then associated with the match."
     ("SRFI[- ]?\\([0-9]+\\)" 0 lui-button-srfi 1)
     ("PEP[- ]?\\([0-9]+\\)" 0 lui-button-pep 1)
     ("xkcd[ #]*\\([0-9]+\\)" 0 lui-button-xkcd 1)
-    ("\\([0-9a-zA-Z_.-]+/[0-9a-zA-Z_.-]+\\)#[0-9]+" 0 lui-button-github 0))
+    ("\\([0-9a-zA-Z_.-]+/[0-9a-zA-Z_.-]+\\)?#[0-9]+" 0 lui-button-github 0))
   "The list of buttons to buttonize.
 This consists of lists of four elements each:
 
@@ -638,7 +638,7 @@ Otherwise, we move to the next button."
       (lui-button-issue-tracker
        (format lui-button-issue-tracker number))
       (t
-       (error "Configure `lui-button-issue-tracker' to use this"))))))
+       (error "No default repository configured, see `lui-button-issue-tracker'"))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
