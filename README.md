@@ -14,6 +14,10 @@ it stays out of your way unless you want to use it.
 Complexity-wise, it is somewhere between rcirc (very minimal) and ERC
 (very complex).
 
+## Screenshot
+
+![Screenshot](images/screenshot.png)
+
 ## Installation
 
 ### `package.el`
