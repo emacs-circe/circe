@@ -162,21 +162,32 @@ is then associated with the match."
   :group 'lui)
 
 (defcustom lui-buttons-list
-  `(("`\\([A-Za-z0-9+=*/-]+\\)'" 1 lui-button-elisp-symbol 1)
-    ("RFC ?\\([0-9]+\\)" 0 lui-button-rfc 1)
-    ("CVE[- ]\\([0-9]+-[0-9]+\\)" 0 lui-button-cve 1)
-    ("SRFI[- ]?\\([0-9]+\\)" 0 lui-button-srfi 1)
+  `(("`\\([A-Za-z0-9+=*/-]+\\)'" 1
+     lui-button-elisp-symbol 1)
+    ("debbugs#\\([0-9]+\\)" 0
+     "https://debbugs.gnu.org/cgi/bugreport.cgi?bug=%s" 1)
+    ("RFC ?\\([0-9]+\\)" 0
+     "http://www.ietf.org/rfc/rfc%s.txt" 1)
+    ("CVE[- ]\\([0-9]+-[0-9]+\\)" 0
+     "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-%s" 1)
+    ("SRFI[- ]?\\([0-9]+\\)" 0
+     "http://srfi.schemers.org/srfi-%s/srfi-%s.html" 1 1)
     ("PEP[- ]?\\([0-9]+\\)" 0 lui-button-pep 1)
-    ("xkcd[ #]*\\([0-9]+\\)" 0 lui-button-xkcd 1)
-    ("\\([0-9a-zA-Z_.-]+/[0-9a-zA-Z_.-]+\\)?#[0-9]+" 0 lui-button-github 0))
+    ("xkcd[ #]*\\([0-9]+\\)" 0
+     "https://xkcd.com/%s" 1)
+    ("\\([0-9a-zA-Z_.-]+/[0-9a-zA-Z_.-]+\\)#\\([0-9]+\\)" 0
+     "https://github.com/%s/issues/%s" 1 2))
   "The list of buttons to buttonize.
 This consists of lists of four elements each:
 
-  (REGEXP SUBMATCH FUNCTION ARG-MATCH)
+  (REGEXP SUBMATCH FUNCTION ARG-MATCH...)
 
 Whenever REGEXP is found, SUBMATCH is marked as a button. When
-that button is activated, FUNCTION is called with the match
-ARG-MATCH as its sole argument."
+that button is activated, FUNCTION is called with the matches
+specified in ARG-MATCHES as its arguments.
+
+If FUNCTION is a string, it is formatted with %s replaced by
+the matches in ARG-MATCHES."
   :type '(repeat (list (regexp :tag "Regular expression")
                        (integer :tag "Submatch to buttonize")
                        (function :tag "Function to call for this button")
@@ -533,22 +544,52 @@ If point is not in the input area, self-insert."
   'face 'lui-button-face)
 
 (defun lui-buttonize ()
-  "Buttonize the current message.
+  "Buttonize the current message."
+  (lui-buttonize-custom)
+  (lui-buttonize-issues)
+  (lui-buttonize-urls))
+
+(defun lui-buttonize-custom ()
+  "Add custom buttons to the current message.
+
 This uses `lui-buttons-list'."
   (dolist (entry lui-buttons-list)
     (let ((regex (nth 0 entry))
           (submatch (nth 1 entry))
-          (function (nth 2 entry))
-          (arg-match (nth 3 entry)))
+          (function-or-url (nth 2 entry))
+          (arg-matches (nthcdr 3 entry)))
       (goto-char (point-min))
       (while (re-search-forward regex nil t)
-        (make-button (match-beginning submatch)
-                     (match-end submatch)
-                     'type 'lui-button
-                     'action 'lui-button-activate
-                     'lui-button-function function
-                     'lui-button-argument
-                     (match-string-no-properties arg-match))))))
+        (let* ((function (if (functionp function-or-url)
+                             function-or-url
+                           'browse-url))
+               (matches (mapcar (lambda (n)
+                                  (match-string-no-properties n))
+                                arg-matches))
+               (arguments (if (functionp function-or-url)
+                              matches
+                            (list (apply #'format function-or-url
+                                         matches)))))
+          (make-button (match-beginning submatch)
+                       (match-end submatch)
+                       'type 'lui-button
+                       'action 'lui-button-activate
+                       'lui-button-function function
+                       'lui-button-arguments arguments))))))
+
+(defun lui-buttonize-issues ()
+  "Buttonize issue references in the current message, if configured."
+  (when lui-button-issue-tracker
+    (goto-char (point-min))
+    (while (re-search-forward "\\(?:^\\|\\W\\)\\(#\\([0-9]+\\)\\)" nil t)
+      (make-button (match-beginning 1)
+                   (match-end 1)
+                   'type 'lui-button
+                   'action 'lui-button-activate
+                   'lui-button-function 'browse-url
+                   'lui-button-arguments
+                   (list (format lui-button-issue-tracker
+                                 (match-string 2)))))))
 
 (defun lui-buttonize-urls ()
   "Buttonize URLs in the current message."
@@ -562,20 +603,17 @@ This uses `lui-buttons-list'."
                        'type 'lui-button
                        'action 'lui-button-activate
                        'lui-button-function 'browse-url
-                       'lui-button-argument
-                       (buffer-substring-no-properties (car bounds)
-                                                       (cdr bounds))))))))
+                       'lui-button-arguments
+                       (list (buffer-substring-no-properties
+                              (car bounds)
+                              (cdr bounds)))))))))
 
 (defun lui-button-activate (button)
   "Activate BUTTON.
 This calls the function stored in the `lui-button-function'
-property with the argument stored in `lui-button-argument'."
-  (let ((function (button-get button 'lui-button-function))
-        (argument (button-get button 'lui-button-argument)))
-    (if (and (functionp function)
-             argument)
-        (funcall function argument)
-      (error "Not a LUI button"))))
+property with the argument stored in `lui-button-arguments'."
+  (apply (button-get button 'lui-button-function)
+         (button-get button 'lui-button-arguments)))
 
 (defun lui-next-button-or-complete ()
   "Go to the next button, or complete at point.
@@ -602,43 +640,16 @@ Otherwise, we move to the next button."
      (t
       (help-xref-interned sym)))))
 
-(defun lui-button-rfc (number)
-  "Browse the RFC NUMBER."
-  (browse-url (format "http://www.ietf.org/rfc/rfc%s.txt"
-                      number)))
-
-(defun lui-button-cve (ref)
-  "Browse the CVE REF."
-  (browse-url (format "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-%s"
-                      ref)))
-
-(defun lui-button-srfi (number)
-  "Browse the SRFI NUMBER."
-  (browse-url (format "http://srfi.schemers.org/srfi-%s/srfi-%s.html"
-                      number number)))
-
 (defun lui-button-pep (number)
   "Browse the PEP NUMBER."
   (browse-url (format "https://www.python.org/dev/peps/pep-%04i"
                       (string-to-number number))))
 
-(defun lui-button-xkcd (number)
-  "Browse the xkcd NUMBER."
-  (browse-url (format "https://xkcd.com/%s" number)))
-
-(defun lui-button-github (issue-part)
-  "Browse the github issue ISSUE-PART."
-  (let* ((parts (split-string issue-part "#"))
-         (repo (car parts))
-         (number (cadr parts)))
-    (browse-url
-     (cond
-      ((and repo (not (equal repo "")))
-       (format "https://github.com/%s/issues/%s" repo number))
-      (lui-button-issue-tracker
-       (format lui-button-issue-tracker number))
-      (t
-       (error "No default repository configured, see `lui-button-issue-tracker'"))))))
+(defun lui-button-issue (issue)
+  "Browse the issue tracker number ISSUE, if configured."
+  (if lui-button-issue-tracker
+      (browse-url (format lui-button-issue-tracker issue))
+    (error "No issue tracker configured, see `lui-button-issue-tracker'")))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -877,7 +888,6 @@ of the buffer."
          (run-hooks 'lui-pre-output-hook)
          (lui-highlight-keywords)
          (lui-buttonize)
-         (lui-buttonize-urls)
          (lui-fill)
          (lui-time-stamp)
          (goto-char (point-min))
