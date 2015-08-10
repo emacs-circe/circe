@@ -3079,9 +3079,10 @@ IRC servers."
 (circe-set-display-handler "PART" 'circe-display-PART)
 (defun circe-display-PART (nick userhost _command channel &optional reason)
   "Show a PART message."
-  (with-current-buffer (circe-server-get-or-create-chat-buffer
-                        channel 'circe-channel-mode)
-    (when (not (circe-lurker-p nick))
+  (with-current-buffer (or (circe-server-get-chat-buffer channel)
+                           (circe-server-last-active-buffer))
+    (when (or (not circe-chat-target)
+              (not (circe-lurker-p nick)))
       (circe-display 'circe-format-server-part
                      :nick nick
                      :userhost (or userhost "server")
