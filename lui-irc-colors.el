@@ -296,25 +296,14 @@ This is an appropriate function for `lui-pre-output-hook'."
 
 (defun lui-irc-propertize (start end boldp inversep italicp underlinep fg bg)
   "Propertize the region between START and END."
-  (add-face-text-property start end
-   (append (if boldp
-               '(bold)
-             nil)
-           (if inversep
-               '(lui-irc-colors-inverse-face)
-             nil)
-           (if italicp
-               '(italic)
-             nil)
-           (if underlinep
-               '(underline)
-             nil)
-           (if fg
-               (list (lui-irc-colors-face 'fg fg))
-             nil)
-           (if bg
-               (list (lui-irc-colors-face 'bg bg))
-             nil))))
+  (let ((faces (append (and boldp '(bold))
+                       (and inversep '(lui-irc-colors-inverse-face))
+                       (and italicp '(italic))
+                       (and underlinep '(underline))
+                       (and fg (list (lui-irc-colors-face 'fg fg)))
+                       (and bg (list (lui-irc-colors-face 'bg bg))))))
+    (when faces
+      (add-face-text-property start end faces))))
 
 (defun lui-irc-colors-face (type n)
   "Return a face appropriate for face number N.
