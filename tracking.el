@@ -62,6 +62,9 @@ see there for further explanation."
 (defcustom tracking-position 'before-modes
   "Where tracked buffers should appear in the mode line.
 
+However, if powerline is enabled, the buffers are added to `global-mode-string' and
+placed as specified in the powerline theme.
+
   'before-modes
       Before the mode indicators
   'after-modes
@@ -69,7 +72,7 @@ see there for further explanation."
   'end
       At the end of the mode line"
   :type '(choice (const :tag "Before the Mode Indicators" before-modes)
-                 (const :tag "Afterthe Mode Indicators" after-modes)
+                 (const :tag "After the Mode Indicators" after-modes)
                  (const :tag "At the End of the Mode Line" end))
   :group 'tracking)
 
@@ -159,6 +162,12 @@ line. The user can cycle through them using
   (cond
    (tracking-mode
     (cond
+     ((featurep 'powerline)
+      (when (not global-mode-string)
+        (setq global-mode-string '("")))
+      (when (not (memq 'tracking-mode-line-buffers global-mode-string))
+          (setq global-mode-string
+                (append global-mode-string '(tracking-mode-line-buffers)))))
      ((eq tracking-position 'before-modes)
       (let ((head nil)
             (tail (default-value 'mode-line-format)))
@@ -187,10 +196,13 @@ line. The user can cycle through them using
     (add-hook 'window-configuration-change-hook
               'tracking-remove-visible-buffers))
    (t
-    (setq mode-line-misc-info (delq 'tracking-mode-line-buffers
-                                    mode-line-misc-info))
-    (setq-default mode-line-format (delq 'tracking-mode-line-buffers
-                                         (default-value 'mode-line-format)))
+    (if (featurep 'powerline)
+        (setq global-mode-string (delq 'tracking-mode-line-buffers
+                                       global-mode-string))
+      (setq mode-line-misc-info (delq 'tracking-mode-line-buffers
+                                      mode-line-misc-info))
+      (setq-default mode-line-format (delq 'tracking-mode-line-buffers
+                                           (default-value 'mode-line-format))))
     (remove-hook 'window-configuration-change-hook
                  'tracking-remove-visible-buffers))))
 
