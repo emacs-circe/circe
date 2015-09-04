@@ -515,10 +515,10 @@ See `lui-scroll-behavior' for how to customize this."
 
 (defun lui-send-input ()
   "Send the current input to the Lui application.
-If point is not in the input area, self-insert."
+If point is not in the input area, insert a newline."
   (interactive)
   (if (< (point) lui-input-marker)
-      (self-insert-command 1)
+      (newline)
     (save-restriction
       (narrow-to-region lui-input-marker (point-max))
       (run-hooks 'lui-pre-input-hook))
