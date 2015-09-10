@@ -164,16 +164,16 @@ is then associated with the match."
 (defcustom lui-buttons-list
   `(("`\\([A-Za-z0-9+=*/-]+\\)'" 1
      lui-button-elisp-symbol 1)
-    ("debbugs#\\([0-9]+\\)" 0
+    ("\\<debbugs#\\([0-9]+\\)" 0
      "https://debbugs.gnu.org/cgi/bugreport.cgi?bug=%s" 1)
-    ("RFC ?\\([0-9]+\\)" 0
+    ("\\<RFC ?\\([0-9]+\\)" 0
      "http://www.ietf.org/rfc/rfc%s.txt" 1)
-    ("CVE[- ]\\([0-9]+-[0-9]+\\)" 0
+    ("\\<CVE[- ]\\([0-9]+-[0-9]+\\)" 0
      "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-%s" 1)
-    ("SRFI[- ]?\\([0-9]+\\)" 0
+    ("\\<SRFI[- ]?\\([0-9]+\\)" 0
      "http://srfi.schemers.org/srfi-%s/srfi-%s.html" 1 1)
-    ("PEP[- ]?\\([0-9]+\\)" 0 lui-button-pep 1)
-    ("xkcd[ #]*\\([0-9]+\\)" 0
+    ("\\<PEP[- ]?\\([0-9]+\\)" 0 lui-button-pep 1)
+    ("\\<xkcd[ #]*\\([0-9]+\\)" 0
      "https://xkcd.com/%s" 1)
     ("\\([0-9a-zA-Z_.-]+/[0-9a-zA-Z_.-]+\\)#\\([0-9]+\\)" 0
      "https://github.com/%s/issues/%s" 1 2))
