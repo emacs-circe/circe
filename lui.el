@@ -164,7 +164,7 @@ is then associated with the match."
 (defcustom lui-buttons-list
   `(("`\\([A-Za-z0-9+=*/-]+\\)'" 1
      lui-button-elisp-symbol 1)
-    ("\\<debbugs#\\([0-9]+\\)" 0
+    ("\\<debbugs[#:]\\([0-9]+\\)" 0
      "https://debbugs.gnu.org/cgi/bugreport.cgi?bug=%s" 1)
     ("\\<RFC ?\\([0-9]+\\)" 0
      "http://www.ietf.org/rfc/rfc%s.txt" 1)
