@@ -191,7 +191,7 @@ Common options:
      :nickserv-identify-challenge "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
      )
-    ("Bitlbee" :host "localhost"
+    ("Bitlbee" :host "localhost" :port 6667
      :nickserv-mask "\\(bitlbee\\|root\\)!\\(bitlbee\\|root\\)@"
      :nickserv-identify-challenge "use the \x02identify\x02 command to identify yourself"
      :nickserv-identify-command "PRIVMSG &bitlbee :identify {password}"
