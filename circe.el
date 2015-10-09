@@ -988,6 +988,33 @@ A keyword in the first position of the channels list overrides
 joined channels.")
 (make-variable-buffer-local 'circe-channels)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Server Buffer Management ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Every Circe buffer has an associated server buffer (which might be
+;; the buffer itself). Circe buffers should set the
+;; `circe-server-buffer' variable to the associated server buffer.
+
+(defun circe-server-buffer ()
+  "Return the server buffer for the current buffer."
+  (let ((buf (if (eq major-mode 'circe-server-mode)
+                 (current-buffer)
+               circe-server-buffer)))
+    (cond
+     ((not buf)
+      (error "Not in a Circe buffer"))
+     ((not (buffer-live-p buf))
+      (error "The server buffer died, functionality is limited"))
+     (t
+      buf))))
+
+(defmacro with-circe-server-buffer (&rest body)
+  "Run BODY with the current buffer being the current server buffer."
+  (declare (indent 0))
+  `(with-current-buffer (circe-server-buffer)
+     ,@body))
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Editor Commands ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -1316,33 +1343,6 @@ lui-mode
        t)
   (set (make-local-variable 'tracking-faces-priorities)
        circe-track-faces-priorities))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; Server Buffer Management ;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Every Circe buffer has an associated server buffer (which might be
-;; the buffer itself). Circe buffers should set the
-;; `circe-server-buffer' variable to the associated server buffer.
-
-(defun circe-server-buffer ()
-  "Return the server buffer for the current buffer."
-  (let ((buf (if (eq major-mode 'circe-server-mode)
-                 (current-buffer)
-               circe-server-buffer)))
-    (cond
-     ((not buf)
-      (error "Not in a Circe buffer"))
-     ((not (buffer-live-p buf))
-      (error "The server buffer died, functionality is limited"))
-     (t
-      buf))))
-
-(defmacro with-circe-server-buffer (&rest body)
-  "Run BODY with the current buffer being the current server buffer."
-  (declare (indent 0))
-  `(with-current-buffer (circe-server-buffer)
-     ,@body))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;;; Displaying ;;;;
