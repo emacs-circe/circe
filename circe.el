@@ -196,6 +196,7 @@ Common options:
      :nickserv-identify-challenge "use the \x02identify\x02 command to identify yourself"
      :nickserv-identify-command "PRIVMSG &bitlbee :identify {password}"
      :nickserv-identify-confirmation "Password accepted, settings and accounts loaded"
+     :lagmon-disabled t
      )
     ("OFTC" :host "irc.oftc.net" :port (6667 . 6697)
      :nickserv-mask "^NickServ!services@services\\.oftc\\.net$"
