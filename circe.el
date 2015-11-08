@@ -3141,8 +3141,9 @@ IRC servers."
                         channel 'circe-channel-mode)
     (let* ((channel-obj (irc-connection-channel (circe-server-process)
                                                 channel))
-           (old-topic (when channel
-                        (irc-channel-last-topic channel-obj))))
+           (old-topic (or (when channel
+                            (irc-channel-last-topic channel-obj))
+                          "")))
       (circe-display 'circe-format-server-topic
                      :nick nick
                      :userhost (or userhost "server")
