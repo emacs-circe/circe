@@ -1121,6 +1121,9 @@ See `circe-network-options' and `circe-network-defaults'."
         (if use-tls
             (plist-put options :port (cdr port))
           (plist-put options :port (car port)))))
+    (dolist (required-option '(:host :port))
+      (when (not (plist-get options required-option))
+        (error (format "Network option %s not specified" required-option))))
     options))
 
 (defun circe--translate-option-names (option)
