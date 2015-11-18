@@ -85,6 +85,11 @@ add something like the following:
 With this in your configuration, you can use `M-x circe RET Freenode
 RET` to connect to Freenode using these settings.
 
+_Please note:_ Circe uses the `openssl` or `gnutls-cli` command line
+programs to connect via TLS. These tools do not by default verify the
+server certificate. If you want to verify the server certificate,
+customize the `tls-program` variable.
+
 ## Features
 
 - Sensible defaults

@@ -29,7 +29,7 @@
 
 (defcustom tls-connection-command
   (if (executable-find "gnutls-cli")
-      "gnutls-cli -p %p %h"
+      "gnutls-cli --insecure -p %p %h"
     "openssl s_client -connect %h:%p -no_ssl2 -ign_eof")
   "The command to use to create a TLS connection.
 
