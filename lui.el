@@ -545,9 +545,9 @@ If point is not in the input area, insert a newline."
 
 (defun lui-buttonize ()
   "Buttonize the current message."
+  (lui-buttonize-urls)
   (lui-buttonize-custom)
-  (lui-buttonize-issues)
-  (lui-buttonize-urls))
+  (lui-buttonize-issues))
 
 (defun lui-buttonize-custom ()
   "Add custom buttons to the current message.
@@ -560,36 +560,40 @@ This uses `lui-buttons-list'."
           (arg-matches (nthcdr 3 entry)))
       (goto-char (point-min))
       (while (re-search-forward regex nil t)
-        (let* ((function (if (functionp function-or-url)
-                             function-or-url
-                           'browse-url))
-               (matches (mapcar (lambda (n)
-                                  (match-string-no-properties n))
-                                arg-matches))
-               (arguments (if (functionp function-or-url)
-                              matches
-                            (list (apply #'format function-or-url
-                                         matches)))))
-          (make-button (match-beginning submatch)
-                       (match-end submatch)
-                       'type 'lui-button
-                       'action 'lui-button-activate
-                       'lui-button-function function
-                       'lui-button-arguments arguments))))))
+        ;; Ensure we're not inserting a button inside a URL button
+        (when (not (button-at (point)))
+          (let* ((function (if (functionp function-or-url)
+                               function-or-url
+                             'browse-url))
+                 (matches (mapcar (lambda (n)
+                                    (match-string-no-properties n))
+                                  arg-matches))
+                 (arguments (if (functionp function-or-url)
+                                matches
+                              (list (apply #'format function-or-url
+                                           matches)))))
+            (make-button (match-beginning submatch)
+                         (match-end submatch)
+                         'type 'lui-button
+                         'action 'lui-button-activate
+                         'lui-button-function function
+                         'lui-button-arguments arguments)))))))
 
 (defun lui-buttonize-issues ()
   "Buttonize issue references in the current message, if configured."
   (when lui-button-issue-tracker
     (goto-char (point-min))
     (while (re-search-forward "\\(?:^\\|\\W\\)\\(#\\([0-9]+\\)\\)" nil t)
-      (make-button (match-beginning 1)
-                   (match-end 1)
-                   'type 'lui-button
-                   'action 'lui-button-activate
-                   'lui-button-function 'browse-url
-                   'lui-button-arguments
-                   (list (format lui-button-issue-tracker
-                                 (match-string 2)))))))
+      ;; Ensure we're not inserting a button inside a URL button
+      (when (not (button-at (point)))
+        (make-button (match-beginning 1)
+                     (match-end 1)
+                     'type 'lui-button
+                     'action 'lui-button-activate
+                     'lui-button-function 'browse-url
+                     'lui-button-arguments
+                     (list (format lui-button-issue-tracker
+                                   (match-string 2))))))))
 
 (defun lui-buttonize-urls ()
   "Buttonize URLs in the current message."
