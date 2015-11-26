@@ -541,6 +541,7 @@ If point is not in the input area, insert a newline."
 
 (define-button-type 'lui-button
   'supertype 'button
+  'follow-link t
   'face 'lui-button-face)
 
 (defun lui-buttonize ()
