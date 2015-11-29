@@ -1088,7 +1088,8 @@ network names."
         network-or-host)
     (dolist (network-spec (append circe-network-options
                                   circe-network-defaults))
-      (push (car network-spec) networks))
+      (when (not (member (car network-spec) networks))
+        (push (car network-spec) networks)))
     (setq networks (sort networks 'string-lessp))
     (setq network-or-host (completing-read "Network or host: "
                                            networks
