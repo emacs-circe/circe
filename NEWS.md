@@ -1,3 +1,16 @@
+# New in 2.1
+
+- New option: `circe-inhibit-nick-highlight-function` – this allows
+  you to disable nick highlighting in some messages.
+- New extension: `circe-new-day-notifier.el` – show date changes in
+  chat buffers. (Thanks to Pásztor János!)
+- Improve Bitlbee support by adding a default port (6667) and
+  disabling lagmon if it is used.
+- Improved buttonizing of various references, like PEP links or Emacs
+  debbugs references.
+- Fix a bug that would confuse Emacs with lots of `nil` faces
+- Lots of other bug fixes.
+
 # New in 2.0
 
 - Circe has had its IRC backend completely rewritten. It is now a
