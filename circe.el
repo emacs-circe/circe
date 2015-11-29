@@ -321,7 +321,7 @@ can be displayed using \\[lui-toggle-ignored]."
 (defcustom circe-ignore-functions nil
   "A list of functions to check whether we should ignore a message.
 
-These functions get five arguments: NICK, USERHOST, and BODY. If
+These functions get three arguments: NICK, USERHOST, and BODY. If
 one of them returns a non-nil value, the message is ignored."
   :type 'hook
   :group 'circe)
