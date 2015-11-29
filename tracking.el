@@ -221,7 +221,7 @@ decided according to `tracking-faces-priorities'."
                          (list (tracking-faces-merge (buffer-name buffer)
                                                      faces)))))))
     (setq tracking-mode-line-buffers (tracking-status))
-    (sit-for 0) ;; Update mode line
+    (force-mode-line-update t)
     ))
 
 ;;;###autoload
