@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2005 - 2015  Jorgen Schaefer
 
-;; Version: 2.0
+;; Version: 2.1
 ;; Keywords: IRC, chat
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe
@@ -31,7 +31,7 @@
 
 ;;; Code:
 
-(defvar circe-version "2.0"
+(defvar circe-version "2.1"
   "Circe version string.")
 
 (require 'circe-compat)
@@ -3506,45 +3506,45 @@ regular expression."
 ;;; Deprecated functions and variables
 
 (define-obsolete-function-alias 'circe-server-nick 'circe-nick
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-function-alias 'circe-server-message
   'circe-display-server-message
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-networks 'circe-network-defaults
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-server-name 'circe-host
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-server-service 'circe-port
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-server-network 'circe-network
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-server-ip-family 'circe-ip-family
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-server-nick 'circe-nick
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-server-user 'circe-user
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-server-pass 'circe-pass
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-server-realname 'circe-realname
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-server-use-tls 'circe-use-tls
-  "Circe 2.0")
+  "Circe 2.1")
 
 (define-obsolete-variable-alias 'circe-server-auto-join-channels
   'circe-channels
-  "Circe 2.0")
+  "Circe 2.1")
 
 (provide 'circe)
 ;;; circe.el ends here
