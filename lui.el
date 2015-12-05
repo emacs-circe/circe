@@ -37,6 +37,8 @@
 ;; lui-insert
 ;; lui-input-function
 ;; lui-completion-function
+;; lui-time-stamp-time
+;; lui-time-stamp-zone
 ;; and the 'lui-fool and 'lui-do-not-track text properties
 
 ;;; Code:
@@ -1135,9 +1137,28 @@ function."
   "The last time stamp.")
 (make-variable-buffer-local 'lui-time-stamp-last)
 
+(defvar lui-time-stamp-time nil
+  "A custom time to use as the time stamp for `lui-insert'.
+
+This variable should be let-bound when you wish to provide a
+custom time to be printed by `lui-time-stamp'.  If this variable
+is nil the current time is used.  See the TIME argument to
+`format-time-string' for more information.")
+
+(defvar lui-time-stamp-zone nil
+  "A custom timezone to use for the time stamp for `lui-insert'.
+
+This variable should be let-bound when you wish to provide a
+custom time zone when printing the time stamp with
+`lui-time-stamp'.  If this variable is nil local time is used.
+See the ZONE argument to `format-time-string' for more
+information.")
+
 (defun lui-time-stamp ()
   "Add a time stamp to the current buffer."
-  (let ((ts (format-time-string lui-time-stamp-format)))
+  (let ((ts (format-time-string lui-time-stamp-format
+                                lui-time-stamp-time
+                                lui-time-stamp-zone)))
     (cond
      ;; Time stamps right
      ((or (numberp lui-time-stamp-position)
