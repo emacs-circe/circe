@@ -1,6 +1,6 @@
 ;;; lui.el --- Linewise User Interface -*- lexical-binding: t -*-
 
-;; Copyright (C) 2005 - 2015  Jorgen Schaefer
+;; Copyright (C) 2005 - 2016  Jorgen Schaefer
 
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe/wiki/Lui
@@ -480,17 +480,21 @@ This is called from `post-command-hook'.
 
 See `lui-scroll-behavior' for how to customize this."
   (condition-case err
-      (when (and lui-input-marker
-                 (memq lui-scroll-behavior '(t post-command)))
-        ;; Code from ERC's erc-goodies.el. I think this was originally
-        ;; mine anyhow, not sure though.
-        (save-restriction
-          (when (>= (point) lui-input-marker)
-            (save-excursion
-              (goto-char (point-max))
-              (recenter -1)))))
+      (dolist (w (window-list))
+        (with-current-buffer (window-buffer w)
+          (when (and lui-input-marker
+                     (memq lui-scroll-behavior '(t post-command)))
+            ;; Code from ERC's erc-goodies.el. I think this was originally
+            ;; mine anyhow, not sure though.
+            (save-restriction
+              (widen)
+              (when (>= (point) lui-input-marker)
+                (save-excursion
+                  (goto-char (point-max))
+                  (with-selected-window w
+                    (recenter -1))))))))
     (error
-     (message "Error in l-s-p-c: %S" err)
+     (message "Error in lui-scroll-post-command: %S" err)
      )))
 
 (defun lui-scroll-post-output ()
