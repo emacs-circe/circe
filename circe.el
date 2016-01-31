@@ -1856,6 +1856,19 @@ This is used by Circe to know where to put spurious messages."
             (setq circe-server-last-active-buffer buf)))))))
 (ad-activate 'select-window)
 
+(defun circe-reduce-lurker-spam ()
+  "Return the value of `circe-reduce-lurker-spam'.
+
+This uses a buffer-local value first, then the one in the server
+buffer.
+
+Use this instead of accessing the variable directly to enable
+setting the variable through network options."
+  (if (local-variable-p 'circe-reduce-lurker-spam)
+      circe-reduce-lurker-spam
+    (with-circe-server-buffer
+      circe-reduce-lurker-spam)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Chat Buffer Management ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2109,7 +2122,7 @@ A nick was regained if the NEW nick was also a recent user."
                         (irc-user-last-activity-time recent-user)))))
     (cond
      ;; If we do not track lurkers, no one is ever a lurker.
-     ((not circe-reduce-lurker-spam)
+     ((not (circe-reduce-lurker-spam))
       nil)
      ;; We ourselves are never lurkers (in this sense).
      ((circe-server-my-nick-p nick)
@@ -2975,7 +2988,7 @@ IRC servers."
                                   (seconds-to-time (cadr split)))
                            :ago (circe-duration-string
                                  (- (float-time) (cadr split)))))))
-       ((and circe-reduce-lurker-spam
+       ((and (circe-reduce-lurker-spam)
              (circe-lurker-rejoin-p nick circe-chat-target))
         (let* ((channel (irc-connection-channel (circe-server-process)
                                                 circe-chat-target))
@@ -2993,7 +3006,7 @@ IRC servers."
                          :departuredelta (circe-duration-string
                                           (- (float-time)
                                              departed)))))
-       ((not circe-reduce-lurker-spam)
+       ((not (circe-reduce-lurker-spam))
         (circe-display 'circe-format-server-join
                        :nick nick
                        :userhost (or userhost "server")
@@ -3048,7 +3061,7 @@ IRC servers."
     (dolist (buf (circe-user-channels new-nick))
       (with-current-buffer buf
         (cond
-         ((and circe-reduce-lurker-spam
+         ((and (circe-reduce-lurker-spam)
                (circe-lurker-p new-nick))
           nil)
          ((circe-channel-user-nick-regain-p old-nick new-nick)
