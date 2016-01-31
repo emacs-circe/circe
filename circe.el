@@ -45,7 +45,6 @@
 
 ;; Used to be optional. But sorry, we're in the 21st century already.
 (require 'lui-irc-colors)
-(enable-lui-irc-colors)
 
 (defgroup circe nil
   "Yet Another Emacs IRC Client."
@@ -1330,10 +1329,12 @@ lui-mode
   `-circe-chat-mode
     `-circe-channel-mode
     `-circe-query-mode"
+  (add-hook 'lui-pre-output-hook 'lui-irc-colors
+            t t)
   (add-hook 'lui-pre-output-hook 'circe--output-highlight-nick
-            nil t)
+            t t)
   (add-hook 'completion-at-point-functions 'circe--completion-at-point
-            nil t)
+            t t)
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
   (setq lui-input-function 'circe--input
