@@ -2573,7 +2573,7 @@ message separated by a space."
       (if buf
           (with-current-buffer buf
             (circe-command-SAY what)
-            (ring-insert lui-input-ring what))
+            (lui-add-input what))
         (with-current-buffer (circe-server-last-active-buffer)
           (irc-send-PRIVMSG (circe-server-process)
                             who what)
@@ -2634,7 +2634,8 @@ message separated by a space."
     (pop-to-buffer
      (circe-server-get-or-create-chat-buffer who 'circe-query-mode))
     (when what
-      (circe-command-SAY what))))
+      (circe-command-SAY what)
+      (lui-add-input what))))
 
 (defun circe-command-QUIT (reason)
   "Quit the current server giving REASON."
