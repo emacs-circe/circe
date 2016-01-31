@@ -133,6 +133,7 @@ a valid list of dictionaries."
 
 (defcustom lui-highlight-keywords nil
   "A list of keywords to highlight.
+
 This specifies a list of keywords that Lui should highlight. Each
 entry is of one of the following forms (similar to
 `font-lock-keywords'):
@@ -148,7 +149,10 @@ entry is of one of the following forms (similar to
     Highlight the SUBMATCH in REGEXP in FACE
 
 In all of these cases, the FACE can also be a property list which
-is then associated with the match."
+is then associated with the match.
+
+All matches are run, which means later matches can override
+changes by earlier ones."
   :type '(repeat (choice
                   (string :tag "Regular Expression")
                   (list :tag "Submatch"
