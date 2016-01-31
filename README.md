@@ -88,7 +88,7 @@ RET` to connect to Freenode using these settings.
 _Please note:_ Circe uses the `openssl` or `gnutls-cli` command line
 programs to connect via TLS. These tools do not by default verify the
 server certificate. If you want to verify the server certificate,
-customize the `tls-program` variable.
+customize the `tls-connection-command` variable.
 
 ## Features
 
