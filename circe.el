@@ -2534,10 +2534,15 @@ consisting of two words, the nick and the channel."
 (defun circe-command-JOIN (channel)
   "Join CHANNEL. This can also contain a key."
   (interactive "sChannel: ")
-  (let ((channel (string-trim channel)))
-    (pop-to-buffer
-     (circe-server-get-or-create-chat-buffer channel 'circe-channel-mode))
-    (irc-send-JOIN (circe-server-process) channel)))
+  (let (channels keys)
+    (when (string-match "^\\s-*\\([^ ]+\\)\\(:? \\([^ ]+\\)\\)?$" channel)
+      (setq channels (match-string 1 channel)
+            keys (match-string 3 channel))
+      (dolist (channel (split-string channels ","))
+        (pop-to-buffer
+         (circe-server-get-or-create-chat-buffer channel
+                                                 'circe-channel-mode)))
+      (irc-send-JOIN (circe-server-process) channels keys))))
 
 (defun circe-command-ME (line)
   "Send LINE to IRC as an action."
