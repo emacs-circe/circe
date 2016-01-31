@@ -530,15 +530,15 @@ If point is not in the input area, insert a newline."
       (run-hooks 'lui-pre-input-hook))
     (let ((input (buffer-substring lui-input-marker (point-max))))
       (delete-region lui-input-marker (point-max))
-      (ring-insert lui-input-ring input)
-      (setq lui-input-ring-index nil)
+      (lui-add-input input)
       (if lui-input-function
           (funcall lui-input-function input)
-        (error "No input function specified")))
-    ;; Clean the undo list. The input is gone, nothing to be undone
-    ;; here.
-    ;     (setq buffer-undo-list nil)
-    ))
+        (error "No input function specified")))))
+
+(defun lui-add-input (input)
+  "Add INPUT as if entered by the user."
+  (ring-insert lui-input-ring input)
+  (setq lui-input-ring-index nil))
 
 
 ;;;;;;;;;;;;;;;
