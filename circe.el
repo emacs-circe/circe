@@ -1334,7 +1334,7 @@ lui-mode
   (add-hook 'lui-pre-output-hook 'circe--output-highlight-nick
             t t)
   (add-hook 'completion-at-point-functions 'circe--completion-at-point
-            t t)
+            nil t)
   (lui-set-prompt circe-prompt-string)
   (goto-char (point-max))
   (setq lui-input-function 'circe--input
