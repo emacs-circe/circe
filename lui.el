@@ -167,6 +167,27 @@ changes by earlier ones."
                         (face :tag "Face"))))
   :group 'lui)
 
+(defface lui-strong-face
+  '((t (:inherit bold)))
+  "Face used for strong markup."
+  :group 'lui-irc-colors)
+
+(defface lui-emphasis-face
+  '((t (:inherit italic)))
+  "Face for emphasis markup."
+  :group 'lui-irc-colors)
+
+(defcustom lui-formatting-list nil
+  "List of enabled formatting types.
+Each list item is a list consisting of a regular expression
+matching the highlighted text, an integer for the submatch and a
+face for highlighting the match."
+  :type '(set (const :tag "*Strong* text"
+                     ("\\*\\([^*]*\\)\\*" 1 lui-strong-face))
+              (const :tag "_Emphasized_ text"
+                     ("_\\([^_]*\\)_" 1 lui-emphasis-face)))
+  :group 'lui)
+
 (defcustom lui-buttons-list
   `(("`\\([A-Za-z0-9+=*/-]+\\)'" 1
      lui-button-elisp-symbol 1)
@@ -901,6 +922,7 @@ of the buffer."
                               (point-max)
                               `(lui-raw-text ,str))
          (run-hooks 'lui-pre-output-hook)
+         (lui-apply-formatting)
          (lui-highlight-keywords)
          (lui-buttonize)
          (lui-fill)
@@ -1084,6 +1106,18 @@ This is called automatically when new text is inserted."
             (add-text-properties beg end
                                  (append (funcall properties entry)
                                          '(lui-highlight-fontified-p t)))))))))
+
+(defun lui-apply-formatting ()
+  "Highlight the entries in `lui-formatting-list'."
+  (dolist (entry lui-formatting-list)
+    (goto-char (point-min))
+    (let ((re (car entry))
+          (subgroup (cadr entry))
+          (face (nth 2 entry)))
+      (while (re-search-forward re nil t)
+        (when face
+          (add-face-text-property (match-beginning subgroup) (match-end subgroup)
+                                  face nil (current-buffer)))))))
 
 
 ;;;;;;;;;;;;;;;
