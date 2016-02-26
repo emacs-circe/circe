@@ -1,3 +1,17 @@
+# New in 2.2
+
+- Server configuration now accepts the `:reduce-lurker-spam` keyword
+  to set that variable.
+- Lui now supports inline markup with `*bold*` and similar. Customize
+  `lui-formatting-list` for this.
+- `lui-add-input` is a new function to tell lui about new input that
+  did not originate from lui itself. It is added to the history.
+- Circe now adds the argument to `/query` to the chat history of a
+  query buffer.
+- The new variables `lui-time-stamp-time` and `lui-time-stamp-zone`
+  allow programmers to customize the time zone for time stamps in lui.
+- And lots of bug fixes.
+
 # New in 2.1
 
 - New option: `circe-inhibit-nick-highlight-function` – this allows
