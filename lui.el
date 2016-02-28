@@ -178,6 +178,11 @@ changes by earlier ones."
   "Face for emphasis markup."
   :group 'lui-irc-colors)
 
+(defface lui-deleted-face
+  '((t (:strike-through t)))
+  "Face for deleted messages"
+  :group 'lui-irc-colors)
+
 (defcustom lui-formatting-list nil
   "List of enabled formatting types.
 Each list item is a list consisting of a regular expression
@@ -904,56 +909,102 @@ This is the value of Lui for `flyspell-generic-check-word-p'."
 ;;; Output ;;;
 ;;;;;;;;;;;;;;
 
+(defvar lui-message-id 0
+  "Unique id for each message.
+Used to allow navigation between messages and editing and
+deleting.")
+(make-variable-buffer-local 'lui-message-id)
+
+(defvar lui-internal-text-properties '(lui-formatted-time-stamp
+                                       lui-time-stamp-last
+                                       lui-raw-text
+                                       lui-message-id
+                                       lui-saved-text-properties)
+  "Text properties used internally by lui.
+
+These are always kept when replacing messages.")
+
 (defun lui-insert (str &optional not-tracked-p)
   "Insert STR into the current Lui buffer.
 
 If NOT-TRACKED-P is given, this insertion won't trigger tracking
 of the buffer."
-  (lui-save-undo-list
-   (save-excursion
-     (save-restriction
-       (let ((inhibit-read-only t)
-             (inhibit-point-motion-hooks t))
-         (widen)
-         (goto-char lui-output-marker)
-         (let ((beg (point))
-               (end nil))
-           (insert str "\n")
-           (setq end (point))
-           (set-marker lui-output-marker (point))
-           (narrow-to-region beg end))
-         (goto-char (point-min))
-         (add-text-properties (point-min)
-                              (point-max)
-                              `(lui-raw-text ,str))
-         (run-hooks 'lui-pre-output-hook)
-         (lui-apply-formatting)
-         (lui-highlight-keywords)
-         (lui-buttonize)
-         (lui-fill)
-         (lui-time-stamp)
-         (goto-char (point-min))
-         (run-hooks 'lui-post-output-hook)
-         (lui-fools)
-         (goto-char (point-min))
-         (let ((faces (lui-faces-in-region (point-min)
-                                           (point-max)))
-               (foolish (text-property-any (point-min)
-                                           (point-max)
-                                           'lui-fool t))
-               (not-tracked-p
-                (or not-tracked-p
-                    (text-property-any (point-min)
-                                       (point-max)
-                                       'lui-do-not-track t))))
+  (if not-tracked-p
+      (lui-insert-with-text-properties str 'not-tracked-p t)
+    (lui-insert-with-text-properties str)))
+
+(defun lui-plist-keys (plist)
+  "Get the keys from PLIST.
+
+PLIST should be a flat list with keys and values alternating,
+like used for setting and getting text properties."
+  (let ((key t) result)
+    (dolist (item plist (reverse result))
+      (when key
+        (push item result))
+      (setq key (not key)))))
+
+(defun lui-insert-with-text-properties (str &rest text-properties)
+  "Insert STR into the current Lui buffer.
+
+TEXT-PROPERTIES is a property list containing text properties to
+add to the inserted message."
+  (let ((not-tracked-p (plist-get text-properties 'not-tracked-p))
+        (saved-text-properties (append (lui-plist-keys text-properties)
+                                       lui-internal-text-properties)))
+    (lui-save-undo-list
+     (save-excursion
+       (save-restriction
+         (let ((inhibit-read-only t)
+               (inhibit-point-motion-hooks t))
            (widen)
-           (lui-truncate)
-           (lui-read-only)
-           (when (and (not not-tracked-p)
-                      (not foolish))
-             (tracking-add-buffer (current-buffer)
-                                  faces)))
-         (lui-scroll-post-output))))))
+           (goto-char lui-output-marker)
+           (let ((beg (point))
+                 (end nil))
+             (insert str "\n")
+             (setq end (point))
+             (set-marker lui-output-marker (point))
+             (narrow-to-region beg end))
+           (goto-char (point-min))
+           (add-text-properties (point-min)
+                                (point-max)
+                                `(lui-raw-text ,str))
+           (run-hooks 'lui-pre-output-hook)
+           (lui-apply-formatting)
+           (lui-highlight-keywords)
+           (lui-buttonize)
+           (lui-fill)
+           (lui-time-stamp
+            (plist-get text-properties 'lui-formatted-time-stamp))
+           (goto-char (point-min))
+           (add-text-properties
+            (point-min) (point-max)
+            (plist-put text-properties 'lui-message-id lui-message-id))
+           (setq lui-message-id (1+ lui-message-id))
+           (run-hooks 'lui-post-output-hook)
+           (lui-fools)
+           (goto-char (point-min))
+           (let ((faces (lui-faces-in-region (point-min)
+                                             (point-max)))
+                 (foolish (text-property-any (point-min)
+                                             (point-max)
+                                             'lui-fool t))
+                 (not-tracked-p
+                  (or not-tracked-p
+                      (text-property-any (point-min)
+                                         (point-max)
+                                         'lui-do-not-track t))))
+             (widen)
+             (lui-truncate)
+             (lui-read-only)
+             (when (and (not not-tracked-p)
+                        (not foolish))
+               (tracking-add-buffer (current-buffer)
+                                    faces)))
+           (lui-scroll-post-output)
+           (add-text-properties
+            (point-min) (point-max)
+            `(lui-saved-text-properties ,saved-text-properties))))))))
 
 (defun lui-adjust-undo-list (list old-begin shift)
   "Adjust undo positions in list.
@@ -1202,11 +1253,14 @@ custom time zone when printing the time stamp with
 See the ZONE argument to `format-time-string' for more
 information.")
 
-(defun lui-time-stamp ()
-  "Add a time stamp to the current buffer."
-  (let ((ts (format-time-string lui-time-stamp-format
-                                lui-time-stamp-time
-                                lui-time-stamp-zone)))
+(defun lui-time-stamp (&optional text)
+  "Add a time stamp to the current buffer.
+
+If TEXT is specified, use that instead of formatting a new time stamp."
+  (let ((ts (or text
+                (format-time-string lui-time-stamp-format
+                                    lui-time-stamp-time
+                                    lui-time-stamp-zone))))
     (cond
      ;; Time stamps right
      ((or (numberp lui-time-stamp-position)
@@ -1270,6 +1324,9 @@ information.")
                                       ,ts)
                            'lui-time-stamp t)))
           (insert ts-margin)))))
+    (add-text-properties (point-min) (point-max)
+                         `(lui-formatted-time-stamp ,ts
+                           lui-time-stamp-last ,lui-time-stamp-last))
     (setq lui-time-stamp-last ts)))
 
 (defun lui-time-stamp-enable-filtering ()
@@ -1337,6 +1394,137 @@ which see for an explanation of the argument BUFFER-STRING."
     (add-text-properties (point-min) lui-output-marker
                          '(read-only t
                            front-sticky t))))
+
+
+;;;;;;;;;;;;;;;;;;
+;;; Navigation ;;;
+;;;;;;;;;;;;;;;;;;
+
+(defun lui-at-message-p ()
+  "Check if point is on a message."
+  (get-text-property (point) 'lui-message-id))
+
+(defun lui-beginning-of-message-p ()
+  "Check if point is at the beginning of a message."
+  (or (= (point) (point-min))
+      (not (equal (get-text-property (point) 'lui-message-id)
+                  (get-text-property (1- (point)) 'lui-message-id)))))
+
+(defun lui-beginning-of-message ()
+  "Move point to the beginning of the message at point."
+  (goto-char (previous-single-property-change (point) 'lui-message-id)))
+
+(defun lui-forward-message ()
+  "Move point to the next message in the buffer and return point.
+If there is no next message, move to the end of the buffer instead."
+  (let ((current-id (get-text-property (point) 'lui-message-id))
+        (next-point
+         (next-single-property-change (point) 'lui-message-id)))
+    (if (not next-point)
+        (goto-char (point-max))
+      (let ((message-id
+             (get-text-property next-point 'lui-message-id)))
+        (goto-char next-point)
+        (when (or (not (or current-id message-id))
+                  (and current-id (not message-id))
+                  (and current-id message-id
+                       (= current-id message-id)))
+          (lui-forward-message))))
+    (point)))
+
+(defun lui-backward-message ()
+  "Move point to the previous message in the buffer and return point.
+If there is no previous message, move to the beginning of the
+buffer instead."
+  (let ((current-id (get-text-property (point) 'lui-message-id))
+        (prev-point
+         (previous-single-property-change (point) 'lui-message-id)))
+    (if (not prev-point)
+        (goto-char (point-min))
+      (let ((message-id
+             (get-text-property prev-point 'lui-message-id)))
+        (goto-char prev-point)
+        (when (or (not (or current-id message-id))
+                  (and current-id (not message-id))
+                  (and current-id message-id
+                       (= current-id message-id)))
+          (lui-backward-message))))
+    (point)))
+
+
+;;;;;;;;;;;;;;;
+;;; Editing ;;;
+;;;;;;;;;;;;;;;
+
+(defun lui-recover-output-marker ()
+  "Reset the output marker to just before the lui prompt."
+  (let ((input-position (marker-position lui-input-marker)))
+    (set-marker lui-output-marker
+                (field-beginning (1- input-position)))))
+
+(defun lui-build-plist (keys)
+  "Build a plist with KEYS taken from current text properties."
+  (let (result)
+    (dolist (key keys result)
+      (let ((value (get-text-property (point) key)))
+        (when value
+          (setq result (plist-put result key value)))))))
+
+(defun lui-replace-message (new-message)
+  "Replace the message at point with NEW-MESSAGE."
+  (unless (lui-at-message-p)
+    (error "Point is not on a message"))
+  (unless (lui-beginning-of-message-p)
+    (lui-beginning-of-message))
+  (let* ((saved-text-properties
+          (get-text-property (point) 'lui-saved-text-properties))
+         (text-properties (lui-build-plist saved-text-properties))
+         (inhibit-read-only t)
+         (lui-time-stamp-last
+          (get-text-property (point) 'lui-time-stamp-last))
+         (lui-message-id
+          (get-text-property (point) 'lui-message-id)))
+    (unwind-protect
+        (progn
+          (setq lui-output-marker (point-marker))
+          (delete-region (point)
+                         (next-single-property-change (point) 'lui-message-id))
+          (apply #'lui-insert-with-text-properties new-message
+                 (plist-put text-properties 'not-tracked-p t)))
+      (lui-recover-output-marker))))
+
+(defun lui-replace (new-message predicate)
+  "Replace a message with NEW-MESSAGE.
+
+PREDICATE should be a function that returns a non-nil value for
+the message that should be replaced."
+  (save-excursion
+    (goto-char (point-max))
+    (while (> (lui-backward-message) (point-min))
+      (when (funcall predicate)
+        (lui-replace-message new-message)))))
+
+(defun lui-delete-message ()
+  "Delete the message at point."
+  (unless (lui-at-message-p)
+    (error "Point is not on a message"))
+  (unless (lui-beginning-of-message-p)
+    (lui-beginning-of-message))
+  (let ((inhibit-read-only t))
+    (add-text-properties (point)
+                         (next-single-property-change (point) 'lui-message-id)
+                         '(face lui-deleted-face))))
+
+(defun lui-delete (predicate)
+  "Delete a message.
+
+PREDICATE should be a function that returns a non-nil value for
+the message that should be replaced."
+  (save-excursion
+    (goto-char (point-max))
+    (while (> (lui-backward-message) (point-min))
+      (when (funcall predicate)
+        (lui-delete-message)))))
 
 
 (provide 'lui)
