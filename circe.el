@@ -353,7 +353,7 @@ the user is re-notified."
   :type 'number
   :group 'circe)
 
-(defcustom circe-server-killed-confirmation 'ask
+(defcustom circe-server-killed-confirmation 'ask-and-kill-all
   "How to ask for confirmation when a server buffer is killed.
 This can be one of the following values:
   ask - Ask the user for confirmation
