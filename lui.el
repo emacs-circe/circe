@@ -311,7 +311,7 @@ Switching this off makes copying (by killing) easier for some."
   :type 'boolean
   :group 'lui)
 
-(defcustom lui-max-buffer-size nil
+(defcustom lui-max-buffer-size 102400
   "Non-nil if Lui should truncate the buffer if it grows too much.
 If the buffer size (in characters) exceeds this number, it is
 truncated at the top."
@@ -960,17 +960,18 @@ The positions are adjusted by SHIFT positions."
   ;; Thanks to ERC for the idea of the code.
   ;; ERC's code doesn't take care of an OLD-BEGIN value, which is
   ;; necessary if you allow modification of the buffer.
-  (let* ((adjust-position (lambda (pos)
-                            (if (and (numberp pos)
-                                     ;; After the boundary: Adjust
-                                     (>= (abs pos)
-                                         old-begin))
-                                (* (if (< pos 0)
-                                       -1
-                                     1)
-                                   (+ (abs pos)
-                                      shift))
-                              pos)))
+  (let* ((gc-cons-threshold most-positive-fixnum)  ;; See debbugs#22120#47
+         (adjust-position (lambda (pos)
+                               (if (and (numberp pos)
+                                        ;; After the boundary: Adjust
+                                        (>= (abs pos)
+                                            old-begin))
+                                   (* (if (< pos 0)
+                                          -1
+                                        1)
+                                      (+ (abs pos)
+                                         shift))
+                                 pos)))
          (adjust (lambda (entry)
                    (cond
                     ;; POSITION
