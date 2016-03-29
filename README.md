@@ -120,6 +120,7 @@ customize the `tls-connection-command` variable.
 - Lag monitoring (via the `circe-lagmon` module)
 - Automatic pasting to a paste site for long messages (via the
   `lui-autopaste` module)
+- Bar marking the last read position (via the `lui-track-bar` module)
 
 ## Documentation
 
