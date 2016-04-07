@@ -65,14 +65,19 @@
   :group 'circe)
 
 (defface circe-server-face
-  '((((type tty)) :foreground "blue" :weight bold)
+  '((((type tty)) (:foreground "blue" :weight bold))
+    (((background dark)) (:foreground "#5095cf"))
+    (((background light)) (:foreground "#3840b0"))
     (t (:foreground "SteelBlue")))
   "The face used to highlight server messages."
   :group 'circe)
 
 (defface circe-highlight-nick-face
-  '((((type tty)) (:foreground "cyan" :weight bold))
-    (t (:foreground "CadetBlue3" :weight bold)))
+  '((default (:weight bold))
+    (((type tty)) (:foreground "cyan"))
+    (((background dark)) (:foreground "#82e2ed"))
+    (((background light)) (:foreground "#0445b7"))
+    (t (:foreground "CadetBlue3")))
   "The face used to highlight messages directed to us."
   :group 'circe)
 
