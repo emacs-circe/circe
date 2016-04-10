@@ -593,7 +593,7 @@ This uses `lui-buttons-list'."
       (goto-char (point-min))
       (while (re-search-forward regex nil t)
         ;; Ensure we're not inserting a button inside a URL button
-        (when (not (button-at (point)))
+        (when (not (button-at (match-beginning 0)))
           (let* ((function (if (functionp function-or-url)
                                function-or-url
                              'browse-url))
