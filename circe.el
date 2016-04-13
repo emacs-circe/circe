@@ -2436,7 +2436,8 @@ Arguments are IGNORED."
                                             circe-chat-target))
            (topic (when channel
                     (irc-channel-topic channel))))
-      (lui-replace-input (format "/TOPIC %s %s" circe-chat-target topic)))
+      (lui-replace-input (format "/TOPIC %s %s"
+                                 circe-chat-target (or topic ""))))
     (goto-char (point-max))))
 
 (defun circe-command-CLEAR (&optional ignored)
