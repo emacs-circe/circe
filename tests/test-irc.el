@@ -230,6 +230,11 @@
             :to-equal
             '(nil "COMMAND" "arg1" "arg2")))
 
+  (it "should treat single space as argument separator"
+      (expect (irc--parse "COMMAND arg1  arg3")
+              :to-equal
+              '(nil "COMMAND" "arg1" "" "arg3")))
+
   (it "should parse a command with rest argument"
     (expect (irc--parse "COMMAND arg1 arg2 :arg3 still arg3")
             :to-equal
