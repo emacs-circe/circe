@@ -64,11 +64,12 @@ after-send
   :group 'lui-track-bar)
 
 (defface lui-track-bar
-  '((((type graphic)
-      (background light)) :inherit default :strike-through "dim gray")
-    (((type graphic)
-      (background dark)) :inherit default :strike-through "light gray")
-    (((type tty)) :inherit (font-lock-comment-face default) :underline t))
+  '((((type graphic) (background light))
+     :inherit default :background "dim gray" :height 0.1)
+    (((type graphic) (background dark))
+     :inherit default :background "light gray" :height 0.1)
+    (((type tty))
+     :inherit (font-lock-comment-face default) :underline t))
   "Track bar face"
   :group 'lui-track-bar)
 
@@ -100,13 +101,8 @@ after-send
   (when (derived-mode-p 'lui-mode)
     (when (not lui-track-bar-overlay)
       (setq lui-track-bar-overlay (make-overlay (point-min) (point-min)))
-      (overlay-put lui-track-bar-overlay 'before-string
-                   (propertize " "
-                               'face 'lui-track-bar
-                               'display `(space :width ,(1- fill-column))))
       (overlay-put lui-track-bar-overlay 'after-string
-                   (propertize "\n"
-                               'face 'lui-track-bar)))
+                   (propertize "\n" 'face 'lui-track-bar)))
     (move-overlay lui-track-bar-overlay
                   lui-output-marker lui-output-marker)))
 
