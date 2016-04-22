@@ -7,9 +7,12 @@
 ;;; Connection function
 
 (describe "The `irc-connect' function"
+  :var (process-status)
   (before-each
     (spy-on 'make-tls-process :and-return-value 'the-test-tls-process)
-    (spy-on 'make-network-process :and-return-value 'the-test-process))
+    (spy-on 'make-network-process :and-return-value 'the-test-process)
+    (spy-on 'process-status :and-call-fake (lambda (proc) process-status))
+    (spy-on 'irc--sentinel :and-return-value nil))
 
   (it "should call `make-network-process' if tls was not requested"
     (irc-connect :host "irc.local"
@@ -58,7 +61,18 @@
             :family nil
             :coding 'no-conversion :nowait nil :noquery t
             :filter #'irc--filter :sentinel #'irc--sentinel
-            :plist '(:host "irc.local" :service 6667) :keepalive t)))
+            :plist '(:host "irc.local" :service 6667) :keepalive t))
+
+  (it "should call the sentinel if nowait is not supported"
+    (setq process-status 'open)
+
+    (irc-connect :host "irc.local"
+                 :service 6667)
+
+    (expect 'irc--sentinel
+            :to-have-been-called-with
+            'the-test-process
+            "open manually")))
 
 (describe "Connection options"
   (let (proc)
