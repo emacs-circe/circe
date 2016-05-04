@@ -49,7 +49,7 @@ This function will be called with some text as its only argument,
 and is expected to return an URL to view the contents."
   :type '(choice (const :tag "ix.io" lui-autopaste-service-ixio)
                  (const :tag "bpaste.net" lui-autopaste-service-bpaste)
-                 (const :tag "ptpb.bw" lui-autopaste-service-ptpb-pw))
+                 (const :tag "ptpb.pw" lui-autopaste-service-ptpb-pw))
   :group 'lui-autopaste)
 
 ;;;###autoload
