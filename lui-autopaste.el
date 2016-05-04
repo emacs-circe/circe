@@ -47,7 +47,8 @@
 
 This function will be called with some text as its only argument,
 and is expected to return an URL to view the contents."
-  :type '(choice (const :tag "bpaste.net" lui-autopaste-service-bpaste))
+  :type '(choice (const :tag "bpaste.net" lui-autopaste-service-bpaste)
+                 (const :tag "ptpb.bw" lui-autopaste-service-ptpb-pw))
   :group 'lui-autopaste)
 
 ;;;###autoload
@@ -72,7 +73,7 @@ replace it with the resulting URL."
   (when (and (>= (count-lines (point-min) (point-max))
                  lui-autopaste-lines)
              (y-or-n-p "That's pretty long, would you like to use a paste service instead? "))
-    (let ((url (funcall lui-autopaste-function 
+    (let ((url (funcall lui-autopaste-function
                         (buffer-substring (point-min)
                                           (point-max)))))
       (delete-region (point-min) (point-max))
@@ -88,12 +89,28 @@ replace it with the resulting URL."
                                   (url-hexify-string text)))
         (url-http-attempt-keepalives nil))
     (let ((buf (url-retrieve-synchronously "https://bpaste.net/")))
-      (unwind-protect 
+      (unwind-protect
           (with-current-buffer buf
             (goto-char (point-min))
             (if (re-search-forward "^Location: \\(.*\\)" nil t)
                 (match-string 1)
               (error "Error during pasting to bpaste.com")))
+        (kill-buffer buf)))))
+
+(defun lui-autopaste-service-ptpb-pw (text)
+  "Paste TEXT to ptpb.pw and return the paste url."
+  (let ((url-request-method "POST")
+        (url-request-extra-headers
+         '(("Content-Type" . "application/x-www-form-urlencoded")))
+        (url-request-data (format "c=%s" (url-hexify-string text)))
+        (url-http-attempt-keepalives nil))
+    (let ((buf (url-retrieve-synchronously "https://ptpb.pw/")))
+      (unwind-protect
+          (with-current-buffer buf
+            (goto-char (point-min))
+            (if (re-search-forward "^url: \\(.*\\)" nil t)
+                (match-string 1)
+              (error "Error during pasting to ptpb.pw")))
         (kill-buffer buf)))))
 
 (provide 'lui-autopaste)
