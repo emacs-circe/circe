@@ -42,12 +42,13 @@
   :type 'integer
   :group 'lui-autopaste)
 
-(defcustom lui-autopaste-function 'lui-autopaste-service-bpaste
+(defcustom lui-autopaste-function 'lui-autopaste-service-ixio
   "Which paste service to use.
 
 This function will be called with some text as its only argument,
 and is expected to return an URL to view the contents."
-  :type '(choice (const :tag "bpaste.net" lui-autopaste-service-bpaste)
+  :type '(choice (const :tag "ix.io" lui-autopaste-service-ixio)
+                 (const :tag "bpaste.net" lui-autopaste-service-bpaste)
                  (const :tag "ptpb.bw" lui-autopaste-service-ptpb-pw))
   :group 'lui-autopaste)
 
@@ -111,6 +112,22 @@ replace it with the resulting URL."
             (if (re-search-forward "^url: \\(.*\\)" nil t)
                 (match-string 1)
               (error "Error during pasting to ptpb.pw")))
+        (kill-buffer buf)))))
+
+(defun lui-autopaste-service-ixio (text)
+  "Paste TEXT to ix.io and return the paste url."
+  (let ((url-request-method "POST")
+        (url-request-extra-headers
+         '(("Content-Type" . "application/x-www-form-urlencoded")))
+        (url-request-data (format "f:1=%s" (url-hexify-string text)))
+        (url-http-attempt-keepalives nil))
+    (let ((buf (url-retrieve-synchronously "http://ix.io/")))
+      (unwind-protect
+          (with-current-buffer buf
+            (goto-char (point-min))
+            (if (re-search-forward "\n\n" nil t)
+                (buffer-substring (point) (point-at-eol))
+              (error "Error during pasting to ix.io")))
         (kill-buffer buf)))))
 
 (provide 'lui-autopaste)
