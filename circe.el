@@ -1188,16 +1188,25 @@ See `circe-server-max-reconnect-attempts'.")
   (interactive)
   (with-circe-server-buffer
     (when (or (called-interactively-p 'any)
-              (not circe-server-inhibit-auto-reconnect-p)
-              (not circe-server-max-reconnect-attempts)
-              (<= circe-server-reconnect-attempts
-                  circe-server-max-reconnect-attempts))
+              (circe--reconnect-p))
       (setq circe-server-inhibit-auto-reconnect-p t
             circe-server-reconnect-attempts (+ circe-server-reconnect-attempts
                                                1))
       (unwind-protect
           (circe-reconnect--internal)
         (setq circe-server-inhibit-auto-reconnect-p nil)))))
+
+(defun circe--reconnect-p ()
+  (cond
+   (circe-server-inhibit-auto-reconnect-p
+    nil)
+   ((not circe-server-max-reconnect-attempts)
+    t)
+   ((<= circe-server-reconnect-attempts
+        circe-server-max-reconnect-attempts)
+    t)
+   (t
+    nil)))
 
 (defun circe-reconnect--internal ()
   "The internal function called for reconnecting unconditionally.
