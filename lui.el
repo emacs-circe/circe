@@ -469,6 +469,8 @@ It can be customized for an application by specifying a
   (lui-time-stamp-enable-filtering)
   (tracking-mode 1)
   (auto-fill-mode 0)
+  (when (fboundp 'cursor-intangible-mode)
+    (cursor-intangible-mode 1))
   (when lui-flyspell-p
     (require 'flyspell)
     (lui-flyspell-change-dictionary)))
@@ -1228,7 +1230,8 @@ information.")
                            'lui-time-stamp t))
                (start (point)))
           (insert ts-string)
-          (add-text-properties start (1+ (point)) '(intangible t)))))
+          (add-text-properties start (1+ (point)) '(intangible t))
+          (add-text-properties (1+ start) (point) '(cursor-intangible t)))))
      ;; Time stamps left
      ((eq lui-time-stamp-position 'left)
       (let ((indent-string (propertize (make-string (length ts) ?\s)
