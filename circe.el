@@ -1468,7 +1468,7 @@ or if it matches the first word in BODY.
 PATTERNS should be the list of regular expressions."
   (let ((string (format "%s!%s" nick userhost))
         (target (when (and body
-                           (string-match "^\\([^ ]*\\)[:, ]" body))
+                           (string-match "^\\([^ ]*\\)[:,]" body))
                   (match-string 1 body))))
     (catch 'return
       (dolist (regex patterns)
