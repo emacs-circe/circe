@@ -2494,9 +2494,7 @@ If ARGUMENT is nil, it is interpreted as no argument."
   (interactive "sReason: ")
   (dolist (buf (circe-server-buffers))
     (with-current-buffer buf
-      (when (eq (process-status circe-server-process)
-                'open)
-        (irc-send-AWAY circe-server-process reason)))))
+      (irc-send-AWAY circe-server-process reason))))
 
 (defun circe-command-GQUIT (reason)
   "Quit all servers with reason REASON."
