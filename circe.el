@@ -375,8 +375,8 @@ This can be one of the following values:
 This can be one of the following values:
   ask - Ask the user for confirmation
   nil - Don't ask, just kill"
-  :type '(choid (const :tag "Ask before killing" ask)
-                (const :tag "Don't ask" nil))
+  :type '(choice (const :tag "Ask before killing" ask)
+                 (const :tag "Don't ask" nil))
   :group 'circe)
 
 (defcustom circe-track-faces-priorities '(circe-highlight-nick-face
