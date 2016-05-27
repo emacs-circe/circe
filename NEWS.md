@@ -1,3 +1,14 @@
+# New in 2.3
+
+- Circe (Lui) now has a track bar. Use `(enable-lui-track-bar)` to get
+  a bar where you stopped reading when you did hide a buffer.
+- Buffers are now by default limited to 100k, as large buffers cause
+  unreasonable slowdown in Emacs.
+- Autopaste now defaults to ix.io and also knows about ptpb.pw.
+- A number of faces have been updated to be nicer to the eye.
+- Improve compatibility with the Slack IRC gateway.
+- Lots of bug fixes.
+
 # New in 2.2
 
 - Server configuration now accepts the `:reduce-lurker-spam` keyword
