@@ -63,13 +63,13 @@
    :foreground
    on-dark on-light rest
    (concat "Face used for foreground IRC color "
-	   (number-to-string n) " (" name ")."))
+	   (number-to-string number) " (" name ")."))
   (lui-irc-defface
    (intern (format "lui-irc-colors-bg-%d-face" number))
    :background
    on-light on-dark rest
    (concat "Face used for background IRC color "
-	   (number-to-string n) " (" name ").")))
+	   (number-to-string number) " (" name ").")))
 
 (defun lui-irc-defface-bulk (colors)
   (dotimes (n (length colors))
