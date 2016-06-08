@@ -50,6 +50,7 @@
 (require 'paren)
 (require 'ring)
 (require 'thingatpt)
+(require 'rx)
 
 (require 'tracking)
 
@@ -182,13 +183,28 @@ changes by earlier ones."
 Each list item is a list consisting of a regular expression
 matching the highlighted text, an integer for the submatch and a
 face for highlighting the match."
-  :type '(set (const :tag "*Strong* text"
-                     ("\\(?:^\\|[ \t]\\)\\*\\([^ \t]+\\(?:[ \t]+[^ \t]+\\)*\\)\\*\\(?:$\\|[ \t]\\)"
-                      1 lui-strong-face))
-              (const :tag "_Emphasized_ text"
-                     ("\\(?:^\\|[ \t]\\)_\\([^ \t]+\\(?:[ \t]+[^ \t]+\\)*\\)_\\(?:$\\|[ \t]\\)"
-                      1 lui-emphasis-face)))
-:group 'lui)
+  :type `(set
+          (const :tag "*Strong* text"
+                 (,(rx-to-string
+                    '(: (: (or bol (any " \t")))
+                        "*"
+                        (group (not (any " \t*"))
+                               (* (: (+ (any " \t"))
+                                     (+ (not (any " \t*"))))))
+                        "*"
+                        (: (or eol (any " \t")))))
+                  1 'lui-strong-face))
+          (const :tag "_Emphasized_ text"
+                 (,(rx-to-string
+                    '(: (: (or bol (any " \t")))
+                        "_"
+                        (group (not (any " \t*"))
+                               (* (: (+ (any " \t"))
+                                     (+ (not (any " \t*"))))))
+                        "_"
+                        (: (or eol (any " \t")))))
+                  1 'lui-emphasis-face)))
+  :group 'lui)
 
 (defcustom lui-buttons-list
   `(("`\\([A-Za-z0-9+=*/-]+\\)'" 1
