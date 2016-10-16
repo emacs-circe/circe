@@ -366,10 +366,13 @@ the user is re-notified."
 This can be one of the following values:
   ask - Ask the user for confirmation
   ask-and-kill-all - Ask the user, and kill all associated buffers
+  kill-all - Don't ask the user, and kill all associated buffers
   nil - Kill first, ask never"
   :type '(choice (const :tag "Ask before killing" ask)
                  (const :tag "Ask, then kill all associated buffers"
                         ask-and-kill-all)
+                 (const :tag "Don't ask, then kill all associated buffers"
+                        kill-all)
                  (const :tag "Don't ask" nil))
   :group 'circe)
 
@@ -1821,7 +1824,8 @@ server's chat buffers."
     (irc-send-QUIT circe-server-process circe-default-quit-message))
   (ignore-errors
     (delete-process circe-server-process))
-  (when (eq circe-server-killed-confirmation 'ask-and-kill-all)
+  (when (or (eq circe-server-killed-confirmation 'ask-and-kill-all)
+            (eq circe-server-killed-confirmation 'kill-all))
     (dolist (buf (circe-server-chat-buffers))
       (let ((circe-channel-killed-confirmation nil))
         (kill-buffer buf)))))
