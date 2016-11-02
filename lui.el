@@ -183,11 +183,17 @@ changes by earlier ones."
 Each list item is a list consisting of a regular expression
 matching the highlighted text, an integer for the submatch and a
 face for highlighting the match."
-  :type '(set
+  :type `(set
           (const :tag "*Strong* text"
-                 ("\\*\\(?:[^\t *]\\)+?\\*" 0 lui-strong-face))
+                 (,(rx (or bol whitespace)
+                       (group "*" (+? (not (any whitespace "*"))) "*")
+                       (or eol whitespace))
+                  1 lui-strong-face))
           (const :tag "_Emphasized_ text"
-                 ("_\\(?:[^\t _]\\)+?_" 0 lui-emphasis-face)))
+                 (,(rx (or bol whitespace)
+                       (group "_" (+? (not (any whitespace "_"))) "_")
+                       (or eol whitespace))
+                  1 lui-emphasis-face)))
   :group 'lui)
 
 (defcustom lui-buttons-list
