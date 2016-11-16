@@ -1316,7 +1316,8 @@ If TEXT is specified, use that instead of formatting a new time stamp."
                 (not lui-time-stamp-last)
                 (not (string= ts lui-time-stamp-last)))
         (goto-char (point-min))
-        (goto-char (point-at-eol))
+        (when lui-fill-type
+          (goto-char (point-at-eol)))
         (let* ((ts (propertize ts 'face 'lui-time-stamp-face))
                (ts-margin (propertize
                            " "
