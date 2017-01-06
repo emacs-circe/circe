@@ -2952,7 +2952,8 @@ Arguments are either of the two:
                    :userhost (or userhost "server")
                    :target target
                    :body (or text "")
-                   :ago (let ((time (string-to-number text)))
+                   :ago (let ((time (when text
+				      (string-to-number text))))
                           (if time
                               (format "%.2f seconds" (- (float-time) time))
                             "unknown seconds")))))

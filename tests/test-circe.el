@@ -218,4 +218,19 @@
         (expect 'circe-display
                 :to-have-been-called-with
                 'circe-format-action
-                :nick "nick" :userhost "user@host" :body "the text")))))
+                :nick "nick" :userhost "user@host" :body "the text")))
+    
+    (describe "CTCP PING"
+      (it "should display unknown seconds when passed nil for text"
+	(spy-on 'circe-server-my-nick-p :and-return-value nil) 
+	(spy-on 'circe-server-get-or-create-chat-buffer
+		:and-return-value (current-buffer))
+	(spy-on 'circe-display)
+	
+	(circe-display-ctcp-ping "nick" "user@host" "irc.ctcp.PING"
+				 "target" nil)
+
+	(expect 'circe-display
+		:to-have-been-called-with
+		'circe-format-server-ctcp-ping
+		:nick "nick" :userhost "user@host" :target "target" :body "" :ago "unknown seconds")))))
