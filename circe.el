@@ -1044,14 +1044,17 @@ joined channels.")
       (format "%s" circe-version))))
 
 (defun circe--git-version ()
-  (let* ((current-file-path (or load-file-name buffer-file-name
-                                (locate-library "circe.el")))
-         (vcs-path (locate-dominating-file current-file-path ".git")))
-    (when vcs-path
-      (let ((default-directory vcs-path))
-        ;; chop off the trailing newline
-        (substring (shell-command-to-string "git rev-parse --short HEAD")
-                   0 -1)))))
+  (let ((current-file-path (or load-file-name buffer-file-name)))
+    (when (or (not current-file-path)
+              (not (equal (file-name-nondirectory current-file-path)
+                          "circe.el")))
+      (setq current-file-path (locate-library "circe.el")))
+    (let ((vcs-path (locate-dominating-file current-file-path ".git")))
+      (when vcs-path
+        (let ((default-directory vcs-path))
+          ;; chop off the trailing newline
+          (substring (shell-command-to-string "git rev-parse --short HEAD")
+                     0 -1))))))
 
 ;;;###autoload
 (defun circe (network-or-server &rest server-options)
