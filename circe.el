@@ -351,7 +351,8 @@ Good luck."
   "How often Circe should attempt to reconnect to the server.
 If this is 0, Circe will not reconnect at all. If this is nil,
 it will try to reconnect forever (not recommended)."
-  :type 'integer
+  :type '(choice integer
+                 (const :tag "Forever" nil))
   :group 'circe)
 
 (defcustom circe-netsplit-delay 60
