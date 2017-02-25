@@ -1,3 +1,12 @@
+# New in 2.4
+
+- `circe-server-killed-confirmation` now can kill every buffer even
+  without asking (thanks to Rudi Grinberg)
+- lui has been improved to know about past messages to facilitate
+  editing and deletion of old messages, primarily for protocols like
+  Slack (thanks to Tom Willemse)
+- Lots of bug fixes
+
 # New in 2.3
 
 - Circe (Lui) now has a track bar. Use `(enable-lui-track-bar)` to get
