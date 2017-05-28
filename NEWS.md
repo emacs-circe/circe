@@ -1,3 +1,9 @@
+# New in 2.5
+
+- Update the openssl invocation to current versions of openssl. For
+  some reason, they just remove a command line argument.
+- Some other bug fixes.
+
 # New in 2.4
 
 - `circe-server-killed-confirmation` now can kill every buffer even
