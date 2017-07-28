@@ -449,10 +449,8 @@ Use `lui-insert' instead of accessing this marker directly.")
          (setq val (progn ,@body)))
        (when (consp buffer-undo-list)
          ;; Not t :-)
-         (setq buffer-undo-list (lui-adjust-undo-list buffer-undo-list
-                                                      ,old-marker-sym
-                                                      (- lui-input-marker
-                                                         ,old-marker-sym))))
+         (lui-adjust-undo-list  ,old-marker-sym (- lui-input-marker
+                                                   ,old-marker-sym)))
        val)))
 
 
@@ -1006,62 +1004,45 @@ add to the inserted message."
             (point-min) (point-max)
             `(lui-saved-text-properties ,saved-text-properties))))))))
 
-(defun lui-adjust-undo-list (list old-begin shift)
-  "Adjust undo positions in list.
-LIST is in the format of `buffer-undo-list'.
-Only positions after OLD-BEGIN are affected.
-The positions are adjusted by SHIFT positions."
-  ;; This is necessary because the undo-list keeps exact buffer
-  ;; positions.
-  ;; Thanks to ERC for the idea of the code.
-  ;; ERC's code doesn't take care of an OLD-BEGIN value, which is
-  ;; necessary if you allow modification of the buffer.
-  (let* ((gc-cons-threshold most-positive-fixnum)  ;; See debbugs#22120#47
-         (adjust-position (lambda (pos)
-                               (if (and (numberp pos)
-                                        ;; After the boundary: Adjust
-                                        (>= (abs pos)
-                                            old-begin))
-                                   (* (if (< pos 0)
-                                          -1
-                                        1)
-                                      (+ (abs pos)
-                                         shift))
-                                 pos)))
-         (adjust (lambda (entry)
-                   (cond
-                    ;; POSITION
-                    ((numberp entry)
-                     (funcall adjust-position entry))
-                    ((not (consp entry))
-                     entry)
-                    ;; (BEG . END)
-                    ((numberp (car entry))
-                     (cons (funcall adjust-position (car entry))
-                           (funcall adjust-position (cdr entry))))
-                    ;; (TEXT . POSITION)
-                    ((stringp (car entry))
-                     (cons (car entry)
-                           (funcall adjust-position (cdr entry))))
-                    ;; (nil PROPERTY VALUE BEG . END)
-                    ((not (car entry))
-                     `(nil ,(nth 1 entry)
-                           ,(nth 2 entry)
-                           ,(funcall adjust-position (nth 3 entry))
-                           .
-                           ,(funcall adjust-position (nthcdr 4 entry))))
-                    ;; (apply DELTA BEG END FUN-NAME . ARGS)
-                    ((and (eq 'apply (car entry))
-                          (numberp (cadr entry)))
-                     `(apply ,(nth 1 entry)
-                             ,(funcall adjust-position (nth 2 entry))
-                             ,(funcall adjust-position (nth 3 entry))
-                             ,(nth 4 entry)
-                             .
-                             ,(nthcdr 5 entry)))
-                    (t
-                     entry)))))
-    (mapcar adjust list)))
+(defun lui--adjust-p (pos old)
+  (and (numberp pos) (>= (abs pos) old)))
+
+(defun lui--new-pos (pos shift)
+  (* (if (< pos 0) -1 1) (+ (abs pos) shift)))
+
+(defun lui-adjust-undo-list (old-begin shift)
+  ;; Translate buffer positions in buffer-undo-list by SHIFT.
+  (unless (or (zerop shift) (atom buffer-undo-list))
+    (let ((list buffer-undo-list) elt)
+      (while list
+        (setq elt (car list))
+        (cond ((integerp elt)           ; POSITION
+               (if (lui--adjust-p elt old-begin)
+                   (setf (car list) (lui--new-pos elt shift))))
+              ((or (atom elt)           ; nil, EXTENT
+                   (markerp (car elt))) ; (MARKER . DISTANCE)
+               nil)
+              ((integerp (car elt))     ; (BEGIN . END)
+               (if (lui--adjust-p (car elt) old-begin)
+                   (setf (car elt) (lui--new-pos (car elt) shift)))
+               (if (lui--adjust-p (cdr elt) old-begin)
+                   (setf (cdr elt) (lui--new-pos (cdr elt) shift))))
+              ((stringp (car elt))      ; (TEXT . POSITION)
+               (if (lui--adjust-p (cdr elt) old-begin)
+                   (setf (cdr elt) (lui--new-pos (cdr elt) shift))))
+              ((null (car elt))         ; (nil PROPERTY VALUE BEG . END)
+               (let ((cons (nthcdr 3 elt)))
+                 (if (lui--adjust-p (car cons) old-begin)
+                     (setf (car cons) (lui--new-pos (car cons) shift)))
+                 (if (lui--adjust-p (cdr cons) old-begin)
+                     (setf (cdr cons) (lui--new-pos (cdr cons) shift)))))
+              ((and (featurep 'xemacs)
+                    (extentp (car elt))) ; (EXTENT START END)
+               (if (lui--adjust-p (nth 1 elt) old-begin)
+                     (setf (nth 1 elt) (lui--new-pos (nth 1 elt) shift)))
+                 (if (lui--adjust-p (nth 2 elt) old-begin)
+                     (setf (nth 2 elt) (lui--new-pos (nth 2 elt) shift)))))
+        (setq list (cdr list))))))
 
 (defvar lui-prompt-map
   (let ((map (make-sparse-keymap)))
