@@ -21,6 +21,16 @@ Complexity-wise, it is somewhere between rcirc (very minimal) and ERC
 
 ## Installation
 
+### Dependencies
+
+In order to securely connect to an IRC server using TLS, Circe requires the
+[GnuTLS](https://www.gnutls.org/) binary. On Debian-based
+GNU+Linux-distributions, you can install it likes this:
+
+```Shell
+apt install gnutls-bin
+```
+
 ### `package.el`
 
 Make sure you have MELPA Stable added to your package sources. To your
