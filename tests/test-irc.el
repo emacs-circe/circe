@@ -150,7 +150,7 @@
             :not :to-have-been-called))
 
   (it "should raise an error for unknown events"
-    (expect (lambda () (irc--sentinel 'proc "bla bla\n"))
+    (expect (irc--sentinel 'proc "bla bla\n")
             :to-throw)))
 
 (describe "The `irc--filter' function"
@@ -369,8 +369,7 @@
       (irc-handler-add table "the.event" (lambda (&rest args)
                                            (error "Oops!")))
 
-      (expect (lambda ()
-                (irc-handler-run table "the.event"))
+      (expect (irc-handler-run table "the.event")
               :not :to-throw)))
 
   (it "should not throw an error if a handler throws one and debug-on-error"
@@ -379,8 +378,7 @@
       (irc-handler-add table "the.event" (lambda (&rest args)
                                            (error "Oops!")))
 
-      (expect (lambda ()
-                (irc-handler-run table "the.event"))
+      (expect (irc-handler-run table "the.event")
               :to-throw)))
 
   (it "should not run a remove handler"
@@ -507,13 +505,11 @@
             'proc "PRIVMSG #emacs ::-D"))
 
   (it "should fail if any argument is not a string"
-    (expect (lambda ()
-              (irc-send-command 'proc "PRIVMSG" 23 "Hi!"))
+    (expect (irc-send-command 'proc "PRIVMSG" 23 "Hi!")
             :to-throw))
 
   (it "should fail if any argument but the last has a space"
-    (expect (lambda ()
-              (irc-send-command 'proc "PRIVMSG" "#my channel" "Hello"))
+    (expect (irc-send-command 'proc "PRIVMSG" "#my channel" "Hello")
             :to-throw)))
 
 (describe "The send function"
@@ -1489,7 +1485,7 @@
                  "othernick")
                 :to-be nil))
 
-      (it "should remove a channel if we get kicked"
+      (it "should remove a channel from other users if we get kicked"
         (irc-event-emit proc "KICK" "mynick!user@host" "#channel" "othernick"
                         "You are out")
 
