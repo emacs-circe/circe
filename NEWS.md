@@ -1,3 +1,7 @@
+# New in 2.6
+
+- No new features, but some bug fixes.
+
 # New in 2.5
 
 - Update the openssl invocation to current versions of openssl. For
