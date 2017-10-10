@@ -168,6 +168,11 @@ changes by earlier ones."
                         (face :tag "Face"))))
   :group 'lui)
 
+(defface lui-prompt-face
+  '((t (:inherit bold)))
+  "Face used by the message prompt."
+  :group 'lui-irc-colors)
+
 (defface lui-strong-face
   '((t (:inherit bold)))
   "Face used for strong markup."
@@ -1063,6 +1068,8 @@ unexpecting user.")
        (if (> lui-input-marker (point))
            (delete-region (point) lui-input-marker)
          (set-marker lui-input-marker (point)))
+       (let ((inhibit-read-only t))
+         (add-face-text-property lui-output-marker lui-input-marker 'lui-prompt-face))
        (add-text-properties lui-output-marker lui-input-marker
                             `(read-only t
                                         rear-nonsticky t
