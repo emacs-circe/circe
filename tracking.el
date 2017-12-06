@@ -121,6 +121,14 @@ The functions are run in the context of the buffer."
   :type 'hook
   :group 'tracking)
 
+(defcustom tracking-max-mode-line-entries nil
+  "Maximum number of buffers shown in the mode-line.
+
+If set to nil, all buffers will be shown."
+  :type '(choice (const :tag "All" nil)
+                 (integer :tag "Maximum"))
+  :group 'tracking)
+
 ;;; Internal variables
 (defvar tracking-buffers nil
   "The list of currently tracked buffers.")
@@ -310,31 +318,41 @@ to be ignored."
 (defun tracking-status ()
   "Return the current track status.
 
-This returns a list suitable for `mode-line-format'."
+This returns a list suitable for `mode-line-format'.
+If `tracking-max-mode-line-entries' is a positive integer,
+only return that many entries, ending with '+n'."
   (if (not tracking-buffers)
       ""
     (let* ((buffer-names (cl-remove-if-not #'get-buffer tracking-buffers))
            (shortened-names (tracking-shorten tracking-buffers))
-           (result (list " [")))
-      (while buffer-names
-        (push `(:propertize
-                ,(car shortened-names)
-                face ,(get-text-property 0 'face (car buffer-names))
-                keymap ,(let ((map (make-sparse-keymap)))
-                          (define-key map [mode-line down-mouse-1]
-                            `(lambda ()
-                               (interactive)
-                               (pop-to-buffer ,(car buffer-names))))
-                          map)
-                mouse-face mode-line-highlight
-                help-echo ,(format (concat "New activity in %s\n"
-                                           "mouse-1: pop to the buffer")
-                                   (car buffer-names)))
-              result)
-        (setq buffer-names (cdr buffer-names)
-              shortened-names (cdr shortened-names))
-        (when buffer-names
-          (push "," result)))
+           (result (list " ["))
+           (i 0))
+      (cl-block exit
+        (while buffer-names
+          (push `(:propertize
+                  ,(car shortened-names)
+                  face ,(get-text-property 0 'face (car buffer-names))
+                  keymap ,(let ((map (make-sparse-keymap)))
+                            (define-key map [mode-line down-mouse-1]
+                              `(lambda ()
+                                 (interactive)
+                                 (pop-to-buffer ,(car buffer-names))))
+                            map)
+                  mouse-face mode-line-highlight
+                  help-echo ,(format (concat "New activity in %s\n"
+                                             "mouse-1: pop to the buffer")
+                                     (car buffer-names)))
+                result)
+          (incf i)
+          (setq buffer-names (cdr buffer-names)
+                shortened-names (cdr shortened-names))
+          (when (and tracking-max-mode-line-entries
+                     buffer-names
+                     (>= i tracking-max-mode-line-entries))
+            (push (concat " +" (number-to-string (length buffer-names))) result)
+            (cl-return-from exit))
+          (when buffer-names
+            (push "," result))))
       (push "] " result)
       (nreverse result))))
 
