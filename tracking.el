@@ -103,6 +103,15 @@ list, rather than to the end."
   :type 'boolean
   :group 'tracking)
 
+(defcustom tracking-sort-faces-first nil
+  "When non-nil, tracked buffers with any highlight face will go to
+the front of the tracking list.
+
+See `tracking-most-recent-first' for whether they are appended at the
+front or the back of the highlighted buffers."
+  :type 'boolean
+  :group 'tracking)
+
 (defcustom tracking-buffer-added-hook nil
   "Hook run when a buffer has some activity.
 
@@ -210,7 +219,9 @@ This does check whether BUFFER is currently visible.
 If FACES is given, it lists the faces that might be appropriate
 for BUFFER in the mode line. The highest-priority face of these
 and the current face of the buffer, if any, is used. Priority is
-decided according to `tracking-faces-priorities'."
+decided according to `tracking-faces-priorities'.
+When `tracking-sort-faces-first' is non-nil, all buffers with any
+face set will be stable-sorted before any buffers with no face set."
   (when (and (not (get-buffer-window buffer tracking-frame-behavior))
              (not (tracking-ignored-p buffer faces)))
     (with-current-buffer buffer
@@ -228,6 +239,14 @@ decided according to `tracking-faces-priorities'."
                   (nconc tracking-buffers
                          (list (tracking-faces-merge (buffer-name buffer)
                                                      faces)))))))
+    (when tracking-sort-faces-first
+      (let ((with-any-face (cl-remove-if-not
+                            (lambda (str) (get-text-property 0 'face str))
+                            tracking-buffers))
+            (with-no-face (cl-remove-if
+                           (lambda (str) (get-text-property 0 'face str))
+                           tracking-buffers)))
+        (setq tracking-buffers (nconc with-any-face with-no-face))))
     (setq tracking-mode-line-buffers (tracking-status))
     (force-mode-line-update t)
     ))
