@@ -192,4 +192,6 @@ the image. See `circe-display-images-text-property-map' for more details."
         (newline)
         (circe-display-images-insert-image-from-url url)
         (newline)))))
+
+(provide 'circe-display-images)
 ;;; circe-display-images.el ends here
