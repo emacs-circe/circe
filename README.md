@@ -31,6 +31,9 @@ GNU+Linux-distributions, you can install it likes this:
 apt install gnutls-bin
 ```
 
+For displaying images, Circe requires
+[ImageMagick](https://www.imagemagick.org/script/index.php).
+
 ### `package.el`
 
 Make sure you have MELPA Stable added to your package sources. To your
@@ -105,6 +108,7 @@ customize the `tls-connection-command` variable.
 - Sensible defaults
 - Tab completion
 - Nick highlighting
+- Automatically displaying images in channel
 - Logging
 - Spell checker
 - Ignore feature that also hides users who talk to users on your
