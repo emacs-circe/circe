@@ -362,7 +362,7 @@ only return that many entries, ending with '+n'."
                                              "mouse-1: pop to the buffer")
                                      (car buffer-names)))
                 result)
-          (incf i)
+          (cl-incf i)
           (setq buffer-names (cdr buffer-names)
                 shortened-names (cdr shortened-names))
           (when (and tracking-max-mode-line-entries
