@@ -175,8 +175,8 @@ the image. See `circe-display-images-text-property-map' for more details."
                 (image-animate img))))
         (kill-buffer buffer)))))
 
-(defun circe-display-images-urls-in-body (body)
-  "Return all urls that match the circe-display-images-image-regex in BODY"
+(defun circe-display-images-urls-in-body ()
+  "Return all urls that match the circe-display-images-image-regex"
   (let (urls)
     (while (re-search-forward circe-display-images-image-regex nil t)
       (setq urls (cons (match-string-no-properties 1) urls)))
@@ -188,7 +188,7 @@ the image. See `circe-display-images-text-property-map' for more details."
                                  'lui-format-argument 'body)))
     (when body
       (goto-char body)
-      (dolist (url (circe-display-images-urls-in-body body))
+      (dolist (url (circe-display-images-urls-in-body))
         (newline)
         (circe-display-images-insert-image-from-url url)
         (newline)))))
