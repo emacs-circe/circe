@@ -1,3 +1,16 @@
+# New in 2.7
+
+- `circe-highlight-all-nicks` is obsolete. Use
+  `circe-color-nicks`instead.
+- Emacs 24.3 is not supported anymore.
+- Circe can now optionally display images inline. Use
+  `enable-circe-display-images` for this feature.
+- You can now limit the number of elements in the mode line. See
+  `enable-circe-display-images`. You can also sort buffers with faces
+  first, to see highlights first, by setting
+  `enable-circe-display-images`.
+- And lots of bugfixes.
+
 # New in 2.6
 
 - No new features, but some bug fixes.
