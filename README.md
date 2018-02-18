@@ -21,6 +21,12 @@ Complexity-wise, it is somewhere between rcirc (very minimal) and ERC
 
 ## Installation
 
+On Debian etc.
+```Shell
+apt install elpa-circe
+```
+and you're done. Otherwise:
+
 ### Dependencies
 
 In order to securely connect to an IRC server using TLS, Circe requires the
