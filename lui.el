@@ -982,6 +982,9 @@ add to the inserted message."
            (run-hooks 'lui-post-output-hook)
            (lui-fools)
            (goto-char (point-min))
+           (add-text-properties
+            (point-min) (point-max)
+            `(lui-saved-text-properties ,saved-text-properties))
            (let ((faces (lui-faces-in-region (point-min)
                                              (point-max)))
                  (foolish (text-property-any (point-min)
@@ -999,10 +1002,7 @@ add to the inserted message."
                         (not foolish))
                (tracking-add-buffer (current-buffer)
                                     faces)))
-           (lui-scroll-post-output)
-           (add-text-properties
-            (point-min) (point-max)
-            `(lui-saved-text-properties ,saved-text-properties))))))))
+           (lui-scroll-post-output)))))))
 
 (defun lui--adjust-p (pos old)
   (and (numberp pos) (>= (abs pos) old)))
