@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+cd "$(dirname "$0")/.."
+
+main() {
+    run bumpversion minor
+    run git push
+    run git push --tags
+}
+
+run() {
+    echo "\$ $*"
+    "$@"
+}
+
+main
