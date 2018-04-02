@@ -467,6 +467,12 @@ MODE should be an integer as per RFC 2812"
   "Retrieve past whois information on TARGET."
   (irc-send-command conn "WHOWAS" target))
 
+(defun irc-send-STATS (conn query &optional server)
+  "Return statistics on current server, or SERVER if it is specified."
+  (if server
+      (irc-send-command conn "STATS" query server)
+    (irc-send-command conn "STATS" query)))
+
 ;;;;;;;;;;;;;;;
 ;;; Debug stuff
 

@@ -2793,6 +2793,13 @@ Arguments are IGNORED."
   (let ((whom (string-trim whom)))
     (irc-send-WHOWAS (circe-server-process) whom)))
 
+(defun circe-command-STATS (query)
+  "Request statistics from a server."
+  (interactive)
+  ;; Split string into query and server if we can
+  (setq query (split-string query))
+  (irc-send-STATS (circe-server-process) (first query) (second query)))
+
 (defun circe-command-WL (&optional split)
   "Show the people who left in a netsplit.
 Without any arguments, shows shows the current netsplits and how
