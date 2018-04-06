@@ -2797,8 +2797,8 @@ Arguments are IGNORED."
   "Request statistics from a server."
   (interactive)
   ;; Split string into query and server if we can
-  (setq query (split-string query))
-  (irc-send-STATS (circe-server-process) (first query) (second query)))
+  (let ((query (split-string query)))
+    (irc-send-STATS (circe-server-process) (car query) (cadr query))))
 
 (defun circe-command-WL (&optional split)
   "Show the people who left in a netsplit.
