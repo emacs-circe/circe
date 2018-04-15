@@ -321,7 +321,7 @@ See `circe-nick-color-pick', which is where this is used."
         (when body
           (with-syntax-table circe-nick-syntax-table
             (goto-char body)
-            (let* ((nicks (circe-nick-color-nick-list))
+            (let* ((nicks (circe-channel-nicks))
                    (regex (regexp-opt nicks 'words)))
               (let (case-fold-search)
                 (while (re-search-forward regex nil t)
