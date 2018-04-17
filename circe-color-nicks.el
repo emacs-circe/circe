@@ -242,19 +242,14 @@ be mutated."
   "Hash-table from nicks to colors.")
 
 (defun circe-nick-color-nick-list ()
-  "Return list of all nicks that have a color assigned to them.
+  "Return list of all nicks that should be colored in this channel.
 Own and blacklisted nicks are excluded."
   (let ((our-nick (circe-nick))
-        (channel-nicks (circe-channel-nicks))
-        nicks)
-    (maphash
-     (lambda (nick color)
-       (when (and (member nick channel-nicks)
-                  (not (string= our-nick nick))
-                  (not (member nick circe-color-nicks-message-blacklist)))
-         (push nick nicks)))
-     circe-nick-color-mapping)
-    nicks))
+        (channel-nicks (circe-channel-nicks)))
+    (cl-remove-if (lambda (nick)
+                    (or (string= our-nick nick)
+                        (member nick circe-color-nicks-message-blacklist)))
+                  channel-nicks)))
 
 (defvar circe-nick-color-timestamps (make-hash-table :test 'equal)
   "Hash-table from colors to the timestamp of their last use.")
@@ -321,7 +316,7 @@ See `circe-nick-color-pick', which is where this is used."
         (when body
           (with-syntax-table circe-nick-syntax-table
             (goto-char body)
-            (let* ((nicks (circe-channel-nicks))
+            (let* ((nicks (circe-nick-color-nick-list))
                    (regex (regexp-opt nicks 'words)))
               (let (case-fold-search)
                 (while (re-search-forward regex nil t)
