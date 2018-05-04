@@ -685,7 +685,15 @@
 
       (expect 'irc-send-raw
               :to-have-been-called-with
-              'proc "WHOWAS user"))))
+              'proc "WHOWAS user")))
+
+  (describe "`irc-send-STATS'"
+    (it "should send a STATS message"
+      (irc-send-STATS 'proc "q" "irc.local")
+
+        (expect 'irc-send-raw
+                :to-have-been-called-with
+                'proc "STATS q irc.local"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler: Registration
