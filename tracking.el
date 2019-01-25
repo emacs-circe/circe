@@ -142,6 +142,11 @@ If set to nil, all buffers will be shown."
 (defvar tracking-buffers nil
   "The list of currently tracked buffers.")
 
+(defvar tracking-all-buffers nil
+  "The list of all buffers that have ever been tracked.
+
+This is useful to avoid conflicts among shortened buffer names.")
+
 (defvar tracking-mode-line-buffers ""
   "The entry to the mode line.")
 (put 'tracking-mode-line-buffers 'risky-local-variable t)
@@ -226,6 +231,8 @@ face set will be stable-sorted before any buffers with no face set."
              (not (tracking-ignored-p buffer faces)))
     (with-current-buffer buffer
       (run-hooks 'tracking-buffer-added-hook))
+    (unless (member (buffer-name buffer) tracking-all-buffers)
+      (setq tracking-all-buffers (cons (buffer-name buffer) tracking-all-buffers)))
     (let* ((entry (member (buffer-name buffer)
                           tracking-buffers)))
       (if entry
@@ -343,7 +350,7 @@ only return that many entries, ending with '+n'."
   (if (not tracking-buffers)
       ""
     (let* ((buffer-names (cl-remove-if-not #'get-buffer tracking-buffers))
-           (shortened-names (tracking-shorten tracking-buffers))
+           (shortened-names (tracking-shorten tracking-buffers tracking-all-buffers))
            (result (list " ["))
            (i 0))
       (cl-block exit
@@ -390,12 +397,15 @@ This is usually called via `window-configuration-changed-hook'."
         (tracking-remove-buffer buffer))))))
 
 ;;; Helper functions
-(defun tracking-shorten (buffers)
-  "Shorten BUFFERS according to `tracking-shorten-buffer-names-p'."
+(defun tracking-shorten (buffers all-buffers)
+  "Shorten BUFFERS according to `tracking-shorten-buffer-names-p'.
+
+Use ALL-BUFFERS as the set of names that need to be considered
+when shortening to avoid conflicts."
   (if tracking-shorten-buffer-names-p
-      (let ((all (shorten-strings (mapcar #'buffer-name (buffer-list)))))
+      (let* ((all-shortened (shorten-strings all-buffers)))
         (mapcar (lambda (buffer)
-                  (let ((short (cdr (assoc buffer all))))
+                  (let ((short (cdr (assoc buffer all-shortened))))
                     (set-text-properties
                      0 (length short)
                      (text-properties-at 0 buffer)
