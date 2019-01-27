@@ -343,7 +343,7 @@ only return that many entries, ending with '+n'."
   (if (not tracking-buffers)
       ""
     (let* ((buffer-names (cl-remove-if-not #'get-buffer tracking-buffers))
-           (shortened-names (tracking-shorten tracking-buffers))
+           (shortened-names (tracking-shorten tracking-buffers (mapcar #'buffer-name (tracking-all-buffers))))
            (result (list " ["))
            (i 0))
       (cl-block exit
@@ -389,13 +389,20 @@ This is usually called via `window-configuration-changed-hook'."
        ((get-buffer-window buffer tracking-frame-behavior)
         (tracking-remove-buffer buffer))))))
 
+(defun tracking-all-buffers ()
+  "Find all buffers that could potentially be tracked."
+  (cl-remove-if-not #'tracking-buffer-p (buffer-list)))
+
 ;;; Helper functions
-(defun tracking-shorten (buffers)
-  "Shorten BUFFERS according to `tracking-shorten-buffer-names-p'."
+(defun tracking-shorten (buffers all-buffers)
+  "Shorten BUFFERS according to `tracking-shorten-buffer-names-p'.
+
+Use ALL-BUFFERS as the set of names that need to be considered
+when shortening to avoid conflicts."
   (if tracking-shorten-buffer-names-p
-      (let ((all (shorten-strings (mapcar #'buffer-name (buffer-list)))))
+      (let ((all-shortened (shorten-strings all-buffers)))
         (mapcar (lambda (buffer)
-                  (let ((short (cdr (assoc buffer all))))
+                  (let ((short (cdr (assoc buffer all-shortened))))
                     (set-text-properties
                      0 (length short)
                      (text-properties-at 0 buffer)
@@ -403,6 +410,11 @@ This is usually called via `window-configuration-changed-hook'."
                     short))
                 buffers))
     buffers))
+
+(defun tracking-buffer-p (buffer)
+  "Return non-nil if BUFFER should be tracked."
+  (with-current-buffer buffer
+    (derived-mode-p 'lui-mode)))
 
 (defun tracking-any-in (lista listb)
   "Return non-nil when any element in LISTA is in LISTB"
