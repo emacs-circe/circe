@@ -48,7 +48,7 @@
 This function will be called with some text as its only argument,
 and is expected to return an URL to view the contents."
   :type '(choice (const :tag "ix.io" lui-autopaste-service-ixio)
-                 (const :tag "ptpb.pw" lui-autopaste-service-ptpb-pw))
+                 (const :tag "sprunge.us" lui-autopaste-service-sprunge-us))
   :group 'lui-autopaste)
 
 ;;;###autoload
@@ -79,20 +79,20 @@ replace it with the resulting URL."
       (delete-region (point-min) (point-max))
       (insert url))))
 
-(defun lui-autopaste-service-ptpb-pw (text)
-  "Paste TEXT to ptpb.pw and return the paste url."
+(defun lui-autopaste-service-sprunge-us (text)
+  "Paste TEXT to sprunge.us and return the paste url."
   (let ((url-request-method "POST")
         (url-request-extra-headers
          '(("Content-Type" . "application/x-www-form-urlencoded")))
-        (url-request-data (format "c=%s" (url-hexify-string text)))
+        (url-request-data (format "sprunge=%s" (url-hexify-string text)))
         (url-http-attempt-keepalives nil))
-    (let ((buf (url-retrieve-synchronously "https://ptpb.pw/")))
+    (let ((buf (url-retrieve-synchronously "http://sprunge.us/")))
       (unwind-protect
           (with-current-buffer buf
             (goto-char (point-min))
-            (if (re-search-forward "^url: \\(.*\\)" nil t)
-                (match-string 1)
-              (error "Error during pasting to ptpb.pw")))
+            (if (re-search-forward "\n\n" nil t)
+                (buffer-substring (point) (point-at-eol))
+              (error "Error during pasting to sprunge.us")))
         (kill-buffer buf)))))
 
 (defun lui-autopaste-service-ixio (text)
