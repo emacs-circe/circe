@@ -77,21 +77,25 @@ See `enable-circe-display-images'."
   "\\(https?:\/\/[^ ]*?\.\\\(?:png\\|jpg\\|jpeg\\|svg\\|gif\\)\\)"
   "Regex used to find images in channel messages. This regex needs to be
 greedy to match multiple images on the same line."
-  :group 'circe-display-images)
+  :group 'circe-display-images
+  :type 'string)
 
 (defcustom circe-display-images-max-height 400
   "The image's maximum allowed height. Images will be scaled down if they
 are larger than this"
-  :group 'circe-display-images)
+  :group 'circe-display-images
+  :type 'integer)
 
 (defcustom circe-display-images-background nil
   "Background used for the images background, if image supports transparency.
 Defaults to the frame's background color."
-  :group 'circe-display-images)
+  :group 'circe-display-images
+  :type 'string)
 
 (defcustom circe-display-images-animate-gifs nil
   "Animate any gifs that are displayed. This might slow down Emacs."
-  :group 'circe-display-images)
+  :group 'circe-display-images
+  :type 'boolean)
 
 (defvar-local circe-display-images-text-property-map (make-hash-table
                                                       :test 'equal)

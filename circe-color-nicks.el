@@ -81,18 +81,22 @@ See `enable-circe-color-nicks'."
 recommended is 7:1, or at least 4.5:1 (7 stands for 7:1 here).
 Lower value allows higher color spread, but could lead to less
 readability."
+  :type 'number
   :group 'circe-color-nicks)
 
 (defcustom circe-color-nicks-min-difference 17
   "Minimum difference from each other for generated colors."
+  :type 'integer
   :group 'circe-color-nicks)
 
 (defcustom circe-color-nicks-min-fg-difference 17
   "Minimum difference from foreground for generated colors."
+  :type 'integer
   :group 'circe-color-nicks)
 
 (defcustom circe-color-nicks-min-my-message-difference 0
   "Minimum difference from own nick color for generated colors."
+  :type 'integer
   :group 'circe-color-nicks)
 
 (defcustom circe-color-nicks-everywhere nil
