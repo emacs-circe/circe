@@ -373,7 +373,7 @@ they do not contain a space."
 (defun irc-send-AUTHENTICATE (conn arg)
   "Send an AUTHENTICATE message with ARG.
 
-See https://github.com/atheme/charybdis/blob/master/doc/sasl.txt
+See https://ircv3.net/specs/extensions/sasl-3.1
 for details."
   (irc-send-command conn "AUTHENTICATE" arg))
 
