@@ -2512,6 +2512,7 @@ If ARGUMENT is nil, it is interpreted as no argument."
   (interactive "sReason: ")
   (dolist (buf (circe-server-buffers))
     (with-current-buffer buf
+      (setq circe-server-inhibit-auto-reconnect-p t)
       (irc-send-QUIT circe-server-process reason))))
 
 (defun circe-command-HELP (&optional ignored)
