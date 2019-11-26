@@ -3311,7 +3311,7 @@ of that user. If the NICK isn't split, this returns nil."
       nil)))
 
 (defun circe--netsplit-quit (reason nick)
-  "If REASON indicates a netsplit, mark NICK as splitted.
+  "If REASON indicates a netsplit, mark NICK as split.
 This either returns the time when last we heard about this split,
 or nil when this isn't a split."
   (when (circe--netsplit-reason-p reason)

@@ -1341,7 +1341,7 @@
               :to-equal
               '("#chan1" "#chan2" "#chan3")))
 
-    (it "should rember activity times for a rejoining user"
+    (it "should remember activity times for a rejoining user"
       (let ((channel (irc-channel-from-name proc "#channel"))
             user)
         (irc-channel-add-user channel "nick!user@host")
@@ -1354,7 +1354,7 @@
                  (irc-channel-user channel "nick"))
                 :to-equal 235)))
 
-    (it "should rember activity times for a user regaining their nick"
+    (it "should remember activity times for a user regaining their nick"
       (let ((channel (irc-channel-from-name proc "#channel"))
             user)
         (irc-channel-add-user channel "nick!user@host")
