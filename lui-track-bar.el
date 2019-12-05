@@ -63,6 +63,11 @@ after-send
                         after-send))
   :group 'lui-track-bar)
 
+(defcustom lui-track-bar-use-fringe-p nil
+  "Use a fringe indicator instead of a full line to mark last position."
+  :type boolean
+  :group 'lui-track-bar)
+
 (defface lui-track-bar
   '((((type graphic) (background light))
      :inherit default :background "dim gray" :height 0.1)
@@ -78,7 +83,8 @@ after-send
 
 ;;;###autoload
 (defun enable-lui-track-bar ()
-  "Enable a bar in Lui buffers that shows where you stopped reading."
+  "Enable a bar or fringe indicator in Lui buffers that shows
+where you stopped reading."
   (interactive)
   (defadvice switch-to-buffer (before lui-track-bar activate)
     (when (and (eq lui-track-bar-behavior 'before-switch-to-buffer)
@@ -91,6 +97,14 @@ after-send
       (lui-track-bar-move)))
   (add-hook 'lui-pre-input-hook 'lui-track-bar--move-pre-input))
 
+;;;###autoload
+(defun lui-track-bar-jump-to-first-unread-line ()
+  "Move the point to the first unread line in this buffer."
+  (interactive)
+  (if (marker-position overlay-arrow-position)
+      (goto-char overlay-arrow-position)
+    (message "No unread messages")))
+
 (defun lui-track-bar--move-pre-input ()
   (when (eq lui-track-bar-behavior 'after-send)
     (lui-track-bar-move)))
@@ -99,10 +113,15 @@ after-send
   "Move the track bar down."
   (interactive)
   (when (derived-mode-p 'lui-mode)
-    (when (not lui-track-bar-overlay)
-      (setq lui-track-bar-overlay (make-overlay (point-min) (point-min)))
-      (overlay-put lui-track-bar-overlay 'after-string
-                   (propertize "\n" 'face 'lui-track-bar)))
+    (if lui-track-bar-use-fringe-p
+        (progn (when (not overlay-arrow-position)
+                 (setq-local overlay-arrow-position (make-marker)))
+               (set-marker overlay-arrow-position
+                           (marker-position lui-output-marker)))
+      (when (not lui-track-bar-overlay)
+        (setq lui-track-bar-overlay (make-overlay (point-min) (point-min)))
+        (overlay-put lui-track-bar-overlay 'after-string
+                     (propertize "\n" 'face 'lui-track-bar))))
     (move-overlay lui-track-bar-overlay
                   lui-output-marker lui-output-marker)))
 
