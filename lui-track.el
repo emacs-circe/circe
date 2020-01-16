@@ -36,6 +36,7 @@
 
 (require 'lui)
 (require 'tracking)
+(require 'cl-macs)
 
 (defgroup lui-track nil
   "Last read position tracking for LUI"
@@ -85,6 +86,27 @@ line to mark last position."
 (defvar lui-track-bar-overlay nil)
 (make-variable-buffer-local 'lui-track-bar-overlay)
 
+(defun lui-track--move-pre-input ()
+  (when (eq lui-track-behavior 'after-send)
+    (lui-track-move)))
+
+(defun lui-track-move ()
+  "Move the track indicator down."
+  (interactive)
+  (when (derived-mode-p 'lui-mode)
+    (cl-case lui-track-indicator
+      ('fringe (when (not overlay-arrow-position)
+                 (setq-local overlay-arrow-position (make-marker)))
+               (set-marker overlay-arrow-position
+                           (marker-position lui-output-marker)))
+      ('bar (when (not lui-track-bar-overlay)
+              (setq lui-track-bar-overlay
+                    (make-overlay (point-min) (point-min)))
+              (overlay-put lui-track-bar-overlay 'after-string
+                           (propertize "\n" 'face 'lui-track-bar)))
+            (move-overlay lui-track-bar-overlay
+                          lui-output-marker lui-output-marker)))))
+
 ;;;###autoload
 (defun enable-lui-track ()
   "Enable a bar or fringe indicator in Lui buffers that shows
@@ -107,7 +129,7 @@ where you stopped reading."
 
 If point is already there, jump back to the end of the buffer."
   (interactive)
-  (let ((ipos (case lui-track-indicator
+  (let ((ipos (cl-case lui-track-indicator
                 ('bar (when lui-track-bar-overlay
                         (overlay-start lui-track-bar-overlay)))
                 ('fringe (when overlay-arrow-position
@@ -115,27 +137,6 @@ If point is already there, jump back to the end of the buffer."
     (cond ((null ipos) (message "No unread messages"))
           ((= ipos (point)) (goto-char (point-max)))
           (t (goto-char ipos)))))
-
-(defun lui-track--move-pre-input ()
-  (when (eq lui-track-behavior 'after-send)
-    (lui-track-move)))
-
-(defun lui-track-move ()
-  "Move the track indicator down."
-  (interactive)
-  (when (derived-mode-p 'lui-mode)
-    (case lui-track-indicator
-      ('fringe (when (not overlay-arrow-position)
-                 (setq-local overlay-arrow-position (make-marker)))
-               (set-marker overlay-arrow-position
-                           (marker-position lui-output-marker)))
-      ('bar (when (not lui-track-bar-overlay)
-              (setq lui-track-bar-overlay
-                    (make-overlay (point-min) (point-min)))
-              (overlay-put lui-track-bar-overlay 'after-string
-                           (propertize "\n" 'face 'lui-track-bar)))
-            (move-overlay lui-track-bar-overlay
-                          lui-output-marker lui-output-marker)))))
 
 (provide 'lui-track)
 ;;; lui-track.el ends here
