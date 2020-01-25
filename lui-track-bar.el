@@ -41,7 +41,8 @@
   :prefix "lui-track-bar-"
   :group 'lui)
 
-(defalias 'lui-track-bar-behavior lui-track-behavior)
+(define-obsolete-variable-alias 'lui-track-bar-behavior 'lui-track-behavior
+  "Circe 2.12")
 
 ;;;###autoload
 (defun enable-lui-track-bar ()
@@ -50,8 +51,10 @@ where you stopped reading."
   (interactive)
   (setq lui-track-indicator 'bar)
   (enable-lui-track))
+(make-obsolete 'enable-lui-track-bar 'enable-lui-track "Circe 2.12")
 
-(defalias 'lui-track-bar-move 'lui-track-move)
+(define-obsolete-function-alias 'lui-track-bar-move 'lui-track-move
+  "Circe 2.12")
 
 (provide 'lui-track-bar)
 ;;; lui-track-bar.el ends here
