@@ -1869,18 +1869,20 @@ server's chat buffers."
         circe-server-last-active-buffer
       (current-buffer))))
 
-;; There really ought to be a hook for this
-(defadvice select-window (after circe-server-track-select-window
-                                (window &optional norecord))
+(defun circe-remember-last-active ()
   "Remember the current buffer as the last active buffer.
 This is used by Circe to know where to put spurious messages."
-  (with-current-buffer (window-buffer window)
-    (when (derived-mode-p 'circe-mode)
-      (let ((buf (current-buffer)))
-        (ignore-errors
-          (with-circe-server-buffer
-            (setq circe-server-last-active-buffer buf)))))))
-(ad-activate 'select-window)
+  (when (derived-mode-p 'circe-mode)
+    (let ((buf (current-buffer)))
+      (ignore-errors
+        ;; Avoid using save-current-buffer (implicit in
+        ;; with-circe-server-buffer) because it alters the ordering of
+        ;; the buffer list, and some hooks (such as exwm's) rely on it
+        ;; not changing to control focus.
+        (set-buffer (circe-server-buffer))
+        (setq circe-server-last-active-buffer buf)
+        (set-buffer buf)))))
+(add-hook 'buffer-list-update-hook 'circe-remember-last-active)
 
 (defun circe-reduce-lurker-spam ()
   "Return the value of `circe-reduce-lurker-spam'.
