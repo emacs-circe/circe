@@ -640,9 +640,11 @@ This uses `lui-buttons-list'."
                      (list (format lui-button-issue-tracker
                                    (match-string 2))))))))
 
+(defvar lui--buttonize-url-regex (regexp-opt thing-at-point-uri-schemes))
+
 (defun lui-buttonize-urls ()
   "Buttonize URLs in the current message."
-  (let ((regex (regexp-opt thing-at-point-uri-schemes)))
+  (let ((regex lui--buttonize-url-regex))
     (goto-char (point-min))
     (while (re-search-forward regex nil t)
       (let ((bounds (bounds-of-thing-at-point 'url)))
