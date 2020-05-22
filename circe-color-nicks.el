@@ -245,16 +245,6 @@ be mutated."
 (defvar circe-nick-color-mapping (make-hash-table :test 'equal)
   "Hash-table from nicks to colors.")
 
-(defun circe-nick-color-nick-list ()
-  "Return list of all nicks that should be colored in this channel.
-Own and blacklisted nicks are excluded."
-  (let ((our-nick (circe-nick))
-        (channel-nicks (circe-channel-nicks)))
-    (cl-remove-if (lambda (nick)
-                    (or (string= our-nick nick)
-                        (member nick circe-color-nicks-message-blacklist)))
-                  channel-nicks)))
-
 (defvar circe-nick-color-timestamps (make-hash-table :test 'equal)
   "Hash-table from colors to the timestamp of their last use.")
 
@@ -315,18 +305,22 @@ See `circe-nick-color-pick', which is where this is used."
               (add-face-text-property nickstart nickend
                                       `(:foreground ,color)))))))
     (when circe-color-nicks-everywhere
-      (let ((body (text-property-any (point-min) (point-max)
-                                     'lui-format-argument 'body)))
+      (let* ((conn (circe-server-process))
+             (channel (irc-connection-channel conn circe-chat-target))
+             (body (text-property-any (point-min) (point-max)
+                                      'lui-format-argument 'body)))
         (when body
           (with-syntax-table circe-nick-syntax-table
             (goto-char body)
-            (let* ((nicks (circe-nick-color-nick-list))
-                   (regex (regexp-opt nicks 'words)))
-              (let (case-fold-search)
-                (while (re-search-forward regex nil t)
-                  (let* ((nick (match-string-no-properties 0))
-                         (color (circe-nick-color-for-nick nick)))
-                    (add-face-text-property (match-beginning 0) (match-end 0)
+            (while (forward-word 1)
+              (let ((nick (thing-at-point 'word))
+                    (blacklist circe-color-nicks-message-blacklist))
+                (when (and (not (equal nick (circe-nick)))
+                           (not (member nick blacklist))
+                           (irc-channel-user channel nick))
+                  (let ((bounds (bounds-of-thing-at-point 'word))
+                        (color (circe-nick-color-for-nick nick)))
+                    (add-face-text-property (car bounds) (cdr bounds)
                                             `(:foreground ,color))))))))))))
 
 (defun circe-nick-color-reset ()
