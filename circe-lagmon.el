@@ -103,8 +103,6 @@ run sufficiently often with the timer."
     (with-current-buffer buffer
       (when (and (eq major-mode 'circe-server-mode)
                  circe-server-process
-                 (eq (irc-connection-state circe-server-process)
-                     'registered)
                  (not circe-lagmon-disabled))
         (circe-lagmon-server-check)))))
 
@@ -139,12 +137,14 @@ send a request if it's time for that. See
           (> now
              (+ circe-lagmon-last-send-time
                 circe-lagmon-check-interval)))
-      (irc-send-raw (circe-server-process)
-                    (format "PRIVMSG %s :\C-aLAGMON %s\C-a"
-                            (circe-nick) now)
-                    :nowait)
-      (setq circe-lagmon-last-send-time now
-            circe-lagmon-last-receive-time nil))
+
+      (when (eq (irc-connection-state circe-server-process) 'registered)
+        (setq circe-lagmon-last-send-time now
+              circe-lagmon-last-receive-time nil)
+        (irc-send-raw (circe-server-process)
+                      (format "PRIVMSG %s :\C-aLAGMON %s\C-a"
+                              (circe-nick) now)
+                      :nowait)))
      )))
 
 (defun circe-lagmon-force-mode-line-update ()
