@@ -309,7 +309,7 @@ See `circe-nick-color-pick', which is where this is used."
              (channel (irc-connection-channel conn circe-chat-target))
              (body (text-property-any (point-min) (point-max)
                                       'lui-format-argument 'body)))
-        (when body
+        (when (and channel body)
           (with-syntax-table circe-nick-syntax-table
             (goto-char body)
             (while (forward-word 1)
