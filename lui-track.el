@@ -75,11 +75,11 @@ line to mark last position."
 
 (defface lui-track-bar
   '((((type graphic) (background light))
-     :inherit default :background "dim gray" :height 0.1)
+     :inherit default :extend t :background "dim gray" :height 0.1)
     (((type graphic) (background dark))
-     :inherit default :background "light gray" :height 0.1)
+     :inherit default :extend t :background "light gray" :height 0.1)
     (((type tty))
-     :inherit (font-lock-comment-face default) :underline t))
+     :inherit (font-lock-comment-face default) :extend t :underline t))
   "Track bar face"
   :group 'lui-track)
 
