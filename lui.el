@@ -1037,13 +1037,7 @@ add to the inserted message."
                  (if (lui--adjust-p (car cons) old-begin)
                      (setf (car cons) (lui--new-pos (car cons) shift)))
                  (if (lui--adjust-p (cdr cons) old-begin)
-                     (setf (cdr cons) (lui--new-pos (cdr cons) shift)))))
-              ((and (featurep 'xemacs)
-                    (extentp (car elt))) ; (EXTENT START END)
-               (if (lui--adjust-p (nth 1 elt) old-begin)
-                     (setf (nth 1 elt) (lui--new-pos (nth 1 elt) shift)))
-                 (if (lui--adjust-p (nth 2 elt) old-begin)
-                     (setf (nth 2 elt) (lui--new-pos (nth 2 elt) shift)))))
+                     (setf (cdr cons) (lui--new-pos (cdr cons) shift))))))
         (setq list (cdr list))))))
 
 (defvar lui-prompt-map
