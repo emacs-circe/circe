@@ -1309,7 +1309,7 @@ If TEXT is specified, use that instead of formatting a new time stamp."
 
 (defun lui-time-stamp-enable-filtering ()
   "Enable filtering of timestamps from copied text."
-  (set (make-local-variable 'filter-buffer-substring-functions)
+  (set (make-local-variable 'filter-buffer-substring-function)
        '(lui-filter-buffer-time-stamps)))
 
 (defun lui-filter-buffer-time-stamps (fun beg end delete)
