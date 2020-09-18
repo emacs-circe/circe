@@ -1364,7 +1364,7 @@ lui-mode
   (setq lui-input-function 'circe--input
         default-directory (expand-file-name circe-default-directory)
         circe-server-last-active-buffer (current-buffer)
-        flyspell-generic-check-word-p 'circe--flyspell-check-word-p)
+        flyspell-generic-check-word-predicate 'circe--flyspell-check-word-predicate)
   (when circe-use-cycle-completion
     (set (make-local-variable 'completion-cycle-threshold)
          t))
@@ -1601,11 +1601,11 @@ using the /SAY command."
 ;;;; Flyspell ;;;;
 ;;;;;;;;;;;;;;;;;;
 
-(defun circe--flyspell-check-word-p ()
+(defun circe--flyspell-check-word-predicate ()
   "Return a true value if flyspell check the word before point.
 
-This is a suitable value for `flyspell-generic-check-word-p'. It
-will also call `lui-flyspell-check-word-p'."
+This is a suitable value for `flyspell-generic-check-word-predicate'. It
+will also call `flyspell-generic-check-word-predicate'."
   (cond
    ((not (lui-flyspell-check-word-p))
     nil)
