@@ -340,7 +340,7 @@ to be ignored."
 This returns a list suitable for `mode-line-format'.
 If `tracking-max-mode-line-entries' is a positive integer,
 only return that many entries, ending with '+n'."
-  (if (or (eq tracking-max-mode-line-entries 0) (not tracking-buffers))
+  (if (or (and tracking-max-mode-line-entries (= tracking-max-mode-line-entries 0)) (not tracking-buffers))
       ""
     (let* ((buffer-names (cl-remove-if-not #'get-buffer tracking-buffers))
            (shortened-names (tracking-shorten tracking-buffers))
