@@ -43,6 +43,7 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'button)
 (require 'flyspell)
 (require 'help-mode)
@@ -449,8 +450,7 @@ Use `lui-insert' instead of accessing this marker directly.")
          (setq val (progn ,@body)))
        (when (consp buffer-undo-list)
          ;; Not t :-)
-         (lui-adjust-undo-list  ,old-marker-sym (- lui-input-marker
-                                                   ,old-marker-sym)))
+         (lui-adjust-undo-list (- lui-input-marker ,old-marker-sym)))
        val)))
 
 
@@ -1012,32 +1012,26 @@ add to the inserted message."
 (defun lui--new-pos (pos shift)
   (* (if (< pos 0) -1 1) (+ (abs pos) shift)))
 
-(defun lui-adjust-undo-list (old-begin shift)
+(defun lui-adjust-undo-list (shift)
   ;; Translate buffer positions in buffer-undo-list by SHIFT.
   (unless (or (zerop shift) (atom buffer-undo-list))
     (let ((list buffer-undo-list) elt)
       (while list
         (setq elt (car list))
         (cond ((integerp elt)           ; POSITION
-               (if (lui--adjust-p elt old-begin)
-                   (setf (car list) (lui--new-pos elt shift))))
+               (cl-incf (car list) shift))
               ((or (atom elt)           ; nil, EXTENT
                    (markerp (car elt))) ; (MARKER . DISTANCE)
                nil)
               ((integerp (car elt))     ; (BEGIN . END)
-               (if (lui--adjust-p (car elt) old-begin)
-                   (setf (car elt) (lui--new-pos (car elt) shift)))
-               (if (lui--adjust-p (cdr elt) old-begin)
-                   (setf (cdr elt) (lui--new-pos (cdr elt) shift))))
+               (cl-incf (car elt) shift)
+               (cl-incf (cdr elt) shift))
               ((stringp (car elt))      ; (TEXT . POSITION)
-               (if (lui--adjust-p (cdr elt) old-begin)
-                   (setf (cdr elt) (lui--new-pos (cdr elt) shift))))
+               (cl-incf (cdr elt) (* (if (natnump (cdr elt)) 1 -1) shift)))
               ((null (car elt))         ; (nil PROPERTY VALUE BEG . END)
                (let ((cons (nthcdr 3 elt)))
-                 (if (lui--adjust-p (car cons) old-begin)
-                     (setf (car cons) (lui--new-pos (car cons) shift)))
-                 (if (lui--adjust-p (cdr cons) old-begin)
-                     (setf (cdr cons) (lui--new-pos (cdr cons) shift))))))
+                 (cl-incf (car cons) shift)
+                 (cl-incf (cdr cons) shift))))
         (setq list (cdr list))))))
 
 (defvar lui-prompt-map
