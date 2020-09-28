@@ -44,6 +44,10 @@
 (require 'cl-lib)
 (require 'gnutls)
 
+(if (fboundp 'gnutls-boot-parameters)
+    (declare-function 'make-tls-process 'make-tls-process)
+  (require 'make-tls-process))
+
 (defvar irc-debug-log nil
   "Emit protocol debug info if this is non-nil.")
 
@@ -70,11 +74,16 @@ conn.disconnected conn -- A previously established connection was lost
 
 NNN conn sender args... -- A numeric reply from IRC was received
 COMMAND conn sender args... -- An IRC command message was received"
-  (let* ((host (or (plist-get keywords :host)
+  (let* ((fun (if (and (plist-get keywords :tls)
+                       (not (fboundp 'gnutls-boot-parameters)))
+                  'make-tls-process
+                'make-network-process))
+         (host (or (plist-get keywords :host)
                    (error "Must specify a :host to connect to")))
          (service (or (plist-get keywords :service)
                       (error "Must specify a :service to connect to")))
-         (tls-parameters (when (plist-get keywords :tls)
+         (tls-parameters (when (and (plist-get keywords :tls)
+                                    (fboundp 'gnutls-boot-parameters))
                            (when (not (gnutls-available-p))
                              (error "gnutls support missing"))
                            (cons 'gnutls-x509pki
@@ -82,19 +91,19 @@ COMMAND conn sender args... -- An IRC command message was received"
                                   :type 'gnutls-x509pki
                                   :hostname host
                                   :verify-error t))))
-         (proc (make-network-process
-                :name host
-                :host host
-                :service service
-                :family (plist-get keywords :family)
-                :coding 'no-conversion
-                :nowait (featurep 'make-network-process '(:nowait t))
-                :noquery t
-                :tls-parameters tls-parameters
-                :filter #'irc--filter
-                :sentinel #'irc--sentinel
-                :plist keywords
-                :keepalive t)))
+         (proc (funcall fun
+                       :name (or (plist-get keywords :name) host)
+                       :host host
+                       :service service
+                       :family (plist-get keywords :family)
+                       :coding 'no-conversion
+                       :nowait (featurep 'make-network-process '(:nowait t))
+                       :noquery t
+                       :tls-parameters tls-parameters
+                       :filter #'irc--filter
+                       :sentinel #'irc--sentinel
+                       :plist keywords
+                       :keepalive t)))
     (when (and (plist-get keywords :tls)
                (fboundp 'nsm-verify-connection))
       (setq proc (nsm-verify-connection proc host service))
