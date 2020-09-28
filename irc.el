@@ -42,7 +42,7 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'make-tls-process)
+(require 'gnutls)
 
 (defvar irc-debug-log nil
   "Emit protocol debug info if this is non-nil.")
@@ -70,23 +70,36 @@ conn.disconnected conn -- A previously established connection was lost
 
 NNN conn sender args... -- A numeric reply from IRC was received
 COMMAND conn sender args... -- An IRC command message was received"
-  (let ((proc (funcall (if (plist-get keywords :tls)
-                           #'make-tls-process
-                         #'make-network-process)
-                       :name (or (plist-get keywords :name)
-                                 (plist-get keywords :host))
-                       :host (or (plist-get keywords :host)
-                                 (error "Must specify a :host to connect to"))
-                       :service (or (plist-get keywords :service)
-                                    (error "Must specify a :service to connect to"))
-                       :family (plist-get keywords :family)
-                       :coding 'no-conversion
-                       :nowait (featurep 'make-network-process '(:nowait t))
-                       :noquery t
-                       :filter #'irc--filter
-                       :sentinel #'irc--sentinel
-                       :plist keywords
-                       :keepalive t)))
+  (let* ((host (or (plist-get keywords :host)
+                   (error "Must specify a :host to connect to")))
+         (service (or (plist-get keywords :service)
+                      (error "Must specify a :service to connect to")))
+         (tls-parameters (when (plist-get keywords :tls)
+                           (when (not (gnutls-available-p))
+                             (error "gnutls support missing"))
+                           (cons 'gnutls-x509pki
+                                 (gnutls-boot-parameters
+                                  :type 'gnutls-x509pki
+                                  :hostname host
+                                  :verify-error t))))
+         (proc (make-network-process
+                :name host
+                :host host
+                :service service
+                :family (plist-get keywords :family)
+                :coding 'no-conversion
+                :nowait (featurep 'make-network-process '(:nowait t))
+                :noquery t
+                :tls-parameters tls-parameters
+                :filter #'irc--filter
+                :sentinel #'irc--sentinel
+                :plist keywords
+                :keepalive t)))
+    (when (and (plist-get keywords :tls)
+               (fboundp 'nsm-verify-connection))
+      (setq proc (nsm-verify-connection proc host service))
+      (when (not proc)
+        (error "nsm verification failed")))
     ;; When we used `make-network-process' without :nowait, the
     ;; sentinel is not called with the open event, so we do this
     ;; manually.

@@ -23,13 +23,9 @@ Complexity-wise, it is somewhere between rcirc (very minimal) and ERC
 
 ### Dependencies
 
-In order to securely connect to an IRC server using TLS, Circe requires the
-[GnuTLS](https://www.gnutls.org/) binary. On Debian-based
-GNU+Linux-distributions, you can install it likes this:
-
-```Shell
-apt install gnutls-bin
-```
+In order to securely connect to an IRC server using TLS, Circe
+requires an Emacs linked against the [GnuTLS](https://www.gnutls.org/)
+library.
 
 For displaying images, Circe requires
 [ImageMagick](https://www.imagemagick.org/script/index.php).
@@ -97,11 +93,6 @@ add something like the following:
 
 With this in your configuration, you can use `M-x circe RET Freenode
 RET` to connect to Freenode using these settings.
-
-_Please note:_ Circe uses the `openssl` or `gnutls-cli` command line
-programs to connect via TLS. These tools do not by default verify the
-server certificate. If you want to verify the server certificate,
-customize the `tls-connection-command` variable.
 
 ## Features
 
