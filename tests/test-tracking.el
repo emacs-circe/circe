@@ -17,12 +17,8 @@
            (buf2 (get-buffer-create (cadr tracking-buffers)))
            (tracking-max-mode-line-entries nil)
            (test-trace (prin1-to-string (tracking-status))))
-      (expect
-       test-trace
-       :to-match "someBuffer1")
-      (expect
-       test-trace
-       :to-match "someBuffer2")
+      (expect test-trace :to-match "someBuffer1")
+      (expect test-trace :to-match "someBuffer2")
       (kill-buffer buf1)
       (kill-buffer buf2)))
 
@@ -32,15 +28,9 @@
              (buf2 (get-buffer-create (cadr tracking-buffers)))
              (tracking-max-mode-line-entries 1)
              (test-trace (prin1-to-string (tracking-status))))
-        (expect
-         test-trace
-         :to-match "someBuffer1")
-        (expect
-         test-trace
-         :to-match "\\+1")
-        (expect
-         test-trace
-         :not :to-match "someBuffer2")
+        (expect test-trace :to-match "someBuffer1")
+        (expect test-trace :to-match "\\+1")
+        (expect test-trace :not :to-match "someBuffer2")
         (kill-buffer buf1)
         (kill-buffer buf2)))
 
@@ -49,8 +39,6 @@
            (buf1 (get-buffer-create (car tracking-buffers)))
            (buf2 (get-buffer-create (cadr tracking-buffers)))
            (tracking-max-mode-line-entries 0))
-      (expect
-       (tracking-status)
-       :to-equal "")
+      (expect (tracking-status) :to-equal "")
       (kill-buffer buf1)
       (kill-buffer buf2))))
