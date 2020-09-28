@@ -2512,9 +2512,8 @@ If ARGUMENT is nil, it is interpreted as no argument."
   (interactive "sReason: ")
   (dolist (buf (circe-server-buffers))
     (with-current-buffer buf
-      (when (eq (process-status circe-server-process)
-                'open)
-        (irc-send-QUIT circe-server-process reason)))))
+      (setq circe-server-inhibit-auto-reconnect-p t)
+      (irc-send-QUIT circe-server-process reason))))
 
 (defun circe-command-HELP (&optional ignored)
   "Display a list of recognized commands, nicely formatted."
