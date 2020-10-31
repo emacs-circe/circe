@@ -470,7 +470,7 @@ It can be customized for an application by specifying a
         lui-output-marker (make-marker)
         lui-input-ring (make-ring lui-input-ring-size)
         lui-input-ring-index nil
-        flyspell-generic-check-word-p 'lui-flyspell-check-word-p)
+        flyspell-generic-check-word-predicate 'lui-flyspell-check-word-predicate)
   (set-marker lui-input-marker (point-max))
   (set-marker lui-output-marker (point-max))
   (add-hook 'window-scroll-functions 'lui-scroll-window nil t)
@@ -689,7 +689,10 @@ Otherwise, we move to the next button."
       (message "No such symbol %s" name)
       (ding))
      (t
-      (help-xref-interned sym)))))
+      (with-suppressed-warnings ((obsolete help-xref-interned))
+        (if (fboundp 'describe-symbol)
+            (describe-symbol sym)
+          (help-xref-interned sym))))))
 
 (defun lui-button-pep (number)
   "Browse the PEP NUMBER."
@@ -1303,7 +1306,7 @@ If TEXT is specified, use that instead of formatting a new time stamp."
 
 (defun lui-time-stamp-enable-filtering ()
   "Enable filtering of timestamps from copied text."
-  (set (make-local-variable 'filter-buffer-substring-functions)
+  (set (make-local-variable 'filter-buffer-substring-function)
        '(lui-filter-buffer-time-stamps)))
 
 (defun lui-filter-buffer-time-stamps (fun beg end delete)

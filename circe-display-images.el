@@ -124,7 +124,7 @@ the image. See `circe-display-images-text-property-map' for more details."
   (interactive)
   (let*
       ((inhibit-read-only t)
-       (url (url-get-url-at-point))
+       (url (thing-at-point-url-at-point))
        (image-data(gethash url circe-display-images-text-property-map))
        (display-image-p (plist-get image-data :display-image-p))
        (image-property-of-url (plist-get image-data :image-property))
