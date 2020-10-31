@@ -65,6 +65,7 @@
   :prefix "lui-"
   :group 'applications)
 
+(defvaralias 'lui-scroll-to-bottom-p 'lui-scroll-behavior)
 (defcustom lui-scroll-behavior t
   "Set the behavior lui should exhibit for scrolling.
 
@@ -109,7 +110,6 @@ behavior (post-output)."
                  (const :tag "Post Scroll" post-scroll)
                  (const :tag "Use default scrolling" nil))
   :group 'lui)
-(defvaralias 'lui-scroll-to-bottom-p 'lui-scroll-behavior)
 
 (defcustom lui-flyspell-p nil
   "Non-nil if Lui should spell-check your input.

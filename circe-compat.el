@@ -24,6 +24,51 @@
 
 ;;; Code:
 
+;;; Deprecated functions and variables
+
+(define-obsolete-function-alias 'circe-server-nick 'circe-nick
+  "Circe 2.0")
+
+(define-obsolete-function-alias 'circe-server-message
+  'circe-display-server-message
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-networks 'circe-network-defaults
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-name 'circe-host
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-service 'circe-port
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-network 'circe-network
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-ip-family 'circe-ip-family
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-nick 'circe-nick
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-user 'circe-user
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-pass 'circe-pass
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-realname 'circe-realname
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-use-tls 'circe-use-tls
+  "Circe 2.0")
+
+(define-obsolete-variable-alias 'circe-server-auto-join-channels
+  'circe-channels
+  "Circe 2.0")
+
+;;; Helpers
+
 (when (not (fboundp 'string-trim))
   (defun string-trim (string)
     "Remove leading and trailing whitespace from STRING."
