@@ -692,7 +692,7 @@ Otherwise, we move to the next button."
       (with-suppressed-warnings ((obsolete help-xref-interned))
         (if (fboundp 'describe-symbol)
             (describe-symbol sym)
-          (help-xref-interned sym))))))
+          (help-xref-interned sym)))))))
 
 (defun lui-button-pep (number)
   "Browse the PEP NUMBER."
