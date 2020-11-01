@@ -1307,15 +1307,17 @@ If TEXT is specified, use that instead of formatting a new time stamp."
 (defun lui-time-stamp-enable-filtering ()
   "Enable filtering of timestamps from copied text."
   (set (make-local-variable 'filter-buffer-substring-function)
-       '(lui-filter-buffer-time-stamps)))
+       'lui-filter-buffer-time-stamps))
 
-(defun lui-filter-buffer-time-stamps (fun beg end delete)
+(defun lui-filter-buffer-time-stamps (beg end delete)
   "Filter text from copied strings.
 
 This is meant for the variable `filter-buffer-substring-functions',
 which see for an explanation of the argument FUN, BEG, END and
 DELETE."
-  (let ((string (funcall fun beg end delete))
+  (let ((string (if delete
+                    (delete-and-extract-region beg end)
+                  (buffer-substring beg end)))
         (inhibit-point-motion-hooks t)
         (inhibit-read-only t)
         ;; Emacs 24.4, 24.5
@@ -1332,15 +1334,6 @@ DELETE."
             (setq start (text-property-any (point-min) (point-max)
                                            'lui-time-stamp t))))
         (buffer-string)))))
-
-(defun lui-time-stamp-buffer-substring (buffer-string)
-  "Filter text from copied strings.
-
-This is meant for the variable `buffer-substring-filters',
-which see for an explanation of the argument BUFFER-STRING."
-  (lui-filter-buffer-time-stamps (lambda (_beg _end _delete)
-                                  buffer-string)
-                                nil nil nil))
 
 
 ;;;;;;;;;;;;;;;;;;
