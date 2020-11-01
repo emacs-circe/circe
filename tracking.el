@@ -49,6 +49,15 @@ the mode line."
   :type 'boolean
   :group 'tracking)
 
+(defcustom tracking-shorten-modes t
+  "List of major modes to shorten in tracking.
+When set to 't' shorten all modes.
+Setting this to limit the number of buffers shortened improves
+the performance of shortening substantially."
+  :type '(set boolean
+              (repeat symbol))
+  :group 'tracking)
+
 (defcustom tracking-frame-behavior 'visible
   "How to deal with frams to determine visibility of buffers.
 This is passed as the second argument to `get-buffer-window',
@@ -392,12 +401,23 @@ This is usually called via `window-configuration-changed-hook'."
         (tracking-remove-buffer buffer))))))
 
 ;;; Helper functions
+(defun tracking-filter-mode (buffer)
+  "If true, BUFFER should be filtered out of shortened buffers."
+  (unless (eq tracking-shorten-modes t)
+    (not (memq
+          (buffer-local-value 'major-mode buffer)
+          tracking-shorten-modes))))
+
 (defun tracking-shorten (buffers)
   "Shorten BUFFERS according to `tracking-shorten-buffer-names-p'."
   (if tracking-shorten-buffer-names-p
-      (let ((all (shorten-strings (mapcar #'buffer-name (buffer-list)))))
+      (let ((all (shorten-strings
+                  (mapcar #'buffer-name
+                          (cl-remove-if #'tracking-filter-mode
+                                        (buffer-list))))))
         (mapcar (lambda (buffer)
-                  (let ((short (cdr (assoc buffer all))))
+                  (let ((short (or (cdr (assoc buffer all))
+                                   buffer)))
                     (set-text-properties
                      0 (length short)
                      (text-properties-at 0 buffer)
