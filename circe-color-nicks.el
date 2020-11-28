@@ -315,7 +315,8 @@ See `circe-nick-color-pick', which is where this is used."
             (while (forward-word 1)
               (let ((nick (thing-at-point 'word))
                     (blacklist circe-color-nicks-message-blacklist))
-                (when (and (not (equal nick (circe-nick)))
+                (when (and nick
+                           (not (equal nick (circe-nick)))
                            (not (member nick blacklist))
                            (irc-channel-user channel nick))
                   (let ((bounds (bounds-of-thing-at-point 'word))
