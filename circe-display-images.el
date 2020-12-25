@@ -161,10 +161,7 @@ the image. See `circe-display-images-text-property-map' for more details."
                          (goto-char (point-min))
                          (search-forward "\n\n")
                          (buffer-substring (point) (point-max))))
-                 (img (create-image
-                       data 'imagemagick t
-                       :max-height circe-display-images-max-height
-                       :background circe-display-images-background)))
+                 (img (circe-create-image data)))
             (when img
               (insert-image img)
               ;; Store the image so that we can toggle it on and off later. We
@@ -178,6 +175,15 @@ the image. See `circe-display-images-text-property-map' for more details."
               (when circe-display-images-animate-gifs
                 (image-animate img))))
         (kill-buffer buffer)))))
+
+(defconst circe-image-type (if (image-type-available-p 'imagemagick) 'imagemagick nil)
+  "Imagemagick image type if Emacs was compiled with support for ImageMagick, otherwise nil")
+
+(defun circe-create-image (data)
+  "Attempt to create image using Imagemagick type if available, otherwise guess type"
+  (create-image data circe-image-type t
+                :max-height circe-display-images-max-height
+                :background circe-display-images-background))
 
 (defun circe-display-images-urls-in-body ()
   "Return all urls that match the circe-display-images-image-regex"
