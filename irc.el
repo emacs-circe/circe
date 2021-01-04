@@ -89,8 +89,7 @@ COMMAND conn sender args... -- An IRC command message was received"
                            (cons 'gnutls-x509pki
                                  (gnutls-boot-parameters
                                   :type 'gnutls-x509pki
-                                  :hostname host
-                                  :verify-error t))))
+                                  :hostname host))))
          (proc (funcall fun
                        :name (or (plist-get keywords :name) host)
                        :host host
