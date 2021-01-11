@@ -127,22 +127,22 @@ This is an appropriate function for `lui-pre-output-hook'."
         (replace-match "")
         (setq start (point))
         (cond
-         ((string= code "")
+         ((string= code "\x02")
           (setq boldp (not boldp)))
-         ((string= code "")
+         ((string= code "\x16")
           (setq inversep (not inversep)))
-         ((string= code "")
+         ((string= code "\x1D")
           (setq italicp (not italicp)))
-         ((string= code "")
+         ((string= code "\x1F")
           (setq underlinep (not underlinep)))
-         ((string= code "")
+         ((string= code "\x0F")
           (setq boldp nil
                 inversep nil
                 italicp nil
                 underlinep nil
                 fg nil
                 bg nil))
-         ((string= code "")
+         ((string= code "\x03")
           (if (looking-at "\\([0-9][0-9]?\\)\\(,\\([0-9][0-9]?\\)\\)?")
               (progn
                 (setq fg (string-to-number (match-string 1))
