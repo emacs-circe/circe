@@ -147,6 +147,14 @@ If set to nil, all buffers will be shown."
                  (integer :tag "Maximum"))
   :group 'tracking)
 
+(defcustom tracking-get-face-function #'tracking-get-face
+  "Function that returns face for a given buffer. It defaults to
+`tracking-get-face' which simply returns any face that is stored in
+`tracking-buffers'. Circe users may set this variable to
+`circe-tracking-get-face' instead."
+  :type 'function
+  :group 'tracking)
+
 ;;; Internal variables
 (defvar tracking-buffers nil
   "The list of currently tracked buffers.")
@@ -361,7 +369,7 @@ only return that many entries, ending with '+n'."
         (while buffer-names
           (push `(:propertize
                   ,(car shortened-names)
-                  face ,(get-text-property 0 'face (car buffer-names))
+                  face ,(funcall tracking-get-face-function (car buffer-names))
                   keymap ,(let ((map (make-sparse-keymap)))
                             (define-key map [mode-line down-mouse-1]
                               `(lambda ()
@@ -446,6 +454,11 @@ This returns STRING with the new face."
           (throw 'return
                  (propertize string 'face candidate))))
       string)))
+
+(defun tracking-get-face (buffer)
+  "Return face for a given buffer. If the buffer has already some face
+specified, use it. Otherwise, return `nil'."
+  (get-text-property 0 'face buffer))
 
 (provide 'tracking)
 ;;; tracking.el ends here
