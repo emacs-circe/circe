@@ -82,6 +82,7 @@ COMMAND conn sender args... -- An IRC command message was received"
                    (error "Must specify a :host to connect to")))
          (service (or (plist-get keywords :service)
                       (error "Must specify a :service to connect to")))
+         (tls-keylist (plist-get keywords :tls-keylist))
          (tls-parameters (when (and (plist-get keywords :tls)
                                     (fboundp 'gnutls-boot-parameters))
                            (when (not (gnutls-available-p))
@@ -89,7 +90,8 @@ COMMAND conn sender args... -- An IRC command message was received"
                            (cons 'gnutls-x509pki
                                  (gnutls-boot-parameters
                                   :type 'gnutls-x509pki
-                                  :hostname host))))
+                                  :hostname host
+                                  :keylist tls-keylist))))
          (proc (funcall fun
                        :name (or (plist-get keywords :name) host)
                        :host host
@@ -591,10 +593,15 @@ Connection options set:
    ((equal subcommand "ACK")
     (let ((acked (split-string arg)))
       (irc-connection-put conn :cap-ack acked)
-      (if (and (member "sasl" acked)
-               (irc-connection-get conn :sasl-username)
-               (irc-connection-get conn :sasl-password))
-          (irc-send-AUTHENTICATE conn "PLAIN")
+      (if (member "sasl" acked)
+          (cond
+           ((irc-connection-get conn :sasl-external)
+            (irc-send-AUTHENTICATE conn "EXTERNAL"))
+           ((and (irc-connection-get conn :sasl-username)
+                 (irc-connection-get conn :sasl-password))
+            (irc-send-AUTHENTICATE conn "PLAIN"))
+           (t
+            (irc-send-CAP conn "END")))
         (irc-send-CAP conn "END"))))
    (t
     (message "Unknown CAP response from server: %s %s" subcommand arg))))
@@ -602,10 +609,13 @@ Connection options set:
 (defun irc-handle-registration--authenticate (conn _event _sender arg)
   (if (equal arg "+")
       (let ((username (irc-connection-get conn :sasl-username))
-            (password (irc-connection-get conn :sasl-password)))
-        (irc-send-AUTHENTICATE conn (base64-encode-string
-                                     (format "%s\x00%s\x00%s"
-                                             username username password)))
+            (password (irc-connection-get conn :sasl-password))
+            (external (irc-connection-get conn :sasl-external)))
+        (if external
+            (irc-send-AUTHENTICATE conn "+")
+            (irc-send-AUTHENTICATE conn (base64-encode-string
+                                         (format "%s\x00%s\x00%s"
+                                                 username username password))))
         (irc-send-CAP conn "END"))
     (message "Unknown AUTHENTICATE response from server: %s" arg)))
 

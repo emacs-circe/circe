@@ -94,6 +94,27 @@ add something like the following:
 With this in your configuration, you can use `M-x circe RET Freenode
 RET` to connect to Freenode using these settings.
 
+If the network you are connecting to supports client certificate authentication
+and you have setup your certificate, you can tell circe to use it when login to
+the network. You can enable SASL external authentication also if the network
+supports it. An example to connect into Freenode using a client certificate
+could be:
+
+```Lisp
+(setq circe-network-options
+      '(("Freenode"
+         :tls t
+         :tls-keylist (("/full/path/key.pem"
+                        "/full/path/cert.pem"))
+         :sasl-external t
+         :nick "my-nick"
+         :channels ("#emacs-circe")
+         )))
+```
+
+Note that `sasl-external` is not required in order to be able to authenticate
+using client certificates and not all the networks support it.
+
 ## Features
 
 - Sensible defaults
@@ -107,7 +128,8 @@ RET` to connect to Freenode using these settings.
 - Ignored messages can be toggled so they show up and then hidden
   again
 - TLS/SSL support
-- SASL authentication support
+- SASL authentication support (PLAIN and EXTERNAL methods)
+- Client certificate authentication
 - Nickserv authentication, automatic ghosting, and nick re-gain
 - Auto-join
 - Ability to reduce join/part/quit spam from lurkers
