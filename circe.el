@@ -170,6 +170,10 @@ Common options:
   :use-tls - A boolean indicating as to whether to use TLS or
              not (defaults to nil). If you set this, you'll likely
              have to set :port as well.
+  :tls-keylist - An alist of (client key file, client cert file) pairs
+                 as defined in `gnutls-boot-parameters'. This defines
+                 the private key and certificate used to connect to the
+                 server.
   :ip-family - Option to enforce a specific IP version
                (defaults to `circe-default-ip-family')
 
@@ -179,7 +183,9 @@ Common options:
                        authentication or a function to fetch it.
 
   :sasl-username - The username for SASL authentication.
-  :sasl-password - The password for SASL authentication."
+  :sasl-password - The password for SASL authentication.
+  :sasl-external - Option to specify if SASL EXTERNAL authentication should
+                   be used."
   :type '(alist :key-type string :value-type plist)
   :group 'circe)
 
@@ -863,6 +869,14 @@ See `make-network-process' and :family for valid values.")
 If a function is set it will be called with the value of `circe-host'.")
 (make-variable-buffer-local 'circe-pass)
 
+(defvar circe-sasl-external nil
+  "Use SASL external authentication.")
+(make-variable-buffer-local 'circe-sasl-external)
+
+(defvar circe-tls-keylist nil
+  "Client certificates to use when connecting via TLS.")
+(make-variable-buffer-local 'circe-tls-keylist)
+
 (defvar circe-sasl-username nil
   "The username for SASL authentication.")
 (make-variable-buffer-local 'circe-sasl-username)
@@ -1234,6 +1248,8 @@ Do not use this directly, use `circe-reconnect'"
          :host circe-host
          :service circe-port
          :tls circe-use-tls
+         :tls-keylist circe-tls-keylist
+         :sasl-external circe-sasl-external
          :ip-family circe-ip-family
          :handler-table (circe-irc-handler-table)
          :server-buffer (current-buffer)
@@ -1247,8 +1263,9 @@ Do not use this directly, use `circe-reconnect'"
          :pass (if (functionp circe-pass)
                    (funcall circe-pass circe-host)
                  circe-pass)
-         :cap-req (append (when (and circe-sasl-username
-                                     circe-sasl-password)
+         :cap-req (append (when (or (and circe-sasl-username
+                                         circe-sasl-password)
+                                    circe-sasl-external)
                             '("sasl"))
                           '("extended-join"))
          :nickserv-nick (or circe-nickserv-nick
@@ -2519,7 +2536,7 @@ If ARGUMENT is nil, it is interpreted as no argument."
   "Display a list of recognized commands, nicely formatted."
   (circe-display-server-message
    (concat "Recognized commands are: "
-	   (mapconcat (lambda (s) s) (circe--commands-list) ""))))
+           (mapconcat (lambda (s) s) (circe--commands-list) ""))))
 
 (defun circe-command-IGNORE (line)
   "Add the regex on LINE to the `circe-ignore-list'."
@@ -2963,7 +2980,7 @@ Arguments are either of the two:
                    :target target
                    :body (or text "")
                    :ago (let ((time (when text
-				      (string-to-number text))))
+                                      (string-to-number text))))
                           (if time
                               (format "%.2f seconds" (- (float-time) time))
                             "unknown seconds")))))
