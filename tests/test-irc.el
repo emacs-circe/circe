@@ -10,8 +10,7 @@
   (cons 'gnutls-x509pki
         (gnutls-boot-parameters
          :type 'gnutls-x509pki
-         :hostname "irc.local"
-         :verify-error t)))
+         :hostname "irc.local")))
 
 (describe "The `irc-connect' function"
   :var (process-status)
