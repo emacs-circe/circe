@@ -185,7 +185,9 @@ Common options:
   :sasl-username - The username for SASL authentication.
   :sasl-password - The password for SASL authentication.
   :sasl-external - Option to specify if SASL EXTERNAL authentication should
-                   be used."
+                   be used.
+  :sasl-strict - If SASL authentication is requested and it fails leave the
+                 server."
   :type '(alist :key-type string :value-type plist)
   :group 'circe)
 
@@ -873,6 +875,10 @@ If a function is set it will be called with the value of `circe-host'.")
   "Use SASL external authentication.")
 (make-variable-buffer-local 'circe-sasl-external)
 
+(defvar circe-sasl-strict nil
+  "Use SASL authentication in strict mode.")
+(make-variable-buffer-local 'circe-sasl-strict)
+
 (defvar circe-tls-keylist nil
   "Client certificates to use when connecting via TLS.")
 (make-variable-buffer-local 'circe-tls-keylist)
@@ -1250,6 +1256,7 @@ Do not use this directly, use `circe-reconnect'"
          :tls circe-use-tls
          :tls-keylist circe-tls-keylist
          :sasl-external circe-sasl-external
+         :sasl-strict circe-sasl-strict
          :ip-family circe-ip-family
          :handler-table (circe-irc-handler-table)
          :server-buffer (current-buffer)

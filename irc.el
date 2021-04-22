@@ -121,6 +121,25 @@ COMMAND conn sender args... -- An IRC command message was received"
   "Return the value of CONN's PROPNAME property."
   (process-get conn propname))
 
+(defun irc-connection-uses-sasl-plain (conn)
+  "Return t if CONN uses sasl plain authentication"
+  (and (irc-connection-get conn :sasl-username)
+       (irc-connection-get conn :sasl-password)))
+
+(defun irc-connection-uses-sasl-external (conn)
+  "Return t if CONN uses sasl external authentication"
+  (irc-connection-get conn :sasl-external))
+
+(defun irc-connection-uses-sasl (conn)
+  "Return t if CONN uses sasl authentication"
+  (or (irc-connection-uses-sasl-plain conn)
+      (irc-connection-uses-sasl-external conn)))
+
+(defun irc-connection-uses-sasl-strict (conn)
+  "Return t if CONN uses sasl strict authentication"
+  (and (irc-connection-get conn :sasl-strict)
+       (irc-connection-uses-sasl conn)))
+
 (defun irc-connection-put (conn propname value)
   "Change CONN's PROPNAME property to VALUE."
   (process-put conn propname value))
@@ -537,6 +556,9 @@ Connection options used:
 :cap-req -- CAP protocol capabilities to request, if available
 :sasl-username -- The SASL username to send, if sasl is available
 :sasl-password -- The SASL password to send, if sasl is available
+:sasl-external -- Use SASL external autentication, if sasl is available
+:sasl-strict -- If sasl is available and authentication failed leave
+   the server.
 
 Connection options set:
 
@@ -555,7 +577,17 @@ Connection options set:
   (irc-handler-add table "AUTHENTICATE"
                    #'irc-handle-registration--authenticate)
   (irc-handler-add table "900" ;; RPL_LOGGEDIN
-                   #'irc-handle-registration--logged-in))
+                   #'irc-handle-registration--logged-in)
+  (irc-handler-add table "903" ;; RPL_SASLSUCCESS
+                   #'irc-handle-registration--sasl-succeeded)
+  (irc-handler-add table "904" ;; ERR_SASLFAILED
+                   #'irc-handle-registration--sasl-failed)
+  (irc-handler-add table "905" ;; ERR_SASLTOOLONG
+                   #'irc-handle-registration--sasl-failed)
+  (irc-handler-add table "906" ;; ERR_SASLABORTED
+                   #'irc-handle-registration--sasl-aborted)
+  (irc-handler-add table "907" ;; ERR_SASLALREADY 
+                   #'irc-handle-registration--sasl-already))
 
 (defun irc-handle-registration--connected (conn _event)
   (irc-connection-put conn :connection-state 'connected)
@@ -595,10 +627,9 @@ Connection options set:
       (irc-connection-put conn :cap-ack acked)
       (if (member "sasl" acked)
           (cond
-           ((irc-connection-get conn :sasl-external)
+           ((irc-connection-uses-sasl-external conn)
             (irc-send-AUTHENTICATE conn "EXTERNAL"))
-           ((and (irc-connection-get conn :sasl-username)
-                 (irc-connection-get conn :sasl-password))
+           ((irc-connection-uses-sasl-plain conn)
             (irc-send-AUTHENTICATE conn "PLAIN"))
            (t
             (irc-send-CAP conn "END")))
@@ -615,13 +646,36 @@ Connection options set:
             (irc-send-AUTHENTICATE conn "+")
             (irc-send-AUTHENTICATE conn (base64-encode-string
                                          (format "%s\x00%s\x00%s"
-                                                 username username password))))
-        (irc-send-CAP conn "END"))
+                                                 username username password)))))
     (message "Unknown AUTHENTICATE response from server: %s" arg)))
 
 (defun irc-handle-registration--logged-in (conn _event _sender _target
                                                 userhost account _message)
-  (irc-event-emit conn "sasl.login" userhost account))
+  (when (not (irc-connection-uses-sasl conn))
+    (irc-event-emit conn "sasl.login" userhost account)))
+
+(defun irc-handle-registration--sasl-succeeded (conn _event _sender target
+                                                     message)
+  (irc-send-CAP conn "END")
+  (irc-event-emit conn "sasl.login" target message))
+
+(defun irc-handle-registration--sasl-failed (conn _event _sender _target
+                                                  _message)
+  (cond
+   ((irc-connection-uses-sasl-strict conn)
+    (with-current-buffer (irc-connection-get conn :server-buffer)
+      (setq circe-server-inhibit-auto-reconnect-p t)
+      (irc-send-QUIT conn circe-default-quit-message)))
+   (t
+    (irc-send-CAP conn "END"))))
+
+(defun irc-handle-registration--sasl-aborted (conn _event _sender _target
+                                                   _message)
+  (irc-send-CAP conn "END"))
+
+(defun irc-handle-registration--sasl-already (conn _event _sender _target
+                                                   _message)
+  (irc-send-CAP conn "END"))
 
 (defun irc-connection-state (conn)
   "connecting connected registered disconnected"

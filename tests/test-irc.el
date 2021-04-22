@@ -816,7 +816,7 @@
     (describe "on a CAP message"
       (it "should do the full negotiation"
         (irc-connection-put proc :cap-req '("multi-prefix"))
-        (irc-event-emit proc "conn.registered")
+        (irc-event-emit proc "irc.registered")
         (spy-calls-reset 'irc-send-raw)
         (irc-event-emit proc "CAP" "irc.server" "*" "LS" "multi-prefix")
         (irc-event-emit proc "CAP" "irc.server" "*" "ACK" "multi-prefix")
@@ -828,7 +828,7 @@
 
       (it "should not negotiation with no common capabilities"
         (irc-connection-put proc :cap-req '("sasl"))
-        (irc-event-emit proc "conn.registered")
+        (irc-event-emit proc "irc.registered")
         (spy-calls-reset 'irc-send-raw)
         (irc-event-emit proc "CAP" "irc.server" "*" "LS" "multi-prefix")
 
@@ -837,11 +837,11 @@
                 '("CAP END"))))
 
     (describe "on SASL authentication"
-      (it "should do the full negotiation"
+      (it "should start the negotiation"
         (irc-connection-put proc :cap-req '("sasl"))
         (irc-connection-put proc :sasl-username "my_nick")
         (irc-connection-put proc :sasl-password "top-secret")
-        (irc-event-emit proc "conn.registered")
+        (irc-event-emit proc "irc.registered")
         (spy-calls-reset 'irc-send-raw)
         (irc-event-emit proc "CAP" "irc.server" "*" "LS" "sasl")
         (irc-event-emit proc "CAP" "irc.server" "*" "ACK" "sasl")
@@ -851,8 +851,7 @@
                 :to-equal
                 '("CAP REQ sasl"
                   "AUTHENTICATE PLAIN"
-                  "AUTHENTICATE bXlfbmljawBteV9uaWNrAHRvcC1zZWNyZXQ="
-                  "CAP END"))))
+                  "AUTHENTICATE bXlfbmljawBteV9uaWNrAHRvcC1zZWNyZXQ="))))
 
     (describe "on SASL authentication"
       (it "should emit sasl.login for 900 numeric"
@@ -867,7 +866,70 @@
 
           (expect auth-args
                   :to-equal
-                  (list proc "sasl.login" "mynick!user@host" "account")))))))
+                  (list proc "sasl.login" "mynick!user@host" "account"))))
+
+      (it "should emit sasl.login for 903 numeric and stop the negotiation" 
+        (let (auth-args)
+          (irc-handler-add table "sasl.login"
+                           (lambda (&rest args)
+                             (setq auth-args args)))
+
+          (irc-event-emit proc "903" "irc.server" "mynick"
+                          "authentication successful")
+
+          (expect auth-args
+                  :to-equal
+                  (list proc "sasl.login" "mynick" "authentication successful"))
+
+          (expect (client-messages)
+                :to-equal
+                '("CAP END"))))
+
+      (it "should stop the negotiation for 904"
+        (irc-connection-put proc :sasl-username "my_nick")
+        (irc-connection-put proc :sasl-password "top-secret")
+        (irc-event-emit proc "904" "irc.server" "mynick"
+                        "authentication failed")
+
+        (expect (client-messages)
+                :to-equal
+                '("CAP END"))))
+
+    (it "should close the connection for 904 when sasl.strict is t"
+      (irc-connection-put proc :sasl-username "my_nick")
+      (irc-connection-put proc :sasl-password "top-secret")
+      (irc-connection-put proc :sasl-strict t)
+      (irc-connection-put proc :server-buffer (current-buffer))
+      (irc-event-emit proc "904" "irc.server" "mynick"
+                      "authentication failed")
+
+      (expect (client-messages)
+              :to-equal
+              '("QUIT :Using Circe, the loveliest of all IRC clients")))
+
+    (it "should stop the negotiation for 905"
+      (irc-event-emit proc "905" "irc.server" "mynick"
+                      ":SASL authentication failed")
+        
+      (expect (client-messages)
+              :to-equal
+              '("CAP END")))
+
+    (it "should stop the negotiation for 906"
+      (irc-event-emit proc "906" "irc.server" "mynick"
+                      ":SASL authentication aborted")
+      
+      (expect (client-messages)
+              :to-equal
+              '("CAP END")))
+
+    (it "should stop the negotiation for 907"
+      (irc-event-emit proc "907" "irc.server" "mynick"
+                      ":SASL already authenticated")
+      
+      (expect (client-messages)
+              :to-equal
+              '("CAP END")))))
 
 (describe "The `irc-connection-state' function"
   (let (proc)
