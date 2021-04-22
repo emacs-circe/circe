@@ -646,7 +646,8 @@ Connection options set:
             (irc-send-AUTHENTICATE conn "+")
             (irc-send-AUTHENTICATE conn (base64-encode-string
                                          (format "%s\x00%s\x00%s"
-                                                 username username password)))))
+                                                 username username password)
+                                         t))))
     (message "Unknown AUTHENTICATE response from server: %s" arg)))
 
 (defun irc-handle-registration--logged-in (conn _event _sender _target
