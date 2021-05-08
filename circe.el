@@ -3,7 +3,7 @@
 ;; Copyright (C) 2005 - 2015  Jorgen Schaefer
 
 ;; Version: 2.11
-;; Keywords: IRC, chat
+;; Keywords: IRC, chat, comm
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/jorgenschaefer/circe
 
