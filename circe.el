@@ -512,6 +512,13 @@ strings."
   :type 'string
   :group 'circe-format)
 
+(defcustom circe-chat-buffer-name "{target}@{network}"
+  "The format for buffer names.
+{target} - The target of the buffer.
+{network} - The name of the network."
+  :type 'string
+  :group 'circe-format)
+
 (defcustom circe-format-say "<{nick}> {body}"
   "The format for normal channel or query talk.
 {nick} - The nick talking.
@@ -1949,7 +1956,10 @@ setting the variable through network options."
   (with-circe-server-buffer
     (let* ((target-name (irc-isupport--case-fold (circe-server-process)
                                                  target))
-           (chat-buffer (generate-new-buffer target))
+           (buffer-name (lui-format 'circe-chat-buffer-name
+                                    :target target
+                                    :network circe-network))
+           (chat-buffer (generate-new-buffer buffer-name))
            (server-buffer (current-buffer))
            (circe-chat-calling-server-buffer-and-target (cons server-buffer
                                                               target-name)))
@@ -2049,9 +2059,6 @@ SERVER-BUFFER is the server buffer of this chat buffer."
         circe-chat-target (cdr circe-chat-calling-server-buffer-and-target))
   (let ((network (with-circe-server-buffer
                    circe-network)))
-    (make-local-variable 'mode-line-buffer-identification)
-    (setq mode-line-buffer-identification
-          (list (format "%%b@%-8s" network)))
     (setq lui-logging-format-arguments
           `(:target ,circe-chat-target :network ,network)))
   (when (equal circe-chat-target "#emacs-circe")
