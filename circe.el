@@ -1846,14 +1846,18 @@ to reconnect to the server.
 (defun circe-server-killed ()
   "Run when the server buffer got killed.
 
-This will IRC, and ask the user whether to kill all of the
+This will quit IRC, and ask the user whether to kill all of the
 server's chat buffers."
   (when circe-server-killed-confirmation
-    (when (not (y-or-n-p
-                (if (eq circe-server-killed-confirmation 'ask-and-kill-all)
-                    "Really kill all buffers of this server? (if not, try `circe-reconnect') "
-                  "Really kill the IRC connection? (if not, try `circe-reconnect') ")))
-      (error "Buffer not killed as per user request")))
+    (let ((network-name (with-circe-server-buffer circe-network)))
+      (when (not (y-or-n-p
+                  (if (eq circe-server-killed-confirmation 'ask-and-kill-all)
+                      (format "Really kill all buffers of network %s? (if not, try `circe-reconnect') "
+                              network-name)
+                    (format "Really kill the IRC connection to network %s? (if not, try `circe-reconnect') "
+                            network-name))))
+        (error "Buffer of network %s not killed as per user request"
+               network-name))))
   (setq circe-server-inhibit-auto-reconnect-p t)
   (ignore-errors
     (irc-send-QUIT circe-server-process circe-default-quit-message))
@@ -2101,9 +2105,14 @@ if the server is live, and the user wants to kill the buffer,
 send PART to the server and clean up the channel's remaining
 state."
   (when (buffer-live-p circe-server-buffer)
-    (when (and circe-channel-killed-confirmation
-               (not (y-or-n-p "Really leave this channel? ")))
-      (error "Channel not left."))
+    (let ((network-name (with-circe-server-buffer circe-network)))
+      (when (and circe-channel-killed-confirmation
+                 (not (y-or-n-p (format "Really leave channel %s on network %s? "
+                                        circe-chat-target
+                                        network-name))))
+        (error (format "Channel %s on network %s not left."
+                       circe-chat-target
+                       network-name))))
     (ignore-errors
       (irc-send-PART (circe-server-process)
                      circe-chat-target
