@@ -192,7 +192,16 @@ Common options:
   :group 'circe)
 
 (defvar circe-network-defaults
-  '(("Freenode" :host "chat.freenode.net" :port (6667 . 6697)
+  '(("Libera Chat" :host "irc.libera.chat" :port (6667 . 6697)
+     :tls t
+     :nickserv-mask "^NickServ!NickServ@services\\.$"
+     :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "^You are now identified for .*\\.$"
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
+     :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
+     )
+    ("Freenode" :host "chat.freenode.net" :port (6667 . 6697)
      :tls t
      :nickserv-mask "^NickServ!NickServ@services\\.$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
