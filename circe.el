@@ -197,7 +197,7 @@ Common options:
      :nickserv-mask "^NickServ!NickServ@services\\.$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
-     :nickserv-identify-confirmation "^You are now identified for .*\\.$"
+     :nickserv-identify-confirmation "^You are now identified for \x02.*\x02\\.$"
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
@@ -206,7 +206,7 @@ Common options:
      :nickserv-mask "^NickServ!NickServ@services\\.$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
-     :nickserv-identify-confirmation "^You are now identified for .*\\.$"
+     :nickserv-identify-confirmation "^You are now identified for \x02.*\x02\\.$"
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
@@ -226,7 +226,7 @@ Common options:
      :nickserv-mask "^NickServ!services@services\\.oftc\\.net$"
      :nickserv-identify-challenge "This nickname is registered and protected."
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password} {nick}"
-     :nickserv-identify-confirmation "^You are successfully identified as .*\\.$"
+     :nickserv-identify-confirmation "^You are successfully identified as \x02.*\x02\\.$"
      )
     )
   "Alist of networks and connection settings.
