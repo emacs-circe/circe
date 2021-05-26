@@ -45,4 +45,4 @@ Use `test-full` before submitting patches.
 
 ## Discussions
 
-Join us in `#emacs-circe` on `irc.freenode.net`!
+Join us in `#emacs-circe` on `irc.libera.chat`!

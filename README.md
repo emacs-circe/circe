@@ -72,16 +72,16 @@ The next time you start your Emacs, you should be able to use
 
 ## Connecting to IRC
 
-To connect to IRC, simply use `M-x circe RET irc.freenode.net RET
-RET`. This will connect you to Freenode. You can join us on
-`#emacs-circe` by using `/join #emacs-circe` in the server buffer.
+To connect to IRC, simply use `M-x circe RET irc.libera.chat RET RET`.
+This will connect you to Libera. You can join us on `#emacs-circe` by
+using `/join #emacs-circe` in the server buffer.
 
 A more elaborate setup would require you to edit your init file and
 add something like the following:
 
 ```Lisp
 (setq circe-network-options
-      '(("Freenode"
+      '(("Libera"
          :tls t
          :nick "my-nick"
          :sasl-username "my-nick"
@@ -91,18 +91,18 @@ add something like the following:
 
 ```
 
-With this in your configuration, you can use `M-x circe RET Freenode
-RET` to connect to Freenode using these settings.
+With this in your configuration, you can use `M-x circe RET Libera
+RET` to connect to Libera using these settings.
 
 If the network you are connecting to supports client certificate authentication
 and you have setup your certificate, you can tell circe to use it when login to
 the network. You can enable SASL external authentication also if the network
-supports it. An example to connect into Freenode using a client certificate
+supports it. An example to connect into Libera using a client certificate
 could be:
 
 ```Lisp
 (setq circe-network-options
-      '(("Freenode"
+      '(("Libera"
          :tls t
          :tls-keylist (("/full/path/key.pem"
                         "/full/path/cert.pem"))
