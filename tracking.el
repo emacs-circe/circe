@@ -411,10 +411,11 @@ This is usually called via `window-configuration-changed-hook'."
 (defun tracking-shorten (buffers)
   "Shorten BUFFERS according to `tracking-shorten-buffer-names-p'."
   (if tracking-shorten-buffer-names-p
-      (let ((all (shorten-strings
-                  (mapcar #'buffer-name
-                          (cl-remove-if #'tracking-filter-mode
-                                        (buffer-list))))))
+      (let* ((shorten-join-function #'shorten-join-sans-tail)
+             (all (shorten-strings
+                   (mapcar #'buffer-name
+                           (cl-remove-if #'tracking-filter-mode
+                                         (buffer-list))))))
         (mapcar (lambda (buffer)
                   (let ((short (or (cdr (assoc buffer all))
                                    buffer)))
