@@ -194,8 +194,8 @@ Common options:
 (defvar circe-network-defaults
   '(("Libera Chat" :host "irc.libera.chat" :port (6667 . 6697)
      :tls t
-     :nickserv-mask "^NickServ!NickServ@services\\.$"
-     :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
+     :nickserv-mask "^NickServ!NickServ@services\\.libera\\.chat$"
+     :nickserv-identify-challenge "This nickname is registered."
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
      :nickserv-identify-confirmation "^You are now identified for \x02.*\x02\\.$"
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
