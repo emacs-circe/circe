@@ -215,6 +215,15 @@ Common options:
      :nickserv-identify-challenge "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
      )
+    ("Hackint" :host "irc.hackint.org" :port (nil . 6697) ; TLS-only
+     :tls t
+     :nickserv-mask "^NickServ!NickServ@services\\.hackint\\.org$"
+     :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "^You are now identified for \x02.*\x02\\.$"
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
+     :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
+     )
     ("Bitlbee" :host "localhost" :port 6667
      :nickserv-mask "\\(bitlbee\\|root\\)!\\(bitlbee\\|root\\)@"
      :nickserv-identify-challenge "use the \x02identify\x02 command to identify yourself"
