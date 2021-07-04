@@ -40,6 +40,7 @@
 (require 'timer)
 (require 'lui)
 (require 'lui-format)
+(require 'lui-logging)
 (require 'lcs)
 (require 'irc)
 
@@ -1044,6 +1045,10 @@ A keyword in the first position of the channels list overrides
 `circe-server-auto-join-default-type' for re-joining manually
 joined channels.")
 (make-variable-buffer-local 'circe-channels)
+
+(defvar circe-logging nil
+  "Whether logging should be enabled for this network.")
+(make-variable-buffer-local 'circe-logging)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Server Buffer Management ;;;;
@@ -2062,14 +2067,6 @@ setting the variable through network options."
 (defvar circe-chat-mode-map (make-sparse-keymap)
   "Base key map for all Circe chat buffers (channel, query).")
 
-;; Defined here as we use it, but do not necessarily want to use the
-;; full module.
-(defvar lui-logging-format-arguments nil
-  "A list of arguments to be passed to `lui-format'.
-This can be used to extend the formatting possibilities of the
-file name for lui applications.")
-(make-variable-buffer-local 'lui-logging-format-arguments)
-
 (define-derived-mode circe-chat-mode circe-mode "Circe Chat"
   "The circe chat major mode.
 
@@ -2079,10 +2076,12 @@ TARGET is the default target to send data to.
 SERVER-BUFFER is the server buffer of this chat buffer."
   (setq circe-server-buffer (car circe-chat-calling-server-buffer-and-target)
         circe-chat-target (cdr circe-chat-calling-server-buffer-and-target))
-  (let ((network (with-circe-server-buffer
-                   circe-network)))
+  (let ((network (with-circe-server-buffer circe-network))
+        (logging (with-circe-server-buffer circe-logging)))
     (setq lui-logging-format-arguments
-          `(:target ,circe-chat-target :network ,network)))
+          `(:target ,circe-chat-target :network ,network))
+    (when logging
+      (enable-lui-logging)))
   (when (equal circe-chat-target "#emacs-circe")
     (set (make-local-variable 'lui-button-issue-tracker)
          "https://github.com/emacs-circe/circe/issues/%s")))
