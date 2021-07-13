@@ -6,45 +6,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Connection function
 
-(defvar default-tls-parameters
-  (cons 'gnutls-x509pki
-        (gnutls-boot-parameters
-         :type 'gnutls-x509pki
-         :hostname "irc.local")))
-
 (describe "The `irc-connect' function"
   :var (process-status)
   (before-each
+    (spy-on 'make-tls-process :and-return-value 'the-test-process)
     (spy-on 'make-network-process :and-return-value 'the-test-process)
     (spy-on 'process-status :and-call-fake (lambda (proc) process-status))
     (spy-on 'irc--sentinel :and-return-value nil))
-
-  (it "should call `make-network-process' if tls was not requested"
-    (irc-connect :host "irc.local"
-                 :service 6667)
-
-    (expect 'make-network-process
-            :to-have-been-called-with
-            :name "irc.local" :host "irc.local" :service 6667
-            :family nil
-            :coding 'no-conversion :nowait t :noquery t
-            :tls-parameters nil
-            :filter #'irc--filter :sentinel #'irc--sentinel
-            :plist '(:host "irc.local" :service 6667) :keepalive t))
-
-  (it "should call `make-network-process' if tls was requested"
-    (irc-connect :host "irc.local"
-                 :service 6667
-                 :tls t)
-
-    (expect 'make-network-process
-            :to-have-been-called-with
-            :name "irc.local" :host "irc.local" :service 6667
-            :family nil
-            :coding 'no-conversion :nowait t :noquery t
-            :tls-parameters default-tls-parameters
-            :filter #'irc--filter :sentinel #'irc--sentinel
-            :plist '(:host "irc.local" :service 6667 :tls t) :keepalive t))
 
   (it "should return a process when using non-tls connections"
     (expect (irc-connect :host "irc.local"
