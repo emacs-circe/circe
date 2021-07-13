@@ -3,7 +3,7 @@
 ;; Copyright (C) 2015  Jorgen Schaefer <contact@jorgenschaefer.de>
 
 ;; Author: Jorgen Schaefer <contact@jorgenschaefer.de>
-;; URL: https://github.com/jorgenschaefer/circe
+;; URL: https://github.com/emacs-circe/circe
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License

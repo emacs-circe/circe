@@ -3,7 +3,7 @@
 ;; Copyright (C) 2006, 2012 - 2015  Jorgen Schaefer
 
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
-;; URL: https://github.com/jorgenschaefer/circe/wiki/Tracking
+;; URL: https://github.com/emacs-circe/circe/wiki/Tracking
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by

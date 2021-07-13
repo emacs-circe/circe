@@ -1,6 +1,6 @@
 # Circe, a Client for IRC in Emacs
 
-[![Build Status](https://api.travis-ci.org/jorgenschaefer/circe.png?branch=master)](https://travis-ci.org/jorgenschaefer/circe)
+[![Build Status](https://api.travis-ci.org/emacs-circe/circe.png?branch=master)](https://travis-ci.org/emacs-circe/circe)
 [![MELPA Stable](http://stable.melpa.org/packages/circe-badge.svg)](http://stable.melpa.org/#/circe)
 
 ## Overview
@@ -57,7 +57,7 @@ In a shell:
 ```Shell
 mkdir -d ~/.emacs.d/lisp/
 cd ~/.emacs.d/lisp
-git clone git://github.com/jorgenschaefer/circe.git
+git clone git://github.com/emacs-circe/circe.git
 ```
 
 Then add the following to your `.emacs` file:
@@ -153,4 +153,4 @@ using client certificates and not all the networks support it.
 
 Please see the Wiki for further information:
 
-https://github.com/jorgenschaefer/circe/wiki
+https://github.com/emacs-circe/circe/wiki

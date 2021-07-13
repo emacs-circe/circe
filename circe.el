@@ -5,7 +5,7 @@
 ;; Version: 2.11
 ;; Keywords: IRC, chat, comm
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
-;; URL: https://github.com/jorgenschaefer/circe
+;; URL: https://github.com/emacs-circe/circe
 
 ;; This file is part of Circe.
 
@@ -858,7 +858,7 @@ The following format arguments are available:
 ;;; Private variables ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar circe-source-url "https://github.com/jorgenschaefer/circe"
+(defvar circe-source-url "https://github.com/emacs-circe/circe"
   "URL to Circe's source repository")
 
 (defvar circe-host nil
@@ -2085,7 +2085,7 @@ SERVER-BUFFER is the server buffer of this chat buffer."
           `(:target ,circe-chat-target :network ,network)))
   (when (equal circe-chat-target "#emacs-circe")
     (set (make-local-variable 'lui-button-issue-tracker)
-         "https://github.com/jorgenschaefer/circe/issues/%s")))
+         "https://github.com/emacs-circe/circe/issues/%s")))
 
 (defun circe-chat-disconnected ()
   "The current buffer got disconnected."

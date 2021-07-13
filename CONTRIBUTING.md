@@ -10,7 +10,7 @@ You will need the following software installed:
 Once you have that, you can clone the repository locally:
 
 ```
-git clone https://github.com/jorgenschaefer/circe
+git clone https://github.com/emacs-circe/circe
 ```
 
 In the repository, run the setup script to create your development
