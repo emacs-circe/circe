@@ -7,6 +7,7 @@
     (it "should have circe-server-buffer set in the mode hook"
       (let* ((csb-value nil)
              (circe-server-killed-confirmation nil)
+             (circe-network "test")
              (circe-chat-mode-hook (list
                                     (lambda ()
                                       (setq csb-value circe-server-buffer))))
