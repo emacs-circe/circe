@@ -1,6 +1,6 @@
 # Circe, a Client for IRC in Emacs
 
-[![Build Status](https://api.travis-ci.org/emacs-circe/circe.png?branch=master)](https://travis-ci.org/emacs-circe/circe)
+[![Build Status](https://github.com/emacs-circe/circe/actions/workflows/ci.yaml/badge.svg)](https://github.com/emacs-circe/circe/actions/workflows/ci.yaml)
 [![MELPA Stable](http://stable.melpa.org/packages/circe-badge.svg)](http://stable.melpa.org/#/circe)
 
 ## Overview
