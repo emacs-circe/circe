@@ -63,16 +63,18 @@ documentation"
 ;;;###autoload
 (defun enable-circe-new-day-notifier ()
   (interactive)
-    (unless circe-new-day-notifier-timer
-      (setq circe-new-day-notifier-timer
-            (run-at-time "24:00:00" (* 24 60 60) 'circe-new-day-notification))))
+  (unless circe-new-day-notifier-timer
+    (push 'circe-new-day-notifier-format-message circe-format-not-tracked)
+    (setq circe-new-day-notifier-timer
+          (run-at-time "24:00:00" (* 24 60 60) 'circe-new-day-notification))))
 
 ;;;###autoload
 (defun disable-circe-new-day-notifier ()
   (interactive)
   (when circe-new-day-notifier-timer
     (cancel-timer circe-new-day-notifier-timer)
-    (setq circe-new-day-notifier-timer nil)))
+    (setq circe-new-day-notifier-timer nil
+          circe-format-not-tracked (delete 'circe-new-day-notifier-format-message circe-format-not-tracked))))
 
 (defun circe-new-day-notification ()
   "This function prints the new day notification to each query and chat buffer"
