@@ -80,8 +80,7 @@ file name for lui applications.")
 (defvar lui-logging-file-name-unreserved-chars
   ;; All but '/' is fine actually, but also omit '%' because otherwise there's
   ;; ambiguity between one introduced by encoding and a literal one.
-  '(?! ?\" ?# ?$ ?& ?` ?\( ?\) ?* ?+ ?,?: ?\; ?< ?= ?> ?? ?@?\[ ?\\ ?\] ?^ ?`
-       ?\{ ?| ?\})
+  '(?! ?# ?$ ?& ?` ?\( ?\) ?+ ?, ?\; ?= ?@?\[ ?\] ?^ ?` ?\{ ?\})
   "A list of characters that should not be percent-encoded by
 `url-hexify-string' while generating a logging file name.")
 
