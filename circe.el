@@ -921,7 +921,7 @@ If a function is set it will be called with the value of
 (make-variable-buffer-local 'circe-sasl-password)
 
 (defvar circe-use-tls nil
-  "If non-nil, use `open-tls-stream' to connect to the server.")
+  "If non-nil, connect to the server using TLS.")
 (make-variable-buffer-local 'circe-use-tls)
 
 (defvar circe-server-process nil
