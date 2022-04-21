@@ -261,9 +261,6 @@
             '(nil "PRIVMSG" "#channel" "möp")))
 
   (it "should decode arguments individually"
-    ;; Undecided is broken in older Emacsen
-    (when (version< emacs-version "24.4")
-      (signal 'buttercup-pending t))
     ;; This is utf-16
     (expect (irc--parse
              (concat ":\xff\xfe\x6d\x00\xf6\x00\x70\x00 "
