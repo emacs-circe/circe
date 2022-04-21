@@ -1,3 +1,56 @@
+# New in 2.12
+
+- `circe-color-nicks` is now significantly faster. This is noticable
+  when performing ZNC playbacks.
+- `lui-track-bar` supports `lui-track-bar-use-fringe-p` to use a
+  fringe indicator instead of a full line to mark the last read
+  position in a buffer.
+- The `lui-track-bar` functionality has been moved to `lui-track` to
+  allow selecting different types of last read position marks. The old
+  variables have been marked as obsolete to guide users to the new
+  ones.
+- Old XEmacs-compatibility code has been removed.
+- TLS handling is now significantly more robust and fast if the
+  `gnutls-boot-parameters` function is available (provided by Emacs
+  26.1 and newer).
+- The ptpb.pw service in `lui-autopaste` has been replaced with
+  sprunge.us as it's no longer available.
+- The behavior of `tracking-max-mode-line-entries` has been adjusted
+  to not display any buffers when set to zero.
+- `/gquit` now unconditionally sends `/quit` and inhibits
+  auto-reconnect.
+- Several byte-compiler deprecation warnings have been fixed.
+- Tracking can be sped up by customizing `tracking-shorten-modes`.
+- `circe-display-images` no longer requires ImageMagick support.
+- Certificate errors are now handled by NSM if available.
+- SASL EXTERNAL and TLS client certificates are now supported.
+- The minimum supported Emacs version has been bumped to 24.5.
+- All mentions of Freenode have been changed to Libera.Chat.
+- The display of the buffer name can now be customized, tracking has
+  been updated to shorten superfluous tails as a result of that.
+- Channel and/or network name are now mentioned when killing a
+  chat/server buffer.
+- The Hackint network has been added to the default network list.
+- The repository has changed to an organization due to a maintainer
+  change.
+- CI has been migrated from Travis to GitHub CI.
+- All failing CI tests have been fixed.
+- Networks now support an option to enable logging per network.
+- The list of valid characters for log paths has been adjusted to
+  avoid Windows-specific illegal file name characters.
+
+# New in 2.11
+
+- Several warnings about missing defcustom types have been fixed.
+
+# New in 2.10
+
+- The `/stats` command has been added.
+
+# New in 2.9
+
+- Minor nick coloring corrections
+
 # New in 2.7
 
 - `circe-highlight-all-nicks` is obsolete. Use
