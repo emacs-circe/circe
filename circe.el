@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2005 - 2015  Jorgen Schaefer
 
-;; Version: 2.11
+;; Version: 2.12
 ;; Keywords: IRC, chat, comm
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/emacs-circe/circe
@@ -31,7 +31,7 @@
 
 ;;; Code:
 
-(defvar circe-version "2.11"
+(defvar circe-version "2.12"
   "Circe version string.")
 
 (require 'circe-compat)
