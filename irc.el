@@ -107,7 +107,10 @@ COMMAND conn sender args... -- An IRC command message was received"
                        :keepalive t)))
     (when (and (plist-get keywords :tls)
                (fboundp 'nsm-verify-connection))
-      (setq proc (nsm-verify-connection proc host service))
+      ;; gnutls-verify-error must be nil for nsm to work, otherwise
+      ;; keep it at the default value (see #405)
+      (let (gnutls-verify-error)
+        (setq proc (nsm-verify-connection proc host service)))
       (when (not proc)
         (error "nsm verification failed")))
     ;; When we used `make-network-process' without :nowait, the
