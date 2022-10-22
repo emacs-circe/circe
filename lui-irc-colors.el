@@ -28,10 +28,13 @@
 ;; ^_ - Underline
 ;; ^V - Inverse
 ;; ^] - Italic
+;; ^^ - Strikethrough
+;; ^Q - Monospace
 ;; ^O - Return to normal
 ;; ^C1,2 - Colors
 
 ;; The colors are documented at http://www.mirc.co.uk/help/color.txt
+;; and https://modern.ircdocs.horse/formatting.html
 
 ;;; Code:
 
@@ -41,8 +44,18 @@
   "LUI IRC colors faces."
   :group 'circe)
 
+(defface lui-irc-colors-monospace-face
+  '((t (:inherit fixed-pitch)))
+  "Face used for inverse video."
+  :group 'lui-irc-colors)
+
 (defface lui-irc-colors-inverse-face
   '((t (:inverse-video t)))
+  "Face used for inverse video."
+  :group 'lui-irc-colors)
+
+(defface lui-irc-colors-strike-through-face
+  '((t (:strike-through t)))
   "Face used for inverse video."
   :group 'lui-irc-colors)
 
@@ -94,7 +107,7 @@
    ("#e6e6e6" "#303030" "gray"     "light grey")))
 
 (defvar lui-irc-colors-regex
-  "\\(\x02\\|\x1F\\|\x16\\|\x1D\\|\x0F\\|\x03\\)"
+  "\\(\x02\\|\x03\\|\x16\\|\x0F\\|\x11\\|\x1D\\|\x1E\\|\x1F\\)"
   "A regular expression matching IRC control codes.")
 
 ;;;###autoload
@@ -114,14 +127,17 @@ This is an appropriate function for `lui-pre-output-hook'."
   (goto-char (point-min))
   (let ((start (point))
         (boldp nil)
+        (monospacep nil)
         (inversep nil)
         (italicp nil)
+        (strikethroughp nil)
         (underlinep nil)
         (fg nil)
         (bg nil))
     (while (re-search-forward lui-irc-colors-regex nil t)
       (lui-irc-propertize start (point)
-                          boldp inversep italicp underlinep
+                          boldp monospacep inversep italicp
+                          strikethroughp underlinep
                           fg bg)
       (let ((code (match-string 1)))
         (replace-match "")
@@ -129,10 +145,14 @@ This is an appropriate function for `lui-pre-output-hook'."
         (cond
          ((string= code "\x02")
           (setq boldp (not boldp)))
+         ((string= code "\x11")
+          (setq monospacep (not monospacep)))
          ((string= code "\x16")
           (setq inversep (not inversep)))
          ((string= code "\x1D")
           (setq italicp (not italicp)))
+         ((string= code "\x1E")
+          (setq strikethroughp (not strikethroughp)))
          ((string= code "\x1F")
           (setq underlinep (not underlinep)))
          ((string= code "\x0F")
@@ -157,13 +177,16 @@ This is an appropriate function for `lui-pre-output-hook'."
          (t
           (error "lui-irc-colors: Can't happen!")))))
     (lui-irc-propertize (point) (point-max)
-                        boldp inversep italicp underlinep fg bg)))
+                        boldp monospacep inversep italicp
+                        strikethroughp underlinep fg bg)))
 
-(defun lui-irc-propertize (start end boldp inversep italicp underlinep fg bg)
+(defun lui-irc-propertize (start end boldp monospacep inversep italicp strikethroughp underlinep fg bg)
   "Propertize the region between START and END."
   (let ((faces (append (and boldp '(bold))
+                       (and monospacep '(lui-irc-colors-monospace-face))
                        (and inversep '(lui-irc-colors-inverse-face))
                        (and italicp '(italic))
+                       (and strikethroughp '(lui-irc-colors-strike-through-face))
                        (and underlinep '(underline))
                        (and fg (list (lui-irc-colors-face 'fg fg)))
                        (and bg (list (lui-irc-colors-face 'bg bg))))))
