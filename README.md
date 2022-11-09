@@ -81,7 +81,7 @@ add something like the following:
 
 ```Lisp
 (setq circe-network-options
-      '(("Libera"
+      '(("Libera Chat"
          :tls t
          :nick "my-nick"
          :sasl-username "my-nick"
@@ -91,7 +91,7 @@ add something like the following:
 
 ```
 
-With this in your configuration, you can use `M-x circe RET Libera
+With this in your configuration, you can use `M-x circe RET Libera Chat
 RET` to connect to Libera using these settings.
 
 If the network you are connecting to supports client certificate authentication
@@ -102,7 +102,7 @@ could be:
 
 ```Lisp
 (setq circe-network-options
-      '(("Libera"
+      '(("Libera Chat"
          :tls t
          :tls-keylist (("/full/path/key.pem"
                         "/full/path/cert.pem"))
