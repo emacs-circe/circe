@@ -72,7 +72,7 @@ The next time you start your Emacs, you should be able to use
 
 ## Connecting to IRC
 
-To connect to IRC, simply use `M-x circe RET irc.libera.chat RET RET`.
+To connect to IRC, simply use `M-x circe RET Libera Chat RET RET`.
 This will connect you to Libera. You can join us on `#emacs-circe` by
 using `/join #emacs-circe` in the server buffer.
 
