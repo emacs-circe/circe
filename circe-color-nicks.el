@@ -46,9 +46,9 @@ This module colors all encountered nicks in a cross-server fashion."
   (interactive)
   (dolist (buf (buffer-list))
     (with-current-buffer buf
-      (when (eq major-mode 'circe-channel-mode)
+      (when (derived-mode-p 'circe-chat-mode)
         (add-circe-color-nicks))))
-  (add-hook 'circe-channel-mode-hook
+  (add-hook 'circe-chat-mode-hook
             'add-circe-color-nicks))
 
 (defun disable-circe-color-nicks ()
@@ -57,9 +57,9 @@ See `enable-circe-color-nicks'."
   (interactive)
   (dolist (buf (buffer-list))
     (with-current-buffer buf
-      (when (eq major-mode 'circe-channel-mode)
+      (when (derived-mode-p 'circe-chat-mode)
         (remove-circe-color-nicks))))
-  (remove-hook 'circe-channel-mode-hook
+  (remove-hook 'circe-chat-mode-hook
                'add-circe-color-nicks))
 
 (defun add-circe-color-nicks ()
@@ -290,7 +290,7 @@ See `circe-nick-color-pick', which is where this is used."
 
 (defun circe-color-nicks ()
   "Color nicks on this lui output line."
-  (when (eq major-mode 'circe-channel-mode)
+  (when (derived-mode-p 'circe-chat-mode)
     (let ((nickstart (text-property-any (point-min) (point-max)
                                         'lui-format-argument 'nick)))
       (when nickstart
