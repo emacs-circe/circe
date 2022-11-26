@@ -11,6 +11,7 @@
   (before-each
     (spy-on 'make-tls-process :and-return-value 'the-test-process)
     (spy-on 'make-network-process :and-return-value 'the-test-process)
+    (spy-on 'nsm-verify-connection :and-return-value 'the-test-process)
     (spy-on 'process-status :and-call-fake (lambda (proc) process-status))
     (spy-on 'irc--sentinel :and-return-value nil))
 
