@@ -1318,9 +1318,7 @@ DELETE."
                     (delete-and-extract-region beg end)
                   (buffer-substring beg end)))
         (inhibit-point-motion-hooks t)
-        (inhibit-read-only t)
-        ;; Emacs 24.4, 24.5
-        deactivate-mark)
+        (inhibit-read-only t))
     (with-temp-buffer
       (insert string)
       (let ((start (text-property-any (point-min)
