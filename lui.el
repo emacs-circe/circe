@@ -203,7 +203,7 @@ face for highlighting the match."
   :group 'lui)
 
 (defcustom lui-buttons-list
-  `(("`\\([A-Za-z0-9+=*/-]+\\)'" 1
+  `(("`\\([A-Za-z0-9+=*/:-]+\\)'" 1
      lui-button-elisp-symbol 1)
     ("\\<debbugs[#:]\\([0-9]+\\)" 0
      "https://debbugs.gnu.org/cgi/bugreport.cgi?bug=%s" 1)
