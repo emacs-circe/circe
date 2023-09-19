@@ -112,6 +112,22 @@ could be:
          )))
 ```
 
+If the client certificate consists of just one combined file, it needs
+to be specified twice:
+
+```Lisp
+(setq circe-network-options
+      '(("Libera Chat"
+         :tls t
+         :tls-keylist (("/full/path/combined.pem"
+                        "/full/path/combined.pem"))
+         :sasl-external t
+         :nick "my-nick"
+         :channels ("#emacs-circe")
+         )))
+```
+
+
 Note that `sasl-external` is not required in order to be able to authenticate
 using client certificates and not all the networks support it.
 
