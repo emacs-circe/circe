@@ -176,11 +176,15 @@ the image. See `circe-display-images-text-property-map' for more details."
                 (image-animate img))))
         (kill-buffer buffer)))))
 
-(defconst circe-image-type (if (image-type-available-p 'imagemagick) 'imagemagick nil)
-  "Imagemagick image type if Emacs was compiled with support for ImageMagick, otherwise nil")
+(defconst circe-image-type (if (image-type-available-p 'imagemagick)
+                               'imagemagick
+                             nil)
+  "Preferred image type to use for creating images.
+If Emacs was compiled with support for ImageMagick, try to use
+that, otherwise nil.")
 
 (defun circe-create-image (data)
-  "Attempt to create image using Imagemagick type if available, otherwise guess type"
+  "Attempt to create image using the appropriate image type for DATA."
   (create-image data circe-image-type t
                 :max-height circe-display-images-max-height
                 :background circe-display-images-background))
