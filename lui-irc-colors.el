@@ -195,7 +195,7 @@ This is an appropriate function for `lui-pre-output-hook'."
 
 (defun lui-irc-colors-face (type n)
   "Return a face appropriate for face number N.
-TYPE is either 'fg or 'bg."
+TYPE is either \\='fg or \\='bg."
   (if (and (<= 0 n)
            (<= n 15))
       (intern (format "lui-irc-colors-%s-%s-face" type n))

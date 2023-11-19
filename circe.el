@@ -134,11 +134,11 @@ See `circe-fool-list'."
 (defcustom circe-default-ip-family nil
   "Default IP family to use.
 
-  'nil  - Use either IPv4 or IPv6.
+  nil  - Use either IPv4 or IPv6.
 
-  'ipv4 - Use IPv4
+  \\='ipv4 - Use IPv4
 
-  'ipv6 - Use IPv6"
+  \\='ipv6 - Use IPv6"
   :type '(choice (const :tag "Both" nil)
                  (const :tag "IPv4" ipv4)
                  (const :tag "IPv6" ipv6))
@@ -308,13 +308,13 @@ To change the prompt dynamically or just in specific buffers, use
 (defcustom circe-highlight-nick-type 'sender
   "How to highlight occurrences of our own nick.
 
-  'sender     - Highlight the nick of the sender
+  \\='sender     - Highlight the nick of the sender
                 (messages without a sender and your
                 own are highlighted with the occurrence
                 type instead)
-  'occurrence - Highlight the occurrences of the nick
-  'message    - Highlight the message without the sender
-  'all        - Highlight the whole line"
+  \\='occurrence - Highlight the occurrences of the nick
+  \\='message    - Highlight the message without the sender
+  \\='all        - Highlight the whole line"
   :type '(choice (const :tag "Sender" sender)
                  (const :tag "Occurrences" occurrence)
                  (const :tag "Message" message)
@@ -2479,9 +2479,9 @@ Alternatively, the handler can be a list of two elements:
 
 The target can be any of:
 
-  'active  - The last active buffer of this server
-  'nick    - The nick who sent this message
-  'server  - The server buffer for this server
+  \\='active  - The last active buffer of this server
+  \\='nick    - The nick who sent this message
+  \\='server  - The server buffer for this server
   number   - The index of the argument of the target
 
 The format is passed to `lui-format'. Possible format string

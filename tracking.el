@@ -51,7 +51,7 @@ the mode line."
 
 (defcustom tracking-shorten-modes t
   "List of major modes to shorten in tracking.
-When set to 't' shorten all modes.
+When set to t shorten all modes.
 Setting this to limit the number of buffers shortened improves
 the performance of shortening substantially."
   :type '(set boolean
@@ -71,11 +71,11 @@ see there for further explanation."
 (defcustom tracking-position 'before-modes
   "Where tracked buffers should appear in the mode line.
 
-  'before-modes
+  \\='before-modes
       Before the mode indicators
-  'after-modes
+  \\='after-modes
       After the mode indicators
-  'end
+  \\='end
       At the end of the mode line"
   :type '(choice (const :tag "Before the Mode Indicators" before-modes)
                  (const :tag "Afterthe Mode Indicators" after-modes)

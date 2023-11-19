@@ -249,7 +249,7 @@ This can be one of the following values:
 
   A string
       This is used as the fill prefix
-  'variable
+  \\='variable
       The first sequence of non-whitespace characters in the
       output is used as an alignment, and the rest is filled with
       spaces.
@@ -291,15 +291,15 @@ This can be one of the following values:
 
   A number
       At this column of the first line of output
-  'right
+  \\='right
       At a column just right to `lui-fill-column'
-  'left
+  \\='left
       At the left side of the output. The output is thereby moved
       to the right.
-  'right-margin
+  \\='right-margin
       In the right margin.  You will need to set `right-margin-width'
       in all circe buffers.
-  'left-margin
+  \\='left-margin
       In the left margin.  You will need to set `left-margin-width'
       in all circe buffers.
   nil
@@ -314,7 +314,7 @@ This can be one of the following values:
 
 (defcustom lui-time-stamp-only-when-changed-p t
   "Non-nil if Lui should only add a time stamp when the time changes.
-If `lui-time-stamp-position' is 'left, this will still add the
+If `lui-time-stamp-position' is \\='left, this will still add the
 necessary whitespace."
   :type 'boolean
   :group 'lui)
@@ -789,8 +789,8 @@ Otherwise, we move to the next button."
 
 (defun lui-fools ()
   "Propertize the current narrowing according to foolhardiness.
-That is, if any part of it has the text property 'lui-fool set,
-make the whole thing invisible."
+That is, if any part of it has the text property \\='lui-fool
+set, make the whole thing invisible."
   (when (text-property-any (point-min)
                            (point-max)
                            'lui-fool t)

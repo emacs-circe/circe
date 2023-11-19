@@ -114,7 +114,7 @@ readability."
   "Type of the color nick pool.
 Must be one of the following:
 
-'adaptive: Generate colors based on the current theme.
+\\='adaptive: Generate colors based on the current theme.
 
 List of strings: Pick colors from the specified list of hex codes
 or color names (see `color-name-rgb-alist')."
