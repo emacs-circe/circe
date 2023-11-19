@@ -95,17 +95,17 @@ line to mark last position."
   (interactive)
   (when (derived-mode-p 'lui-mode)
     (cl-case lui-track-indicator
-      ('fringe (when (not overlay-arrow-position)
-                 (setq-local overlay-arrow-position (make-marker)))
-               (set-marker overlay-arrow-position
-                           (marker-position lui-output-marker)))
-      ('bar (when (not lui-track-bar-overlay)
-              (setq lui-track-bar-overlay
-                    (make-overlay (point-min) (point-min)))
-              (overlay-put lui-track-bar-overlay 'after-string
-                           (propertize "\n" 'face 'lui-track-bar)))
-            (move-overlay lui-track-bar-overlay
-                          lui-output-marker lui-output-marker)))))
+      (fringe (when (not overlay-arrow-position)
+                (setq-local overlay-arrow-position (make-marker)))
+              (set-marker overlay-arrow-position
+                          (marker-position lui-output-marker)))
+      (bar (when (not lui-track-bar-overlay)
+             (setq lui-track-bar-overlay
+                   (make-overlay (point-min) (point-min)))
+             (overlay-put lui-track-bar-overlay 'after-string
+                          (propertize "\n" 'face 'lui-track-bar)))
+           (move-overlay lui-track-bar-overlay
+                         lui-output-marker lui-output-marker)))))
 
 ;;;###autoload
 (defun enable-lui-track ()
@@ -130,10 +130,10 @@ where you stopped reading."
 If point is already there, jump back to the end of the buffer."
   (interactive)
   (let ((ipos (cl-case lui-track-indicator
-                ('bar (when lui-track-bar-overlay
-                        (overlay-start lui-track-bar-overlay)))
-                ('fringe (when overlay-arrow-position
-                           (marker-position overlay-arrow-position))))))
+                (bar (when lui-track-bar-overlay
+                       (overlay-start lui-track-bar-overlay)))
+                (fringe (when overlay-arrow-position
+                          (marker-position overlay-arrow-position))))))
     (cond ((null ipos) (message "No unread messages"))
           ((= ipos (point)) (goto-char (point-max)))
           (t (goto-char ipos)))))
