@@ -25,6 +25,7 @@
 
 ;;; Code:
 
+(require 'format-spec)
 (require 'tls)
 
 (defcustom tls-connection-command
