@@ -2508,14 +2508,14 @@ See `circe-set-display-handler' for more information."
   (interactive "sReason: ")
   (irc-send-AWAY (circe-server-process) reason))
 
-(defun circe-command-BACK (&optional ignored)
+(defun circe-command-BACK (&optional _ignored)
   "Mark yourself not away anymore.
 
 Arguments are IGNORED."
   (interactive)
   (irc-send-AWAY (circe-server-process)))
 
-(defun circe-command-CHTOPIC (&optional ignored)
+(defun circe-command-CHTOPIC (&optional _ignored)
   "Insert the topic of the current channel.
 
 Arguments are IGNORED."
@@ -2530,7 +2530,7 @@ Arguments are IGNORED."
                                  circe-chat-target (or topic ""))))
     (goto-char (point-max))))
 
-(defun circe-command-CLEAR (&optional ignored)
+(defun circe-command-CLEAR (&optional _ignored)
   "Delete all buffer contents before the lui prompt."
   (let ((inhibit-read-only t))
     (delete-region (point-min) lui-output-marker)))
@@ -2585,7 +2585,7 @@ If ARGUMENT is nil, it is interpreted as no argument."
       (setq circe-server-inhibit-auto-reconnect-p t)
       (irc-send-QUIT circe-server-process reason))))
 
-(defun circe-command-HELP (&optional ignored)
+(defun circe-command-HELP (&optional _ignored)
   "Display a list of recognized commands, nicely formatted."
   (circe-display-server-message
    (concat "Recognized commands are: "
@@ -2781,7 +2781,7 @@ parts that each are not longer than `circe-split-line-length'."
                      nil t))
       (split-string (buffer-string) "\n"))))
 
-(defun circe-command-SV (&optional ignored)
+(defun circe-command-SV (&optional _ignored)
   "Tell the current channel about your client and Emacs version.
 
 Arguments are IGNORED."
@@ -2840,7 +2840,7 @@ Arguments are IGNORED."
       (circe-display-server-message
        "Who do you want to unignore? UNIGNORE requires one argument")))))
 
-(defun circe-command-WHOAMI (&optional ignored)
+(defun circe-command-WHOAMI (&optional _ignored)
   "Request WHOIS information about yourself.
 
 Arguments are IGNORED."
@@ -2921,7 +2921,7 @@ arguments."
   'noop)
 
 (circe-set-display-handler "317" 'circe-display-317)
-(defun circe-display-317 (_sender ignored _numeric _target nick
+(defun circe-display-317 (_sender _ignored _numeric _target nick
                                   idletime &optional signon-time body)
   "Show a 317 numeric (RPL_WHOISIDLE).
 
@@ -2949,7 +2949,7 @@ Arguments are either of the two:
                        :idle-duration (circe-duration-string seconds-idle))))))
 
 (circe-set-display-handler "329" 'circe-display-329)
-(defun circe-display-329 (_server ignored _numeric _target channel timestamp)
+(defun circe-display-329 (_server _ignored _numeric _target channel timestamp)
   "Show a 329 numeric (RPL_CREATIONTIME)."
   (with-current-buffer (or (circe-server-get-chat-buffer channel)
                            (circe-server-last-active-buffer))
@@ -2962,7 +2962,7 @@ Arguments are either of the two:
                                                     creation-time))))))
 
 (circe-set-display-handler "333" 'circe-display-333)
-(defun circe-display-333 (_server ignored _numeric target
+(defun circe-display-333 (_server _ignored _numeric target
                                   channel setter topic-time)
   "Show a 333 numeric (RPL_TOPICWHOTIME).
 

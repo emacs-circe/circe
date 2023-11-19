@@ -609,7 +609,7 @@ Connection options set:
   (irc-connection-put conn :connection-state 'disconnected))
 
 (defun irc-handle-registration--rpl-welcome (conn _event _sender target
-                                                  &rest ignored)
+                                                  &rest _ignored)
   (irc-connection-put conn :connection-state 'registered)
   (irc-event-emit conn "irc.registered" target))
 
@@ -1195,7 +1195,7 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
       (puthash (irc-user-folded-nick user) user user-table))))
 
 (defun irc-handle-state-tracking--rpl-welcome (conn _event _sender target
-                                                    &rest ignored)
+                                                    &rest _ignored)
   (irc-connection-put conn :current-nick target))
 
 (defun irc-handle-state-tracking--JOIN (conn _event sender target
@@ -1493,7 +1493,7 @@ Connection options used:
                           (irc-connection-get conn :nickserv-nick))
       (irc-handle-auto-join--nickserv-regained conn event)))
 
-(defun irc-handle-auto-join--sasl-login (conn _event &rest ignored)
+(defun irc-handle-auto-join--sasl-login (conn _event &rest _ignored)
   (dolist (channel (irc-connection-get
                     conn :auto-join-after-sasl-login))
     (irc-send-JOIN conn channel)))
