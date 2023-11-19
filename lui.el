@@ -712,7 +712,7 @@ Otherwise, we move to the next button."
 (defun lui-kill-to-beginning-of-line ()
   "Kill the input from point to the beginning of the input."
   (interactive)
-  (let* ((beg (point-at-bol))
+  (let* ((beg (line-beginning-position))
          (end (point))
          (str (buffer-substring beg end)))
     (delete-region beg end)
@@ -1181,7 +1181,7 @@ function."
                        (goto-char (point-min))
                        (re-search-forward "\\s-" nil t)
                        (- (point)
-                          (point-at-bol)))))
+                          (line-beginning-position)))))
       (goto-char (point-min))
       (when (< right-end lui-fill-type)
         (insert (make-string (- lui-fill-type
@@ -1242,7 +1242,7 @@ If TEXT is specified, use that instead of formatting a new time stamp."
                 (not lui-time-stamp-last)
                 (not (string= ts lui-time-stamp-last)))
         (goto-char (point-min))
-        (goto-char (point-at-eol))
+        (goto-char (line-end-position))
         (let* ((curcol (current-column))
                (col (if (numberp lui-time-stamp-position)
                         lui-time-stamp-position
@@ -1290,7 +1290,7 @@ If TEXT is specified, use that instead of formatting a new time stamp."
                 (not (string= ts lui-time-stamp-last)))
         (goto-char (point-min))
         (when lui-fill-type
-          (goto-char (point-at-eol)))
+          (goto-char (line-end-position)))
         (let* ((ts (propertize ts 'face 'lui-time-stamp-face))
                (ts-margin (propertize
                            " "

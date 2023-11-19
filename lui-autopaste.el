@@ -91,7 +91,7 @@ replace it with the resulting URL."
           (with-current-buffer buf
             (goto-char (point-min))
             (if (re-search-forward "\n\n" nil t)
-                (buffer-substring (point) (point-at-eol))
+                (buffer-substring (point) (line-end-position))
               (error "Error during pasting to sprunge.us")))
         (kill-buffer buf)))))
 
@@ -107,7 +107,7 @@ replace it with the resulting URL."
           (with-current-buffer buf
             (goto-char (point-min))
             (if (re-search-forward "\n\n" nil t)
-                (buffer-substring (point) (point-at-eol))
+                (buffer-substring (point) (line-end-position))
               (error "Error during pasting to ix.io")))
         (kill-buffer buf)))))
 
