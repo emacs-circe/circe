@@ -1268,6 +1268,24 @@ See `circe-server-max-reconnect-attempts'.")
    (t
     nil)))
 
+(defun circe--validate-password (key value)
+  "Validate provided password and fail loudly for invalid type.
+KEY and VALUE correspond to the respective keyword and password
+value."
+  (when value
+    (cond
+     ((functionp value)
+      (let ((pass (funcall value circe-host)))
+        (when (and pass (not (stringp pass)))
+          (user-error "Password function for %s (%s) did not \
+evaluate to a string: %S" key circe-host pass))
+        pass))
+     ((stringp value)
+      value)
+     (t
+      (user-error "Invalid password type for %s (%s): %S"
+                  key circe-host value)))))
+
 (defun circe-reconnect--internal ()
   "The internal function called for reconnecting unconditionally.
 
@@ -1297,9 +1315,7 @@ Do not use this directly, use `circe-reconnect'"
          :user circe-user
          :mode 8
          :realname circe-realname
-         :pass (if (functionp circe-pass)
-                   (funcall circe-pass circe-host)
-                 circe-pass)
+         :pass (circe--validate-password :pass circe-pass)
          :cap-req (append (when (or (and circe-sasl-username
                                          circe-sasl-password)
                                     circe-sasl-external)
@@ -1307,9 +1323,8 @@ Do not use this directly, use `circe-reconnect'"
                           '("extended-join"))
          :nickserv-nick (or circe-nickserv-nick
                             circe-nick)
-         :nickserv-password (if (functionp circe-nickserv-password)
-                                (funcall circe-nickserv-password circe-host)
-                              circe-nickserv-password)
+         :nickserv-password (circe--validate-password :nickserv-password
+                                                      circe-nickserv-password)
          :nickserv-mask circe-nickserv-mask
          :nickserv-identify-challenge circe-nickserv-identify-challenge
          :nickserv-identify-command circe-nickserv-identify-command
@@ -1318,10 +1333,8 @@ Do not use this directly, use `circe-reconnect'"
          :nickserv-ghost-command circe-nickserv-ghost-command
          :nickserv-ghost-confirmation circe-nickserv-ghost-confirmation
          :sasl-username circe-sasl-username
-         :sasl-password (if (functionp circe-sasl-password)
-                            (funcall circe-sasl-password
-                                     circe-host)
-                          circe-sasl-password)
+         :sasl-password (circe--validate-password :sasl-password
+                                                  circe-sasl-password)
          :ctcp-version (format "Circe: Client for IRC in Emacs, version %s"
                                circe-version)
          :ctcp-source circe-source-url
