@@ -1,3 +1,17 @@
+# New in 2.13
+
+- Verification with NSM now ensures that `gnutls-verify-error` is
+  disabled to detect expired certificates.
+- The `lui-irc-colors` module now supports strikethrough/monospace
+  text.
+- The `circe-color-nicks` module now highlights nicks in query buffers
+  as well.
+- The minimum supported Emacs version has been bumped to 25.1.
+- Emacs Lisp identifiers in Lui buttons now allow colons
+- Password values in the network options are validated for the
+  expected type to prevent a common configuration mistake
+- Several byte-compiler warnings have been fixed
+
 # New in 2.12
 
 - `circe-color-nicks` is now significantly faster. This is noticable
