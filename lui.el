@@ -689,9 +689,7 @@ Otherwise, we move to the next button."
       (message "No such symbol %s" name)
       (ding))
      (t
-      (if (fboundp 'describe-symbol)
-          (describe-symbol sym)
-        (help-xref-interned sym))))))
+      (describe-symbol sym)))))
 
 (defun lui-button-pep (number)
   "Browse the PEP NUMBER."
