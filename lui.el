@@ -956,7 +956,7 @@ add to the inserted message."
      (save-excursion
        (save-restriction
          (let ((inhibit-read-only t)
-               (inhibit-point-motion-hooks t))
+               (cursor-sensor-inhibit '(lui-insert-with-text-properties)))
            (widen)
            (goto-char lui-output-marker)
            (let ((beg (point))
@@ -1258,7 +1258,6 @@ If TEXT is specified, use that instead of formatting a new time stamp."
                            'lui-time-stamp t))
                (start (point)))
           (insert ts-string)
-          (add-text-properties start (1+ (point)) '(intangible t))
           (add-text-properties (1+ start) (point) '(cursor-intangible t)))))
      ;; Time stamps left
      ((eq lui-time-stamp-position 'left)
@@ -1315,7 +1314,7 @@ DELETE."
   (let ((string (if delete
                     (delete-and-extract-region beg end)
                   (buffer-substring beg end)))
-        (inhibit-point-motion-hooks t)
+        (cursor-sensor-inhibit '(lui-filter-buffer-time-stamps))
         (inhibit-read-only t))
     (with-temp-buffer
       (insert string)
