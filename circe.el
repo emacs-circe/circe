@@ -1941,8 +1941,8 @@ server's chat buffers."
       (current-buffer))))
 
 ;; There really ought to be a hook for this
-(defadvice select-window (after circe-server-track-select-window
-                                (window &optional norecord))
+(define-advice select-window (:after (window &optional _norecord)
+                                     circe-server-track-select-window)
   "Remember the current buffer as the last active buffer.
 This is used by Circe to know where to put spurious messages."
   (with-current-buffer (window-buffer window)
@@ -1951,7 +1951,6 @@ This is used by Circe to know where to put spurious messages."
         (ignore-errors
           (with-circe-server-buffer
             (setq circe-server-last-active-buffer buf)))))))
-(ad-activate 'select-window)
 
 (defun circe-reduce-lurker-spam ()
   "Return the value of `circe-reduce-lurker-spam'.
