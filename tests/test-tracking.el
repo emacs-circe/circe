@@ -1,4 +1,4 @@
-;;; Automated tests for tracking.el
+;;; test-tracking.el --- Automated tests for tracking.el -*- lexical-binding: t; -*-
 
 (require 'tracking)
 
