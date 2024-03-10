@@ -112,13 +112,15 @@ line to mark last position."
   "Enable a bar or fringe indicator in Lui buffers that shows
 where you stopped reading."
   (interactive)
-  (defadvice switch-to-buffer (before lui-track activate)
+  (define-advice switch-to-buffer
+      (:before (buffer-or-name &optional norecord force-same-window) lui-track)
     (when (and (eq lui-track-behavior 'before-switch-to-buffer)
                ;; Do not move the indicator if the buffer is displayed still
                (<= (length (get-buffer-window-list (current-buffer)))
                    1))
       (lui-track-move)))
-  (defadvice tracking-next-buffer (before lui-track activate)
+  (define-advice tracking-next-buffer
+      (:before () lui-track)
     (when (eq lui-track-behavior 'before-tracking-next-buffer)
       (lui-track-move)))
   (add-hook 'lui-pre-input-hook 'lui-track--move-pre-input))
