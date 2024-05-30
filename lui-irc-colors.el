@@ -59,28 +59,28 @@
   "Face used for inverse video."
   :group 'lui-irc-colors)
 
-(defun lui-irc-defface (face property on-dark on-light rest doc)
+(defun lui-irc-defface (face property on-dark on-light fallback doc)
   (custom-declare-face
    face
    `((((type graphic) (class color) (background dark))
       (,property ,on-dark))
      (((type graphic) (class color) (background light))
       (,property ,on-light))
-     (t (,property ,rest)))
+     (t (,property ,fallback)))
    doc
    :group 'lui-irc-colors))
 
-(defun lui-irc-defface-pair (number on-dark on-light rest name)
+(defun lui-irc-defface-pair (number on-dark on-light fallback name)
   (lui-irc-defface
    (intern (format "lui-irc-colors-fg-%d-face" number))
    :foreground
-   on-dark on-light rest
+   on-dark on-light fallback
    (concat "Face used for foreground IRC color "
 	   (number-to-string number) " (" name ")."))
   (lui-irc-defface
    (intern (format "lui-irc-colors-bg-%d-face" number))
    :background
-   on-light on-dark rest
+   on-light on-dark fallback
    (concat "Face used for background IRC color "
 	   (number-to-string number) " (" name ").")))
 
