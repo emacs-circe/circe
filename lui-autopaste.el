@@ -49,7 +49,9 @@
 
 This function will be called with some text as its only argument,
 and is expected to return an URL to view the contents."
-  :type '(choice (const :tag "ix.io" lui-autopaste-service-ixio))
+  :type '(choice (const :tag "0x0.st" lui-autopaste-service-0x0.st)
+                 (const :tag "ix.io" lui-autopaste-service-ixio)
+                 (const :tag "paste.rs" lui-autopaste-service-paste.rs))
   :group 'lui-autopaste)
 
 ;;;###autoload
