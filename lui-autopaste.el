@@ -85,7 +85,7 @@ replace it with the resulting URL."
          '(("Content-Type" . "application/x-www-form-urlencoded")))
         (url-request-data (format "f:1=%s" (url-hexify-string text)))
         (url-http-attempt-keepalives nil))
-    (let ((buf (url-retrieve-synchronously "http://ix.io/")))
+    (let ((buf (url-retrieve-synchronously "https://ix.io/")))
       (unwind-protect
           (with-current-buffer buf
             (goto-char (point-min))
