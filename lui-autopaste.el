@@ -128,5 +128,20 @@ replace it with the resulting URL."
               (error "Error during pasting to 0x0.st")))
         (kill-buffer buf)))))
 
+(defun lui-autopaste-service-paste.rs (text)
+  "Paste TEXT to 0x0.st and return the paste url."
+  (let* ((url-request-method "POST")
+         (url-request-extra-headers `(("Content-Type" . "text/plain")))
+         (url-request-data text)
+         (url-http-attempt-keepalives nil))
+    (let ((buf (url-retrieve-synchronously "https://paste.rs/")))
+      (unwind-protect
+          (with-current-buffer buf
+            (goto-char (point-min))
+            (if (re-search-forward "\n\n" nil t)
+                (buffer-substring (point) (line-end-position))
+              (error "Error during pasting to paste.rs")))
+        (kill-buffer buf)))))
+
 (provide 'lui-autopaste)
 ;;; lui-autopaste.el ends here
