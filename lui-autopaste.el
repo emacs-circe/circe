@@ -47,8 +47,7 @@
 
 This function will be called with some text as its only argument,
 and is expected to return an URL to view the contents."
-  :type '(choice (const :tag "ix.io" lui-autopaste-service-ixio)
-                 (const :tag "sprunge.us" lui-autopaste-service-sprunge-us))
+  :type '(choice (const :tag "ix.io" lui-autopaste-service-ixio))
   :group 'lui-autopaste)
 
 ;;;###autoload
@@ -78,22 +77,6 @@ replace it with the resulting URL."
                                           (point-max)))))
       (delete-region (point-min) (point-max))
       (insert url))))
-
-(defun lui-autopaste-service-sprunge-us (text)
-  "Paste TEXT to sprunge.us and return the paste url."
-  (let ((url-request-method "POST")
-        (url-request-extra-headers
-         '(("Content-Type" . "application/x-www-form-urlencoded")))
-        (url-request-data (format "sprunge=%s" (url-hexify-string text)))
-        (url-http-attempt-keepalives nil))
-    (let ((buf (url-retrieve-synchronously "http://sprunge.us/")))
-      (unwind-protect
-          (with-current-buffer buf
-            (goto-char (point-min))
-            (if (re-search-forward "\n\n" nil t)
-                (buffer-substring (point) (line-end-position))
-              (error "Error during pasting to sprunge.us")))
-        (kill-buffer buf)))))
 
 (defun lui-autopaste-service-ixio (text)
   "Paste TEXT to ix.io and return the paste url."
