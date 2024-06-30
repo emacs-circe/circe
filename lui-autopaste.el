@@ -44,7 +44,7 @@
   :type 'integer
   :group 'lui-autopaste)
 
-(defcustom lui-autopaste-function 'lui-autopaste-service-ixio
+(defcustom lui-autopaste-function 'lui-autopaste-service-0x0st
   "Which paste service to use.
 
 This function will be called with some text as its only argument,
