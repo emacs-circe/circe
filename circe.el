@@ -110,6 +110,17 @@ See the {topic-diff} parameter to `circe-format-server-topic'."
 See `circe-fool-list'."
   :group 'circe)
 
+(defface circe-tracking-channel-face
+  nil
+  "The face used by circe-tracking to show channels with activity in modeline."
+  :group 'circe)
+
+(defface circe-tracking-query-face
+  nil
+  "The face used by circe-tracking to show query buffers with activity in
+modeline."
+  :group 'circe)
+
 ;;;;;;;;;;;;;;;;;;;
 ;;;; Variables ;;;;
 ;;;;;;;;;;;;;;;;;;;
@@ -1555,6 +1566,19 @@ PATTERNS should be the list of regular expressions."
                    (string-match regex target))
           (throw 'return t)))
       nil)))
+
+(defun circe-tracking-get-face (buffer)
+  "Return face for a given buffer. If the buffer has already some face
+specified, use it. This covers channels where our name was mentioned. Otherwise
+decide whether the buffer is for a channel, query or else and use a face based
+on this."
+  (with-current-buffer buffer
+    (cond ((get-text-property 0 'face buffer))
+          ((eq major-mode 'circe-channel-mode)
+           'circe-tracking-channel-face)
+          ((eq major-mode 'circe-query-mode)
+           'circe-tracking-query-face)
+          (t (tracking-get-face buffer)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Nick Highlighting ;;;;
