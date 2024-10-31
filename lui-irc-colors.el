@@ -70,7 +70,7 @@
    doc
    :group 'lui-irc-colors))
 
-(defun lui-irc-defface-pair (number on-dark on-light fallback name)
+(defun lui-irc-deffaces-for-color (number on-dark on-light fallback name)
   (lui-irc-defface
    (intern (format "lui-irc-colors-fg-%d-face" number))
    :foreground
@@ -82,29 +82,35 @@
    :background
    on-light on-dark fallback
    (concat "Face used for background IRC color "
+	   (number-to-string number) " (" name ")."))
+  (lui-irc-defface
+   (intern (format "lui-irc-colors-spoiler-bg-%s-face" number))
+   :background
+   on-dark on-light fallback
+   (concat "Face used for spoiler background IRC color "
 	   (number-to-string number) " (" name ").")))
 
 (defun lui-irc-defface-bulk (colors)
   (dotimes (n (length colors))
-    (apply 'lui-irc-defface-pair n (nth n colors))))
+    (apply 'lui-irc-deffaces-for-color n (elt colors n))))
 
 (lui-irc-defface-bulk
- '(("#ffffff" "#585858" "white"    "white")
-   ("#a5a5a5" "#000000" "black"    "black")
-   ("#9b9bff" "#0000ff" "blue4"    "blue")
-   ("#40eb51" "#006600" "green4"   "green")
-   ("#ff9696" "#b60000" "red"      "red")
-   ("#d19999" "#8f3d3d" "red4"     "brown")
-   ("#d68fff" "#9c009c" "magenta4" "purple")
-   ("#ffb812" "#7a4f00" "yellow4"  "orange")
-   ("#ffff00" "#5c5c00" "yellow"   "yellow")
-   ("#80ff95" "#286338" "green"    "light green")
-   ("#00b8b8" "#006078" "cyan4"    "teal")
-   ("#00ffff" "#006363" "cyan"     "light cyan")
-   ("#a8aeff" "#3f568c" "blue"     "light blue")
-   ("#ff8bff" "#853885" "magenta"  "pink")
-   ("#cfcfcf" "#171717" "dimgray"  "grey")
-   ("#e6e6e6" "#303030" "gray"     "light grey")))
+ [("#ffffff" "#585858" "white"    "white")
+  ("#a5a5a5" "#000000" "black"    "black")
+  ("#9b9bff" "#0000ff" "blue4"    "blue")
+  ("#40eb51" "#006600" "green4"   "green")
+  ("#ff9696" "#b60000" "red"      "red")
+  ("#d19999" "#8f3d3d" "red4"     "brown")
+  ("#d68fff" "#9c009c" "magenta4" "purple")
+  ("#ffb812" "#7a4f00" "yellow4"  "orange")
+  ("#ffff00" "#5c5c00" "yellow"   "yellow")
+  ("#80ff95" "#286338" "green"    "light green")
+  ("#00b8b8" "#006078" "cyan4"    "teal")
+  ("#00ffff" "#006363" "cyan"     "light cyan")
+  ("#a8aeff" "#3f568c" "blue"     "light blue")
+  ("#ff8bff" "#853885" "magenta"  "pink")
+  ("#cfcfcf" "#171717" "dimgray"  "grey")
+  ("#e6e6e6" "#303030" "gray"     "light grey")])
 
 (defvar lui-irc-colors-regex
   "\\(\x02\\|\x03\\|\x16\\|\x0F\\|\x11\\|\x1D\\|\x1E\\|\x1F\\)"
@@ -188,8 +194,16 @@ This is an appropriate function for `lui-pre-output-hook'."
                        (and italicp '(italic))
                        (and strikethroughp '(lui-irc-colors-strike-through-face))
                        (and underlinep '(underline))
-                       (and fg (list (lui-irc-colors-face 'fg fg)))
-                       (and bg (list (lui-irc-colors-face 'bg bg))))))
+                       (cond
+                        ((and fg bg)
+                         (if (= fg bg)
+                             (list (lui-irc-colors-face 'fg fg)
+                                   (lui-irc-colors-spoiler-face 'bg bg))
+                           (list (lui-irc-colors-face 'fg fg)
+                                 (lui-irc-colors-face 'bg bg))))
+                        (fg (list (lui-irc-colors-face 'fg fg)))
+                        (bg (list (lui-irc-colors-face 'bg bg)))
+                        (t nil)))))
     (when faces
       (add-face-text-property start end faces))))
 
@@ -199,6 +213,14 @@ TYPE is either \\='fg or \\='bg."
   (if (and (<= 0 n)
            (<= n 15))
       (intern (format "lui-irc-colors-%s-%s-face" type n))
+    'default-face))
+
+(defun lui-irc-colors-spoiler-face (type n)
+  "Return a spoiler face appropriate for face number N.
+TYPE is either \\='fg or \\='bg."
+  (if (and (<= 0 n)
+           (<= n 15))
+      (intern (format "lui-irc-colors-spoiler-%s-%s-face" type n))
     'default-face))
 
 (provide 'lui-irc-colors)
