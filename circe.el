@@ -952,7 +952,7 @@ This is either a channel or a nick name.")
 
 (defvar circe-nick-syntax-table
   (let ((table (make-syntax-table text-mode-syntax-table))
-        (special (string-to-list "[]\`_^{}|-")))
+        (special (string-to-list "[]\\`_^{}|-")))
     (dolist (char special)
       (modify-syntax-entry char "w" table))
     table)
