@@ -1318,6 +1318,7 @@ DELETE."
         (inhibit-read-only t))
     (with-temp-buffer
       (insert string)
+      (remove-list-of-text-properties (point-min) (point-max) '(read-only))
       (let ((start (text-property-any (point-min)
                                       (point-max)
                                       'lui-time-stamp t)))
