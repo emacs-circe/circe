@@ -64,24 +64,24 @@
 ;;;;;;;;;;;;;;;
 
 (defface circe-prompt-face
-  '((t (:weight bold :foreground "Black" :background "LightSeaGreen")))
+  '((t :weight bold :foreground "Black" :background "LightSeaGreen"))
   "The face for the Circe prompt."
   :group 'circe)
 
 (defface circe-server-face
-  '((((type tty)) (:foreground "blue" :weight bold))
-    (((background dark)) (:foreground "#5095cf"))
-    (((background light)) (:foreground "#3840b0"))
-    (t (:foreground "SteelBlue")))
+  '((((type tty)) :foreground "blue" :weight bold)
+    (((background dark)) :foreground "#5095cf")
+    (((background light)) :foreground "#3840b0")
+    (t :foreground "SteelBlue"))
   "The face used to highlight server messages."
   :group 'circe)
 
 (defface circe-highlight-nick-face
-  '((default (:weight bold))
-    (((type tty)) (:foreground "cyan"))
-    (((background dark)) (:foreground "#82e2ed"))
-    (((background light)) (:foreground "#0445b7"))
-    (t (:foreground "CadetBlue3")))
+  '((default :weight bold)
+    (((type tty)) :foreground "cyan")
+    (((background dark)) :foreground "#82e2ed")
+    (((background light)) :foreground "#0445b7")
+    (t :foreground "CadetBlue3"))
   "The face used to highlight messages directed to us."
   :group 'circe)
 
@@ -93,19 +93,19 @@
   "The face used to highlight the originator of a message."
   :group 'circe)
 
-(defface circe-topic-diff-new-face '((t (:inherit diff-added)))
+(defface circe-topic-diff-new-face '((t :inherit diff-added))
   "The face used for text added to a topic.
 See the {topic-diff} parameter to `circe-format-server-topic'."
   :group 'circe)
 
-(defface circe-topic-diff-removed-face '((t (:inherit diff-removed)))
+(defface circe-topic-diff-removed-face '((t :inherit diff-removed))
   "The face used for text removed from a topic.
 See the {topic-diff} parameter to `circe-format-server-topic'."
   :group 'circe)
 
 (defface circe-fool-face
-  '((((type tty)) (:foreground "grey40" :bold t))
-    (t (:foreground "grey40")))
+  '((((type tty)) :foreground "grey40" :bold t)
+    (t :foreground "grey40"))
   "The face used for fools.
 See `circe-fool-list'."
   :group 'circe)

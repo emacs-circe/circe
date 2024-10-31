@@ -45,17 +45,17 @@
   :group 'circe)
 
 (defface lui-irc-colors-monospace-face
-  '((t (:inherit fixed-pitch)))
+  '((t :inherit fixed-pitch))
   "Face used for inverse video."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-inverse-face
-  '((t (:inverse-video t)))
+  '((t :inverse-video t))
   "Face used for inverse video."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-strike-through-face
-  '((t (:strike-through t)))
+  '((t :strike-through t))
   "Face used for inverse video."
   :group 'lui-irc-colors)
 
@@ -63,10 +63,10 @@
   (custom-declare-face
    face
    `((((type graphic) (class color) (background dark))
-      (,property ,on-dark))
+      ,property ,on-dark)
      (((type graphic) (class color) (background light))
-      (,property ,on-light))
-     (t (,property ,fallback)))
+      ,property ,on-light)
+     (t ,property ,fallback))
    doc
    :group 'lui-irc-colors))
 

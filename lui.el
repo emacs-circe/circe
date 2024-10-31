@@ -170,17 +170,17 @@ changes by earlier ones."
   :group 'lui)
 
 (defface lui-strong-face
-  '((t (:inherit bold)))
+  '((t :inherit bold))
   "Face used for strong markup."
   :group 'lui-irc-colors)
 
 (defface lui-emphasis-face
-  '((t (:inherit italic)))
+  '((t :inherit italic))
   "Face for emphasis markup."
   :group 'lui-irc-colors)
 
 (defface lui-deleted-face
-  '((t (:strike-through t)))
+  '((t :strike-through t))
   "Face for deleted messages"
   :group 'lui-irc-colors)
 
@@ -364,24 +364,24 @@ user won't see the modifications, so that's a bad idea."
   :group 'lui)
 
 (defface lui-time-stamp-face
-  '((t (:foreground "SlateBlue" :weight bold)))
+  '((t :foreground "SlateBlue" :weight bold))
   "Lui mode face used for time stamps."
   :group 'lui)
 
 (defface lui-highlight-face
   ;; Taken from `font-lock-keyword-face'
-  '((((class grayscale) (background light)) (:foreground "LightGray" :weight bold))
-    (((class grayscale) (background dark)) (:foreground "DimGray" :weight bold))
-    (((class color) (background light)) (:foreground "Purple"))
-    (((class color) (background dark)) (:foreground "Cyan1"))
-    (t (:weight bold)))
+  '((((class grayscale) (background light)) :foreground "LightGray" :weight bold)
+    (((class grayscale) (background dark)) :foreground "DimGray" :weight bold)
+    (((class color) (background light)) :foreground "Purple")
+    (((class color) (background dark)) :foreground "Cyan1")
+    (t :weight bold))
   "Lui mode face used for highlighting."
   :group 'lui)
 
 (defface lui-button-face
-  '((((class color) (background light)) (:foreground "Purple" :underline t))
-    (((class color) (background dark)) (:foreground "Cyan" :underline t))
-    (t (:underline t)))
+  '((((class color) (background light)) :foreground "Purple" :underline t)
+    (((class color) (background dark)) :foreground "Cyan" :underline t)
+    (t :underline t))
   "Default face used for LUI buttons."
   :group 'lui)
 
