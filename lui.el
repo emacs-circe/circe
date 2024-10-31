@@ -517,7 +517,7 @@ See `lui-scroll-behavior' for how to customize this."
 This is called from `post-command-hook'.
 
 See `lui-scroll-behavior' for how to customize this."
-  (condition-case err
+  (condition-case-unless-debug err
       (dolist (w (window-list))
         (with-current-buffer (window-buffer w)
           (when (and lui-input-marker
