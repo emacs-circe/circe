@@ -59,6 +59,15 @@
   "Face used for inverse video."
   :group 'lui-irc-colors)
 
+(defface lui-irc-colors-spoiler-hover-face
+  '((((type graphic) (class color) (background dark))
+     :foreground "black")
+    (((type graphic) (class color) (background light))
+     :foreground "white")
+    (t :inverse-video t))
+   "Face used when hovering over text marked as spoiler"
+   :group 'lui-irc-colors)
+
 (defun lui-irc-defface (face property on-dark on-light fallback doc)
   (custom-declare-face
    face
@@ -188,24 +197,31 @@ This is an appropriate function for `lui-pre-output-hook'."
 
 (defun lui-irc-propertize (start end boldp monospacep inversep italicp strikethroughp underlinep fg bg)
   "Propertize the region between START and END."
-  (let ((faces (append (and boldp '(bold))
-                       (and monospacep '(lui-irc-colors-monospace-face))
-                       (and inversep '(lui-irc-colors-inverse-face))
-                       (and italicp '(italic))
-                       (and strikethroughp '(lui-irc-colors-strike-through-face))
-                       (and underlinep '(underline))
-                       (cond
-                        ((and fg bg)
-                         (if (= fg bg)
-                             (list (lui-irc-colors-face 'fg fg)
-                                   (lui-irc-colors-spoiler-face 'bg bg))
-                           (list (lui-irc-colors-face 'fg fg)
-                                 (lui-irc-colors-face 'bg bg))))
-                        (fg (list (lui-irc-colors-face 'fg fg)))
-                        (bg (list (lui-irc-colors-face 'bg bg)))
-                        (t nil)))))
+  (let ((faces nil)
+        (mouse-faces nil))
+    (when boldp
+      (push 'bold faces))
+    (when monospacep
+      (push 'lui-irc-colors-monospace-face faces))
+    (when inversep
+      (push 'lui-irc-colors-inverse-face faces))
+    (when italicp
+      (push 'italic faces))
+    (when underlinep
+      (push 'underline faces))
+    (when fg
+      (push (lui-irc-colors-face 'fg fg) faces))
+    (when bg
+      (if (= fg bg)
+          (progn
+            (push (lui-irc-colors-spoiler-face 'bg bg) faces)
+            (push (lui-irc-colors-spoiler-face 'bg bg) mouse-faces)
+            (push 'lui-irc-colors-spoiler-hover-face mouse-faces))
+        (push (lui-irc-colors-face 'bg bg) faces)))
     (when faces
-      (add-face-text-property start end faces))))
+      (add-face-text-property start end (nreverse faces)))
+    (when mouse-faces
+      (add-text-properties start end `(mouse-face ,(nreverse mouse-faces))))))
 
 (defun lui-irc-colors-face (type n)
   "Return a face appropriate for face number N.
