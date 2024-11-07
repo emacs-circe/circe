@@ -31,6 +31,8 @@
 
 ;;; Code:
 
+(eval-when-compile
+  (require 'cl-lib))
 (defvar circe-version "2.13"
   "Circe version string.")
 
@@ -1107,6 +1109,13 @@ joined channels.")
           (substring (shell-command-to-string "git rev-parse --short HEAD")
                      0 -1))))))
 
+(defun circe-network-server-buffer (network)
+  "Return the server buffer of if existing NETWORK or nil if none."
+  (dolist (buffer (circe-server-buffers))
+          (with-current-buffer buffer
+            (when (string= network circe-network)
+              (cl-return buffer)))))
+
 ;;;###autoload
 (defun circe (network-or-server &rest server-options)
   "Connect to IRC.
@@ -1130,12 +1139,16 @@ See `circe-network-options' for a list of common options."
   (interactive (circe--read-network-and-options))
   (let* ((options (circe--server-get-network-options network-or-server
                                                      server-options))
-         (buffer (circe--server-generate-buffer options)))
-    (with-current-buffer buffer
-      (circe-server-mode)
-      (circe--server-set-variables options)
-      (circe-reconnect))
-    (pop-to-buffer-same-window buffer)))
+         (buffer (or (circe-network-server-buffer network-or-server)
+                     (circe--server-generate-buffer options))))
+    (if (or (not (circe-network-server-buffer network-or-server))
+            (y-or-n-p (format "Already connected to %s, reconnect?" network-or-server)))
+        (progn (with-current-buffer buffer
+                 (if (not (eq major-mode 'circe-server-mode))
+                     (circe-server-mode))
+                 (circe--server-set-variables options)
+                 (circe-reconnect))
+               (pop-to-buffer-same-window buffer)))))
 
 (defun circe--read-network-and-options ()
   "Read a host or network name with completion.
