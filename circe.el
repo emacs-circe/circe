@@ -3,6 +3,7 @@
 ;; Copyright (C) 2005 - 2015  Jorgen Schaefer
 
 ;; Version: 2.13
+;; Package-Requires: ((emacs "25.1") (cl-lib "0.5"))
 ;; Keywords: IRC, chat, comm
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; URL: https://github.com/emacs-circe/circe
