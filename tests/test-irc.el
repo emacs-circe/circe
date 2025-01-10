@@ -351,7 +351,7 @@
       (expect (irc-handler-run table "the.event")
               :not :to-throw)))
 
-  (it "should not throw an error if a handler throws one and debug-on-error"
+  (it "should throw an error if a handler throws one and debug-on-error is set"
     (let ((table (irc-handler-table))
           (debug-on-error t))
       (irc-handler-add table "the.event" (lambda (&rest args)
