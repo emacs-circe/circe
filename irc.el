@@ -304,11 +304,15 @@ USERSTRING is a typical nick!user@host prefix as used by IRC."
 (defun irc-handler-run (table event &rest args)
   "Run the handlers for EVENT in TABLE, passing ARGS to each."
   (dolist (handler (gethash event table))
-    (condition-case-unless-debug err
+    ;; HACK: this is used to always silence the error, even if
+    ;; debugging is enabled, so change this to debug event handlers
+    (if debug-on-error
         (apply handler args)
-      (error
-       (message "Error running event %S handler %S: %S (args were %S)"
-                event handler err args)))))
+      (condition-case err
+          (apply handler args)
+        (error
+         (message "Error running event %S handler %S: %S (args were %S)"
+                  event handler err args))))))
 
 ;;;;;;;;;;;
 ;;; Sending
