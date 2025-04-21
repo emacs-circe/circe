@@ -74,9 +74,8 @@ See `enable-circe-display-images'."
   :group 'circe)
 
 (defcustom circe-display-images-image-regex
-  "\\(https?://[^ ]*?\\.\\(?:png\\|jpg\\|jpeg\\|svg\\|gif\\)\\)"
-  "Regex used to find images in channel messages. This regex needs to be
-greedy to match multiple images on the same line."
+  "https?://[^\\s\"<>]*\\.\\(?:png\\|jpg\\|jpeg\\|svg\\|gif\\)"
+  "Regex used to find images in channel messages."
   :group 'circe-display-images
   :type 'string)
 
@@ -154,6 +153,8 @@ the image. See `circe-display-images-text-property-map' for more details."
 
 (defun circe-display-images-insert-image-from-url (url)
   "Attempt to download the image from URL, and insert it."
+  ;; TODO: incorporate with url-queue-retrieve and markers:
+  ;; https://github.com/emacs-circe/circe/pull/320#issuecomment-350588925
   (let ((buffer (url-retrieve-synchronously url)))
     (when buffer
       (unwind-protect
@@ -193,8 +194,10 @@ that, otherwise nil.")
   "Return all urls that match the circe-display-images-image-regex"
   (let (urls)
     (while (re-search-forward circe-display-images-image-regex nil t)
-      (setq urls (cons (match-string-no-properties 1) urls)))
-    (reverse urls)))
+      ;; NOTE: this used to work on group 1, but since the example regex
+      ;; only specifies the URL, group 0 works fine
+      (setq urls (cons (match-string-no-properties 0) urls)))
+    (nreverse urls)))
 
 (defun circe-display-images ()
   "Replace image link with downloaded image on this lui output line"
