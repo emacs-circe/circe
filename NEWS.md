@@ -1,3 +1,27 @@
+# Upcoming
+
+# New in 2.14
+
+- The `lui-irc-colors` module now supports spoiler text. When
+  selecting such text, the contents are displayed. In GUI Emacs,
+  hovering over text will show them, too.
+- Backslashes are now considered part of nickname syntax. This is most
+  noticeable when using the `circe-color-nicks` module with
+  `circe-color-nicks-everywhere` enabled.
+- Text obtained with `filter-buffer-substring` from Lui buffers is now
+  no longer read-only. This paves the way towards supporting `M-x
+  zone` in chat buffers.
+- The `lui-autopaste` module removed support for the discontinued
+  sprunge.us paste service. Due to the other supported ix.io service
+  being on a break as well, support for the paste services 0x0.st and
+  paste.rs has been added.
+- Several byte-compiler warnings have been fixed
+- The `circe-display-images` module was changed to no longer require
+  capturing groups in `circe-display-images-image-regex`. This is a
+  backwards-incompatible change as the entire matched string is used
+  instead, however this only poses a problem if its value has been
+  changed to match more than just the URL.
+
 # New in 2.13
 
 - Verification with NSM now ensures that `gnutls-verify-error` is
