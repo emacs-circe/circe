@@ -74,7 +74,7 @@ See `enable-circe-display-images'."
   :group 'circe)
 
 (defcustom circe-display-images-image-regex
-  "https?://[^\\s\"<>]*\\.\\(?:png\\|jpg\\|jpeg\\|svg\\|gif\\)"
+  "https?://[^[:space:]\"<>]*\\.\\(?:png\\|jpe?g\\|svg\\|gif\\)"
   "Regex used to find images in channel messages."
   :group 'circe-display-images
   :type 'string)
