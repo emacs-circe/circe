@@ -62,11 +62,11 @@ See `enable-circe-display-images'."
 
 (defun add-circe-display-images ()
   "Add `circe-display-images' to `lui-pre-output-hook'."
-  (add-hook 'lui-pre-output-hook 'circe-display-images))
+  (add-hook 'lui-pre-output-hook 'circe-display-images nil t))
 
 (defun remove-circe-display-images ()
   "Remove `circe-display-images' from `lui-pre-output-hook'."
-  (remove-hook 'lui-pre-output-hook 'circe-display-images))
+  (remove-hook 'lui-pre-output-hook 'circe-display-images t))
 
 (defgroup circe-display-images nil
   "Image display properties for Circe"
