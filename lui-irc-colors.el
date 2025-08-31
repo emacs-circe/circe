@@ -46,7 +46,7 @@
 
 (defface lui-irc-colors-monospace-face
   '((t :inherit fixed-pitch))
-  "Face used for inverse video."
+  "Face used for monospace."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-inverse-face
@@ -56,7 +56,7 @@
 
 (defface lui-irc-colors-strike-through-face
   '((t :strike-through t))
-  "Face used for inverse video."
+  "Face used for strike-through text."
   :group 'lui-irc-colors)
 
 (defface lui-irc-colors-spoiler-hover-face
