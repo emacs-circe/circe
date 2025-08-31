@@ -207,6 +207,8 @@ This is an appropriate function for `lui-pre-output-hook'."
       (push 'lui-irc-colors-inverse-face faces))
     (when italicp
       (push 'italic faces))
+    (when strikethroughp
+      (push 'lui-irc-colors-strike-through-face faces))
     (when underlinep
       (push 'underline faces))
     (when fg
