@@ -212,10 +212,13 @@ Common options:
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
-    ("Coldfront" :host "irc.coldfront.net" :port 6667
-     :nickserv-mask "^NickServ!services@coldfront\\.net$"
-     :nickserv-identify-challenge "/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_"
+    ("Airlock" :host "irc.theairlock.net" :port (6667 . 7778)
+     :nickserv-mask "^NickServ!services@services\\.theairlock\\.net$"
+     :nickserv-identify-challenge "type \x02/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_\x02"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
+     :nickserv-identify-confirmation "Password accepted - you are now recognized"
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
+     :nickserv-ghost-confirmation "Ghost with your nick has been killed"
      )
     ("Hackint" :host "irc.hackint.org" :port (nil . 6697) ; TLS-only
      :tls t
