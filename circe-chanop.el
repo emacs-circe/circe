@@ -50,7 +50,7 @@
    (t
     (circe-display-server-message "Not in a channel buffer."))))
 
-(defun circe-command-BANS (&optional ignored)
+(defun circe-command-BANS (&optional _ignored)
   "Show channel bans"
   (if (not circe-chat-target)
       (circe-display-server-message "No target for current buffer")
@@ -71,7 +71,7 @@
                   (format "KICK %s %s :%s"
                           circe-chat-target nick reason))))
 
-(defun circe-command-GETOP (&optional ignored)
+(defun circe-command-GETOP (&optional _ignored)
   "Ask chanserv for op on the current channel."
   (interactive)
   (if (not (eq major-mode 'circe-channel-mode))
@@ -80,7 +80,7 @@
                       "chanserv"
                       (format "op %s" circe-chat-target))))
 
-(defun circe-command-DROPOP (&optional ignored)
+(defun circe-command-DROPOP (&optional _ignored)
   "Lose op mode on the current channel."
   (interactive)
   (if (not (eq major-mode 'circe-channel-mode))

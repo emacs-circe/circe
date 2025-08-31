@@ -88,7 +88,7 @@
 (defun shorten-split (s)
   (split-string s "\\b" t))
 
-(defun shorten-join (lst &optional tail-count)
+(defun shorten-join (lst &optional _tail-count)
   (mapconcat #'identity lst ""))
 
 (defun shorten-join-sans-tail (lst tail-count)

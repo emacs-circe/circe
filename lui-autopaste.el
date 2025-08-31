@@ -33,6 +33,7 @@
 ;;; Code:
 
 (require 'mm-url)
+(require 'url-http)
 
 (defgroup lui-autopaste nil
   "The Lui autopaste extension."

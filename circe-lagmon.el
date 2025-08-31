@@ -187,11 +187,11 @@ start the lag monitor if it has not been started."
           (run-at-time nil circe-lagmon-timer-tick
                        'circe-lagmon-timer-tick))))
 
-(defun circe-lagmon--rpl-welcome-handler (conn &rest ignored)
+(defun circe-lagmon--rpl-welcome-handler (conn &rest _ignored)
   (with-current-buffer (irc-connection-get conn :server-buffer)
     (circe-lagmon-init)))
 
-(defun circe-lagmon--ctcp-lagmon-handler (conn event sender target argument)
+(defun circe-lagmon--ctcp-lagmon-handler (conn _event sender _target argument)
   (when (irc-current-nick-p conn (irc-userstring-nick sender))
     (with-current-buffer (irc-connection-get conn :server-buffer)
       (let* ((now (float-time))
@@ -201,7 +201,7 @@ start the lag monitor if it has not been started."
               circe-lagmon-last-receive-time now)
         (circe-lagmon-force-mode-line-update)))))
 
-(defun circe-lagmon--nick-handler (conn event sender new-nick)
+(defun circe-lagmon--nick-handler (conn _event sender _new-nick)
   (when (irc-current-nick-p conn (irc-userstring-nick sender))
     (with-current-buffer (irc-connection-get conn :server-buffer)
       (setq circe-lagmon-last-send-time nil))))

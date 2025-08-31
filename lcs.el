@@ -150,7 +150,7 @@ elements should be considered equal."
               (funcall vl k l)
               (when (and (>= x N)
                          (>= y M))
-                (throw 'return(lcs-finish M+N V_l vl V_r vr)))))))
+                (throw 'return (lcs-finish M+N V_l vl V_r vr)))))))
       (error "Can't happen"))))
 
 (defun lcs-unified-diff (a b &optional equalp)

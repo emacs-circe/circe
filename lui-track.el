@@ -111,7 +111,7 @@ line to mark last position."
   "Evaluates to t if `enable-lui-track' has been called before.")
 
 (define-advice switch-to-buffer
-    (:before (buffer-or-name &optional norecord force-same-window) lui-track)
+    (:before (_buffer-or-name &optional _norecord _force-same-window) lui-track)
   (when (and lui-track-enabled
              (eq lui-track-behavior 'before-switch-to-buffer)
              ;; Do not move the indicator if the buffer is displayed still
