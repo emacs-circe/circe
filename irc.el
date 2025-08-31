@@ -485,6 +485,10 @@ MSGTARGET can be either a nick or a channel."
 MSGTARGET can be either a nick or a channel."
   (irc-send-command conn "PRIVMSG" msgtarget text-to-be-sent))
 
+(defun irc-send-SETNAME (conn newname)
+  "Change user's realname to NEWNAME."
+  (irc-send-command conn "SETNAME" newname))
+
 (defun irc-send-QUIT (conn reason)
   "Leave IRC with reason REASON."
   (irc-send-command conn "QUIT" reason))

@@ -486,6 +486,7 @@ strings."
     circe-format-server-nick-change-self
     circe-format-server-nick-change
     circe-format-server-nick-regain
+    circe-format-server-setname
     circe-format-server-part
     circe-format-server-netsplit
     circe-format-server-quit-channel
@@ -821,6 +822,16 @@ The following format arguments are available:
   old-nick - The old nick this change was from
   new-nick - The new nick this change was to
   userhost - The user@host string for the user"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-setname "*** Realname changed from {oldname} to {newname}"
+  "Format for realname change of the current user.
+
+The following format arguments are available:
+
+  oldname - The old realname this change was from
+  newname - The new realname this change was to"
   :type 'string
   :group 'circe-format)
 
@@ -1325,6 +1336,7 @@ Do not use this directly, use `circe-reconnect'"
                                     circe-sasl-external)
                             '("sasl"))
                           '("standard-replies"
+                            "setname"
                             "extended-join"))
          :nickserv-nick (or circe-nickserv-nick
                             circe-nick)
@@ -2698,6 +2710,11 @@ message separated by a space."
   (let ((newnick (string-trim newnick)))
     (irc-send-NICK (circe-server-process) newnick)))
 
+(defun circe-command-SETNAME (newname)
+  ;; NOTE: the spec claims this is fine to use unconditionally, even
+  ;; if not negotiated
+  (irc-send-SETNAME (circe-server-process) newname))
+
 (defun circe-command-PART (reason)
   "Part the current channel because of REASON."
   (interactive "sReason: ")
@@ -3262,6 +3279,15 @@ IRC servers."
                      :nick nick
                      :userhost (or userhost "server")
                      :body text)))))
+
+(circe-set-display-handler "SETNAME" 'circe-display-SETNAME)
+(defun circe-display-SETNAME (_nick _userhost _command newname)
+  (let ((oldname (irc-connection-get circe-server-process :realname)))
+    (irc-connection-put circe-server-process :realname newname)
+    (with-current-buffer (circe-server-last-active-buffer)
+      (circe-display 'circe-format-server-setname
+                     :oldname oldname
+                     :newname newname))))
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
 (defun circe-display-topic (nick userhost _command channel new-topic)
