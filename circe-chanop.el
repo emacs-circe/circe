@@ -93,5 +93,30 @@
 ;; For KICKBAN (requested by Riastradh), we'd need a callback on a
 ;; USERHOST command.
 
+(defun circe-command-OPER (&optional user password)
+  "Obtain operator privileges with USER/PASSWORD.
+If USER is unspecified, the current nickname is used (when used
+interactively with a prefix argument, the user is prompted for). If
+PASSWORD is unspecified, a password prompt is shown.
+
+This command is supported by Bitlbee in order to hide the password being
+echoed on screen or logged to a file."
+  (interactive (list (if prefix-arg
+                         (read-string "User: ")
+                       (circe-nick))
+                     (read-passwd "Password: ")))
+  (cond
+   ((string-match "\\`\\s-*\\(\\S-+\\)\\s-+\\(\\S.*\\)\\'" user)
+    (setq password (match-string 2 user))
+    (setq user (match-string 1 user)))
+   ((string-match "\\`\\s-*\\(\\S-+\\)\\'" user)
+    (setq user (match-string 1 user))
+    (setq password (read-passwd "Password: ")))
+   ((string-match "\\`\\s-*\\'" user)
+    (setq user (circe-nick))
+    (setq password (read-passwd "Password: "))))
+  (when (and user password)
+    (irc-send-raw (circe-server-process) (format "OPER %s %s" user password))))
+
 (provide 'circe-chanop)
 ;;; circe-chanop.el ends here

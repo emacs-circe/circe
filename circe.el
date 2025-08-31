@@ -3524,6 +3524,8 @@ URLs). (Thanks to irssi for this criteria list)"
          ("443" 2 "User {1} is already on channel {2}")
          ;; Coldfront: 451 * :You have not registered
          ("451" active "{1-}")
+         ("461" active "{1-}")
+         ("464" active "{1}")
          ("467" 1 "{2}")
          ("470" 1 "{1} made you join {2}: {3-}")
          ("471" 1 "{2}")
@@ -3535,6 +3537,7 @@ URLs). (Thanks to irssi for this criteria list)"
          ("477" active "{1-}")
          ("481" 1 "{2-}")
          ("484" active "{1-}")
+         ("491" active "{1}")
          ;; Coldfront: 671 <nick> is using a Secure Connection
          ("671" active "{1-}")
          ("728" 1 "Quiet mask: {3}")
