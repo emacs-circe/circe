@@ -1324,7 +1324,8 @@ Do not use this directly, use `circe-reconnect'"
                                          circe-sasl-password)
                                     circe-sasl-external)
                             '("sasl"))
-                          '("extended-join"))
+                          '("standard-replies"
+                            "extended-join"))
          :nickserv-nick (or circe-nickserv-nick
                             circe-nick)
          :nickserv-password (circe--validate-password :nickserv-password
@@ -3419,6 +3420,11 @@ URLs). (Thanks to irssi for this criteria list)"
        '(("INVITE" active "Invite: {origin} invites you to {1}")
          ("KICK" 0 "Kick: {1} kicked by {origin}: {2}")
          ("ERROR" active "Error: {0-}")
+         ;; https://ircv3.net/specs/extensions/standard-replies
+         ("FAIL" server "FAIL: {0-}")
+         ("WARN" server "WARN: {0-}")
+         ("NOTE" server "NOTE: {0-}")
+         ;; numerics
          ("001" server "{1}")
          ("002" server "{1}")
          ("003" server "{1}")
