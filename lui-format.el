@@ -1,4 +1,4 @@
-;;; lui-format.el --- A formatting function for use with Lui
+;;; lui-format.el --- A formatting function for use with Lui  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2005, 2012  Jorgen Schaefer
 

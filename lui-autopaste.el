@@ -1,4 +1,4 @@
-;;; lui-autopaste.el --- Extension for lui for long text input
+;;; lui-autopaste.el --- Extension for lui for long text input  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2012  Jorgen Schaefer <forcer@forcix.cx>
 

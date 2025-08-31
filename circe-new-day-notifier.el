@@ -1,5 +1,4 @@
-;;; circe-new-day-notifier.el --- Send a message every midnight to all
-;;; channels
+;;; circe-new-day-notifier.el --- Send a message every midnight to all channels  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015 Pásztor János
 

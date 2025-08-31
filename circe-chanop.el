@@ -1,4 +1,4 @@
-;;; circe-chanop.el --- Provide common channel operator commands
+;;; circe-chanop.el --- Provide common channel operator commands  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2006, 2015  Jorgen Schaefer
 

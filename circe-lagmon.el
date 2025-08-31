@@ -1,4 +1,4 @@
-;;; circe-lagmon.el --- Lag Monitor for Circe
+;;; circe-lagmon.el --- Lag Monitor for Circe  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2011-2012 Jorgen Schaefer
 

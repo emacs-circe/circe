@@ -1,4 +1,4 @@
-;;; lui-track.el --- Provides a bar to track the last read position
+;;; lui-track.el --- Provides a bar to track the last read position  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2016, 2019 Vasilij Schneidermann <v.schneidermann@gmail.com>
 

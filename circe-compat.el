@@ -1,4 +1,4 @@
-;;; circe-compat.el --- Compatibility definitions
+;;; circe-compat.el --- Compatibility definitions  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  Jorgen Schaefer <contact@jorgenschaefer.de>
 

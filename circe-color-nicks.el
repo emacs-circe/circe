@@ -1,4 +1,4 @@
-;;; circe-color-nicks.el --- Color nicks in the channel
+;;; circe-color-nicks.el --- Color nicks in the channel  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2012  Taylan Ulrich Bayırlı/Kammer
 

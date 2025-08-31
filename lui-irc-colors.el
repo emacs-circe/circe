@@ -1,4 +1,4 @@
-;;; lui-irc-colors.el --- Add IRC color support to LUI
+;;; lui-irc-colors.el --- Add IRC color support to LUI  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2005  Jorgen Schaefer
 

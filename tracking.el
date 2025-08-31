@@ -1,4 +1,4 @@
-;;; tracking.el --- Buffer modification tracking
+;;; tracking.el --- Buffer modification tracking  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2006, 2012 - 2015  Jorgen Schaefer
 

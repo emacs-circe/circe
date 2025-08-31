@@ -1,4 +1,4 @@
-;;; lui-logging.el --- Logging support for lui
+;;; lui-logging.el --- Logging support for lui  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2006  Jorgen Schaefer,
 ;;               2012  Anthony Martinez

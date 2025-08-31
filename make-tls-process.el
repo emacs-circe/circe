@@ -1,4 +1,4 @@
-;;; make-tls-process.el --- A non-blocking TLS connection function
+;;; make-tls-process.el --- A non-blocking TLS connection function  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  Jorgen Schaefer <contact@jorgenschaefer.de>
 

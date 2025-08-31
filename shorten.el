@@ -1,4 +1,4 @@
-;;; shorten.el --- component-wise string shortener
+;;; shorten.el --- component-wise string shortener  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013  John J Foerch <jjfoerch@earthlink.net>
 
