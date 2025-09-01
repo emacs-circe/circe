@@ -194,17 +194,15 @@ Common options:
   :group 'circe)
 
 (defvar circe-network-defaults
-  '(("Libera Chat" :host "irc.libera.chat" :port (6667 . 6697)
-     :tls t
+  '(("Libera Chat" :host "irc.libera.chat" :port (6667 . 6697) :tls t
      :nickserv-mask "^NickServ!NickServ@services\\.libera\\.chat$"
-     :nickserv-identify-challenge "This nickname is registered."
+     :nickserv-identify-challenge "This nickname is registered\\."
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
      :nickserv-identify-confirmation "^You are now identified for \x02.*\x02\\.$"
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
-    ("Freenode" :host "chat.freenode.net" :port (6667 . 6697)
-     :tls t
+    ("Freenode" :host "chat.freenode.net" :port (6667 . 6697) :tls t
      :nickserv-mask "^NickServ!NickServ@services\\.$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
@@ -212,7 +210,7 @@ Common options:
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
-    ("Airlock" :host "irc.theairlock.net" :port (6667 . 7778)
+    ("Airlock" :host "irc.theairlock.net" :port (6667 . 7778) :tls t
      :nickserv-mask "^NickServ!services@services\\.theairlock\\.net$"
      :nickserv-identify-challenge "type \x02/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_\x02"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
@@ -220,8 +218,7 @@ Common options:
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "Ghost with your nick has been killed"
      )
-    ("Hackint" :host "irc.hackint.org" :port (nil . 6697) ; TLS-only
-     :tls t
+    ("Hackint" :host "irc.hackint.org" :port (nil . 6697) :tls t
      :nickserv-mask "^NickServ!NickServ@services\\.hackint\\.org$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
@@ -236,7 +233,7 @@ Common options:
      :nickserv-identify-confirmation "Password accepted, settings and accounts loaded"
      :lagmon-disabled t
      )
-    ("OFTC" :host "irc.oftc.net" :port (6667 . 6697)
+    ("OFTC" :host "irc.oftc.net" :port (6667 . 6697) :tls t
      :nickserv-mask "^NickServ!services@services\\.oftc\\.net$"
      :nickserv-identify-challenge "This nickname is registered and protected."
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password} {nick}"
