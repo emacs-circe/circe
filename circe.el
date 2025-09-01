@@ -3090,6 +3090,7 @@ Arguments are either of the two:
 
 (circe-set-display-handler "JOIN" 'circe-display-JOIN)
 (defun circe-display-JOIN (nick userhost _command channel
+                                ;; cap: extended-join
                                 &optional accountname realname)
   "Show a JOIN message.
 
