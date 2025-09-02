@@ -222,34 +222,32 @@ COMMAND arg
 COMMAND arg1 arg2
 COMMAND arg1 arg2 :arg3 still arg3
 :sender COMMAND arg1 arg2 :arg3 still arg3"
-  (with-temp-buffer
-    (insert line)
-    (goto-char (point-min))
-    (let ((sender nil)
-          (args nil))
-      ;; Optional sender.
-      (when (looking-at ":\\([^ ]+\\) ")
-        (setq sender (decode-coding-string
-                      (match-string 1)
-                      'undecided))
-        (goto-char (match-end 0)))
+  (let ((pos 0)
+        (end (length line))
+        sender
+        args)
+    ;; Optional sender.
+    (when (equal (string-match ":\\([^ ]+\\) " line pos) pos)
+      (setq pos (+ (length (match-string 0 line)) pos))
+      (setq sender (decode-coding-string  (match-string 1 line) 'undecided)))
 
-      ;; COMMAND.
-      (unless (looking-at "\\([^ ]+\\)")
-        (error "Invalid message: %s" line))
-      (push (decode-coding-string (match-string 1) 'undecided)
-            args)
-      (goto-char (match-end 0))
+    ;; COMMAND.
+    (unless (equal (string-match "[^ ]+" line pos) pos)
+      (error "Invalid message: %s" line))
+    (let ((arg (decode-coding-string (match-string 0 line) 'undecided)))
+      (push arg args)
+      (setq pos (+ (length arg) pos)))
 
-      ;; Arguments.
-      (while (re-search-forward " :\\(.*\\)\\| \\([^ ]*\\)" nil t)
-        (push (decode-coding-string
-               (or (match-string 1)
-                   (match-string 2))
-               'undecided)
-              args))
-
-      (cons sender (nreverse args)))))
+    ;; Arguments.
+    (while (and (string-match " :\\(.*\\)\\| \\([^ ]*\\)" line pos)
+                (< pos end))
+      (let ((arg-end (length (match-string 0 line)))
+            (arg (decode-coding-string (or (match-string 1 line)
+                                           (match-string 2 line))
+                                       'undecided)))
+        (push arg args)
+        (setq pos (+ arg-end pos))))
+    (cons sender (nreverse args))))
 
 (defun irc-userstring-nick (userstring)
   "Return the nick in a given USERSTRING.
