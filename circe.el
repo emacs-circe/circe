@@ -198,7 +198,7 @@ Common options:
      :nickserv-mask "^NickServ!services@services\\.theairlock\\.net$"
      :nickserv-identify-challenge "type \x02/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_\x02"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
-     :nickserv-identify-confirmation "Password accepted - you are now recognized"
+     :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "Ghost with your nick has been killed"
      )
@@ -244,6 +244,14 @@ Common options:
      :nickserv-identify-challenge "This nickname is registered and protected\\."
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password} {nick}"
      :nickserv-identify-confirmation "^You are successfully identified as \x02.*\x02\\.$"
+     )
+    ("Snoonet" :host "irc.snoonet.org" :port (6667 . 6697) :tls t
+     :nickserv-mask "^NickServ!NickServ@services$"
+     :nickserv-identify-challenge "This nickname is registered and protected\\."
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
+     :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
      )
     )
   "Alist of networks and connection settings.
