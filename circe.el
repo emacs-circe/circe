@@ -194,13 +194,20 @@ Common options:
   :group 'circe)
 
 (defvar circe-network-defaults
-  '(("Libera Chat" :host "irc.libera.chat" :port (6667 . 6697) :tls t
-     :nickserv-mask "^NickServ!NickServ@services\\.libera\\.chat$"
-     :nickserv-identify-challenge "This nickname is registered\\."
-     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
-     :nickserv-identify-confirmation "^You are now identified for \x02.*\x02\\.$"
+  '(("Airlock" :host "irc.theairlock.net" :port (6667 . 7778) :tls t
+     :nickserv-mask "^NickServ!services@services\\.theairlock\\.net$"
+     :nickserv-identify-challenge "type \x02/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_\x02"
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
+     :nickserv-identify-confirmation "Password accepted - you are now recognized"
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
-     :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
+     :nickserv-ghost-confirmation "Ghost with your nick has been killed"
+     )
+    ("Bitlbee" :host "localhost" :port 6667
+     :nickserv-mask "\\(bitlbee\\|root\\)!\\(bitlbee\\|root\\)@"
+     :nickserv-identify-challenge "use the \x02identify\x02 command to identify yourself"
+     :nickserv-identify-command "PRIVMSG &bitlbee :identify {password}"
+     :nickserv-identify-confirmation "Password accepted, settings and accounts loaded"
+     :lagmon-disabled t
      )
     ("Freenode" :host "chat.freenode.net" :port (6667 . 6697) :tls t
      :nickserv-mask "^NickServ!NickServ@services\\.$"
@@ -210,13 +217,11 @@ Common options:
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
-    ("Airlock" :host "irc.theairlock.net" :port (6667 . 7778) :tls t
-     :nickserv-mask "^NickServ!services@services\\.theairlock\\.net$"
-     :nickserv-identify-challenge "type \x02/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_\x02"
-     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
-     :nickserv-identify-confirmation "Password accepted - you are now recognized"
-     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
-     :nickserv-ghost-confirmation "Ghost with your nick has been killed"
+    ("GIMPNet" :host "irc.gimp.org" :port (6667 . 6697) :tls t
+     :nickserv-mask "^NickServ!services@gimpnet-services\\.gimp\\.org$"
+     :nickserv-identify-challenge "This nickname is registered and protected\\."
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "^You are now logged in as .*\\.$"
      )
     ("Hackint" :host "irc.hackint.org" :port (nil . 6697) :tls t
      :nickserv-mask "^NickServ!NickServ@services\\.hackint\\.org$"
@@ -226,16 +231,17 @@ Common options:
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
-    ("Bitlbee" :host "localhost" :port 6667
-     :nickserv-mask "\\(bitlbee\\|root\\)!\\(bitlbee\\|root\\)@"
-     :nickserv-identify-challenge "use the \x02identify\x02 command to identify yourself"
-     :nickserv-identify-command "PRIVMSG &bitlbee :identify {password}"
-     :nickserv-identify-confirmation "Password accepted, settings and accounts loaded"
-     :lagmon-disabled t
+    ("Libera Chat" :host "irc.libera.chat" :port (6667 . 6697) :tls t
+     :nickserv-mask "^NickServ!NickServ@services\\.libera\\.chat$"
+     :nickserv-identify-challenge "This nickname is registered\\."
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "^You are now identified for \x02.*\x02\\.$"
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
+     :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
     ("OFTC" :host "irc.oftc.net" :port (6667 . 6697) :tls t
      :nickserv-mask "^NickServ!services@services\\.oftc\\.net$"
-     :nickserv-identify-challenge "This nickname is registered and protected."
+     :nickserv-identify-challenge "This nickname is registered and protected\\."
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password} {nick}"
      :nickserv-identify-confirmation "^You are successfully identified as \x02.*\x02\\.$"
      )
