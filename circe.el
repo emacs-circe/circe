@@ -2587,7 +2587,7 @@ If ARGUMENT is nil, it is interpreted as no argument."
     (cond
      ((string-match "\\S-+" line)
       (let ((regex (match-string 0 line)))
-        (add-to-list 'circe-fool-list regex)
+        (add-to-list 'circe-fool-list (regexp-quote regex))
         (circe-display-server-message (format "Recognizing %s as a fool"
                                       regex))))
      ((not circe-fool-list)
