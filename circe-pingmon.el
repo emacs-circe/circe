@@ -59,7 +59,7 @@ of a lag monitor message. A value of nil disables the feature."
                  number)
   :group 'circe-pingmon)
 
-(defcustom circe-pingmon-mode-line-format-string "ping:%.2f "
+(defcustom circe-pingmon-mode-line-format-string "ping:%.1f "
   "Format string for displaying the lag in the mode-line."
   :type 'string
   :group 'circe-pingmon)
@@ -101,7 +101,7 @@ buffer. You can call it yourself if you like to force an update,
 there is no harm in running it too often, but it really should be
 run sufficiently often with the timer."
   (dolist (buffer (circe-server-buffers))
-   (with-current-buffer buffer
+    (with-current-buffer buffer
       (when (and (eq major-mode 'circe-server-mode)
                  circe-server-process
                  (eq (irc-connection-state circe-server-process)
@@ -112,11 +112,12 @@ run sufficiently often with the timer."
 (defun circe-pingmon-server-check ()
   "Check the current server for lag.
 
-Currently, this will just send a PING with `circe-pingmon-token' if it's
-been too long."
+This will reconnect if we haven't heard back for too long, or send a
+request if it's time for that. See `circe-pingmon-reconnect-interval'
+and `circe-pingmon-check-interval to configure the behavior."
   (let ((now (float-time)))
     (cond
-     ;; No answer so far
+     ;; No answer so far...
      ((and circe-pingmon-last-send-time
            (not circe-pingmon-last-receive-time))
       ;; Count up until the answer comes.
