@@ -194,13 +194,21 @@ Common options:
   :group 'circe)
 
 (defvar circe-network-defaults
-  '(("Airlock" :host "irc.theairlock.net" :port (6667 . 7778) :tls t
+  '(("2600net" :host "irc.2600.net" :port (6667 . 6697) :tls t
+     :nickserv-mask "^NickServ!services@services\\.2600\\.net$"
+     :nickserv-identify-challenge "This nickname is registered and protected\\."
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
+     :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
+     )
+    ("Airlock" :host "irc.theairlock.net" :port (6667 . 7778) :tls t
      :nickserv-mask "^NickServ!services@services\\.theairlock\\.net$"
      :nickserv-identify-challenge "type \x02/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_\x02"
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
      :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
-     :nickserv-ghost-confirmation "Ghost with your nick has been killed"
+     :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
      )
     ("Bitlbee" :host "localhost" :port 6667
      :nickserv-mask "\\(bitlbee\\|root\\)!\\(bitlbee\\|root\\)@"
@@ -209,6 +217,21 @@ Common options:
      :nickserv-identify-confirmation "Password accepted, settings and accounts loaded"
      :lagmon-disabled t
      )
+    ("DALnet" :host "irc.dal.net" :port (6667 . 6697) :tls t
+     :nickserv-mask "^NickServ!service@dal\\.net$"
+     ;; FIXME: challenge only triggers with irssi, not with circe
+     :nickserv-identify-challenge "This nick is owned by someone else\\. Please choose another\\."
+     :nickserv-identify-command "PRIVMSG NickServ@services.dal.net :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "Password accepted for \x02.*\x02\\.$"
+     :nickserv-ghost-command "PRIVMSG NickServ@services.dal.net :GHOST {nick} {password}"
+     :nickserv-ghost-confirmation "^Your ghost has been successfully killed\\."
+     )
+    ("EFnet" :host "irc.efnet.org" :port (6667 . 6697) :tls t
+     ;; no services, chanfix aside
+     )
+    ("EsperNet" :host "irc.esper.net" :port (6667 . 6697) :tls t
+     ;; services are documented, but gone?
+     )
     ("Freenode" :host "chat.freenode.net" :port (6667 . 6697) :tls t
      :nickserv-mask "^NickServ!NickServ@services\\.$"
      :nickserv-identify-challenge "\C-b/msg\\s-NickServ\\s-identify\\s-<password>\C-b"
@@ -216,6 +239,14 @@ Common options:
      :nickserv-identify-confirmation "^You are now identified for \x02.*\x02\\.$"
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
+     )
+    ("GameSurge" :host "irc.gamesurge.net" :port 6667 :tls nil
+     :nickserv-mask "^AuthServ!AuthServ@Services\\.GameSurge\\.net$"
+     ;; due to lack of challenge string, none of the following will be used :(
+     :nickserv-identify-command "PRIVMSG AuthServ@Services.GameSurge.net :AUTH {nick} {password}"
+     :nickserv-identify-confirmation "^I recognize you\\.$"
+     :nickserv-ghost-command "PRIVMSG AuthServ@Services.GameSurge.net :GHOST {nick}"
+     :nickserv-ghost-confirmation "has been killed as a ghost\\.$"
      )
     ("GIMPNet" :host "irc.gimp.org" :port (6667 . 6697) :tls t
      :nickserv-mask "^NickServ!services@gimpnet-services\\.gimp\\.org$"
@@ -231,6 +262,25 @@ Common options:
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
      )
+    ("HybridIRC" :host "irc.hybridirc.com" :port (6667 . 6697) :tls t
+     :nickserv-mask "^NickServ!services@services\\.irchighway\\.net$"
+     :nickserv-identify-challenge "This nickname is registered\\."
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "^You are now identified for .*\\.$"
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
+     :nickserv-ghost-command "has been ghosted\\.$"
+     )
+    ("IRCnet" :host "irc.ircnet.com" :port (6667 . 6697) :tls t
+     ;; no services, chanfix aside
+     )
+    ("IRCHighWay" :host "irc.irchighway.net" :port (6667 . 6697) :tls t
+     :nickserv-mask "^NickServ!services@services\\.irchighway\\.net$"
+     :nickserv-identify-challenge "This nickname is registered and protected\\."
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
+     :nickserv-ghost-command "PRIVMSG NicKServ :RECOVER {nick} {password}"
+     :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
+     )
     ("Libera Chat" :host "irc.libera.chat" :port (6667 . 6697) :tls t
      :nickserv-mask "^NickServ!NickServ@services\\.libera\\.chat$"
      :nickserv-identify-challenge "This nickname is registered\\."
@@ -245,6 +295,28 @@ Common options:
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password} {nick}"
      :nickserv-identify-confirmation "^You are successfully identified as \x02.*\x02\\.$"
      )
+    ("Quakenet" :host "irc.quakenet.org" :port 6667 :tls nil
+     ;; due to lack of challenge string, none of the following will be used :(
+     :nickserv-mask "^Q!TheQBot@CServe\\.quakenet\\.org$"
+     :nickserv-identify-command "PRIVMSG Q@CServe.quakenet.org AUTH {nick} {password}"
+     :nickserv-identify-confirmation "^You are now logged in as .*$"
+     )
+    ("RektNetwork" :host "irc.rekt.network" :port (nil . 6697) :tls t
+     :nickserv-mask "^NickServ!NickServ@services\\.int$"
+     :nickserv-identify-challenge "This nickname is registered\\. Please choose a different nickname"
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "^You are now identified for \x02.*\x02\\.$"
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
+     :nickserv-ghost-confirmation "has been ghosted\\.$\\|is not online\\.$"
+     )
+    ("Rizon" :host "irc.rizon.net" :port (6667 . 6697) :tls t
+     :nickserv-mask "^NickServ!service@rizon\\.net$"
+     :nickserv-identify-challenge "This nickname is registered and protected\\."
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
+     :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
+     :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
+     )
     ("Snoonet" :host "irc.snoonet.org" :port (6667 . 6697) :tls t
      :nickserv-mask "^NickServ!NickServ@services$"
      :nickserv-identify-challenge "This nickname is registered and protected\\."
@@ -252,6 +324,20 @@ Common options:
      :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
+     )
+    ("tilde.chat" :host "irc.tilde.chat" :port (6667 . 6697) :tls t
+     :nickserv-mask "^NickServ!services@services\\.tilde\\.chat$"
+     :nickserv-identify-challenge "This nickname is registered and protected\\."
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
+     :nickserv-ghost-command "PRIVMSG NickServ :RECOVER {nick} {password}"
+     :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
+     )
+    ("Undernet" :host "irc.undernet.org" :port 6667 :tls nil
+     ;; due to lack of challenge string, none of the following will be used :(
+     :nickserv-mask "^X!cservice@undernet\\.org$"
+     :nickserv-identify-command "PRIVMSG X@channels.undernet.org LOGIN {nick} {password}"
+     :nickserv-identify-confirmation "^AUTHENTICATION SUCCESSFUL as .*"
      )
     )
   "Alist of networks and connection settings.
