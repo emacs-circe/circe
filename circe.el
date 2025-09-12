@@ -3208,13 +3208,19 @@ IRC servers."
         (let ((split-time (cadr split)))
           (when (< (+ split-time circe-netsplit-delay)
                    (float-time))
-            (circe-display 'circe-format-server-netmerge
-                           :split (car split)
-                           :time (cadr split)
-                           :date (current-time-string
-                                  (seconds-to-time (cadr split)))
-                           :ago (circe-duration-string
-                                 (- (float-time) (cadr split)))))))
+            (if (zerop split-time) ; we don't know when they joined
+                (circe-display 'circe-format-server-netmerge
+                               :split (car split)
+                               :time -1
+                               :date "?"
+                               :ago "?")
+                (circe-display 'circe-format-server-netmerge
+                               :split (car split)
+                               :time split-time
+                               :date (current-time-string
+                                      (seconds-to-time split-time))
+                               :ago (circe-duration-string
+                                     (- (float-time) split-time)))))))
        ((and (circe-reduce-lurker-spam)
              (circe-lurker-rejoin-p nick circe-chat-target))
         (let* ((channel (irc-connection-channel (circe-server-process)
