@@ -875,7 +875,7 @@ Connection options used:
 Valid nick names are at least (RFC 1459):
 
 <nick>       ::= <letter> { <letter> | <number> | <special> }
-<special>    ::= '-' | '[' | ']' | '\' | '`' | '^' | '{' | '}'"
+<special>    ::= '-' | '[' | ']' | '\\' | '`' | '^' | '{' | '}'"
   (let ((chars "abcdefghijklmnopqrstuvwxyz"))
     (mapconcat (lambda (_)
                  (make-string 1 (aref chars (random (length chars)))))
