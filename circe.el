@@ -3135,17 +3135,19 @@ Arguments are either of the two:
 (circe-set-display-handler "CHGHOST" 'circe-display-chghost)
 
 (defun circe-display-channel-chghost (nick old-userhost _command channel
-                                           old-user old-host new-user new-host
-                                           new-userhost)
+                                           new-user new-host)
   (with-current-buffer (circe-server-get-or-create-chat-buffer
                         channel 'circe-channel-mode)
-    (circe-display 'circe-format-server-host-change
+    (let ((old-user (irc-userstring-user old-userhost))
+          (old-host (irc-userstring-host old-userhost))
+          (new-userhost (irc-make-userstring nick new-user new-host)))
+      (circe-display 'circe-format-server-host-change
                       :nick nick
                       :old-user old-user
                       :old-host old-host
                       :new-user new-user
                       :new-host new-host
-                      :userhost new-userhost)))
+                      :userhost new-userhost))))
 
 (defun circe-display-chghost (nick old-userhost _command new-user new-host)
   (let ((old-user (irc-userstring-user old-userhost))

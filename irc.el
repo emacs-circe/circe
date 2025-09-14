@@ -1298,18 +1298,12 @@ NEW-HOST."
     (dolist (channel (irc-connection-channel-list conn))
       (let ((user (irc-channel-user channel nick)))
         (when user
-          (let ((old-user (irc-userstring-user sender))
-                (old-host (irc-userstring-host sender))
-                (new-userhost (irc-make-userstring nick new-user new-host)))
-            (irc-channel-update-user-userhost channel nick new-user new-host)
-            (irc-event-emit conn "channel.chghost"
-                            sender
-                            (irc-channel-name channel)
-                            old-user
-                            old-host
-                            new-user
-                            new-host
-                            new-userhost)))))))
+          (irc-channel-update-user-userhost channel nick new-user new-host)
+          (irc-event-emit conn "channel.chghost"
+                          sender
+                          (irc-channel-name channel)
+                          new-user
+                          new-host))))))
 
 (defun irc-handle-state-tracking--PRIVMSG (conn _event sender target _message)
   (let ((channel (irc-connection-channel conn target))
