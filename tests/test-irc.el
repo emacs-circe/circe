@@ -214,52 +214,52 @@
   (it "should parse a command without anything else"
     (expect (irc--parse "COMMAND")
             :to-equal
-            '(nil "COMMAND")))
+            '(nil nil "COMMAND")))
 
   (it "should parse a command with a single argument"
     (expect (irc--parse "COMMAND arg")
             :to-equal
-            '(nil "COMMAND" "arg")))
+            '(nil nil "COMMAND" "arg")))
 
   (it "should parse a command with two arguments"
     (expect (irc--parse "COMMAND arg1 arg2")
             :to-equal
-            '(nil "COMMAND" "arg1" "arg2")))
+            '(nil nil "COMMAND" "arg1" "arg2")))
 
   (it "should treat single space as argument separator"
       (expect (irc--parse "COMMAND arg1  arg3")
               :to-equal
-              '(nil "COMMAND" "arg1" "" "arg3")))
+              '(nil nil "COMMAND" "arg1" "" "arg3")))
 
   (it "should parse a command with rest argument"
     (expect (irc--parse "COMMAND arg1 arg2 :arg3 still arg3")
             :to-equal
-            '(nil "COMMAND" "arg1" "arg2" "arg3 still arg3")))
+            '(nil nil "COMMAND" "arg1" "arg2" "arg3 still arg3")))
 
   (it "should parse a command with sender and no arguments"
     (expect (irc--parse ":sender COMMAND")
             :to-equal
-            '("sender" "COMMAND")))
+            '(nil "sender" "COMMAND")))
 
   (it "should parse a command with sender and a single argument"
     (expect (irc--parse ":sender COMMAND arg")
             :to-equal
-            '("sender" "COMMAND" "arg")))
+            '(nil "sender" "COMMAND" "arg")))
 
   (it "should parse a command with sender and two arguments"
     (expect (irc--parse ":sender COMMAND arg1 arg2")
             :to-equal
-            '("sender" "COMMAND" "arg1" "arg2")))
+            '(nil "sender" "COMMAND" "arg1" "arg2")))
 
   (it "should parse a command with sender and rest argument"
     (expect (irc--parse ":sender COMMAND arg1 arg2 :arg3 still arg3")
             :to-equal
-            '("sender" "COMMAND" "arg1" "arg2" "arg3 still arg3")))
+            '(nil "sender" "COMMAND" "arg1" "arg2" "arg3 still arg3")))
 
   (it "should decode arguments"
     (expect (irc--parse "PRIVMSG #channel :m\xc3\xb6p")
             :to-equal
-            '(nil "PRIVMSG" "#channel" "möp")))
+            '(nil nil "PRIVMSG" "#channel" "möp")))
 
   (it "should decode arguments individually"
     ;; This is utf-16
@@ -267,7 +267,57 @@
              (concat ":\xff\xfe\x6d\x00\xf6\x00\x70\x00 "
                      "PRIVMSG #channel :\xff\xfe\x6d\x00\xf6\x00\x70\x00"))
             :to-equal
-            '("möp" "PRIVMSG" "#channel" "möp"))))
+            '(nil "möp" "PRIVMSG" "#channel" "möp")))
+
+  (it "should handle a single message tag"
+    (expect (irc--parse "@key=val :sender COMMAND arg")
+            :to-equal
+            '(((key . "val")) "sender" "COMMAND" "arg")))
+
+  (it "should handle a message tag without a sender"
+    (expect (irc--parse "@key=val COMMAND arg")
+            :to-equal
+            '(((key . "val")) nil "COMMAND" "arg")))
+
+  (it "should handle multiple message tags"
+    (expect (irc--parse "@key=val;key2=val2 :sender COMMAND arg")
+            :to-equal
+            '(((key . "val") (key2 . "val2")) "sender" "COMMAND" "arg")))
+
+  (it "should handle message tags lacking values"
+    (expect (irc--parse "@a=b;c;d=e :sender COMMAND arg")
+            :to-equal
+            '(((a . "b") (c) (d . "e")) "sender" "COMMAND" "arg")))
+
+  (it "should handle message tags with empty values"
+    (expect (irc--parse "@a=b;c=;d=e :sender COMMAND arg")
+            :to-equal
+            '(((a . "b") (c) (d . "e")) "sender" "COMMAND" "arg")))
+
+  (it "should handle client-only message tags"
+    (expect (irc--parse "@+example-client-tag=value :sender COMMAND arg")
+            :to-equal
+            '(((+example-client-tag . "value")) "sender" "COMMAND" "arg")))
+
+  (it "should handle vendor-prefixed message tags"
+    (expect (irc--parse "@znc.in/key=1234567890 :sender COMMAND arg")
+            :to-equal
+            '(((znc.in/key . "1234567890")) "sender" "COMMAND" "arg")))
+
+  (it "should handle vendor-prefixed client-only message tags"
+    (expect (irc--parse "@+example.com/a=b :sender COMMAND arg")
+            :to-equal
+            '(((+example.com/a . "b")) "sender" "COMMAND" "arg")))
+
+  (it "should decode escaped characters in message tag values"
+    (expect (irc--parse "@key=a\\:b\\sc\\\\d\\re\\nf :sender COMMAND arg")
+            :to-equal
+            '(((key . "a;b c\\d\re\nf")) "sender" "COMMAND" "arg")))
+
+  (it "should handle invalid escape sequences in message tag values"
+    (expect (irc--parse "@key=a\\x\\;foo=bar :sender COMMAND arg")
+            :to-equal
+            '(((key . "ax") (foo . "bar")) "sender" "COMMAND" "arg"))))
 
 (describe "The `irc-userstring-nick' function"
   (it "should return the nick of a nick!user@host userstring"

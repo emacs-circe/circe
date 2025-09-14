@@ -1455,6 +1455,7 @@ Do not use this directly, use `circe-reconnect'"
                             '("sasl"))
                           '("chghost"
                             "extended-join"
+                            "message-tags"
                             "setname"
                             "standard-replies"))
          :nickserv-nick (or circe-nickserv-nick
@@ -3446,6 +3447,8 @@ IRC servers."
       (circe-display 'circe-format-server-setname
                      :oldname oldname
                      :newname newname))))
+
+(circe-set-display-handler "TAGMSG" 'circe-display-ignore)
 
 (circe-set-display-handler "TOPIC" 'circe-display-topic)
 (defun circe-display-topic (nick userhost _command channel new-topic)

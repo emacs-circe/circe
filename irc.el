@@ -43,6 +43,7 @@
 
 (require 'cl-lib)
 (require 'gnutls)
+(require 'seq)
 
 (if (fboundp 'gnutls-boot-parameters)
     (declare-function 'make-tls-process 'make-tls-process)
@@ -193,27 +194,51 @@ cause data to arrive out of order, or get lost.")
           (irc--handle-line proc line)
           (setq data (irc-connection-get proc :conn-data)))))))
 
+(defvar irc-message-tags nil
+  "Dynamically bound variable holding current message tags.")
+
 (defun irc--handle-line (proc line)
   "Handle a single line from the IRC server.
 
 The command is simply passed to the event handler of the IRC
 connection."
   (irc-debug-out proc "S: %s" line)
-  (let* ((parsed (irc--parse line))
-         (sender (car parsed))
-         (command (cadr parsed))
-         (args (cddr parsed)))
-    (apply #'irc-event-emit proc command sender args)))
+  (seq-let (tags sender command &rest args) (irc--parse line)
+    (let ((irc-message-tags tags))
+      (apply #'irc-event-emit proc command sender args))))
+
+(defun irc--parse-message-tag-value (string)
+  "Parse a message tag value by undoing the escaping.
+This also takes care of removing any stray backslash found at the end of
+the value."
+  (let ((unescaped (replace-regexp-in-string "\\\\."
+                                             (lambda (m)
+                                               (cl-case (aref m 1)
+                                                 (?: ";")
+                                                 (?s " ")
+                                                 (?\\ "\\\\")
+                                                 (?r "\r")
+                                                 (?n "\n")
+                                                 (t (string
+                                                     (aref m 1)))))
+                                             string)))
+    (string-remove-suffix "\\" unescaped)))
 
 (defun irc--parse (line)
   "Parse a line from IRC.
 
-Returns a list: (sender command args...)
+Returns a list: (tags sender command args...)
 
-A line from IRC is a space-separated list of arguments. If the
-first word starts with a colon, that's the sender. The first or
-second word is the command. All further words are arguments. The
-first word to start with a colon ends the argument list.
+The format is described as follows, with angular brackets denoting
+optional parts and the asterisk one or more repetitions:
+
+[@tags] [:sender] COMMAND [arg]*
+
+Expressed differently, there is an optional message-tags component at
+the beginning, which starts with the at sign. After that, there is an
+optional sender, which starts with a colon. The word after that is a
+command. All further words are arguments. The first word to start with a
+colon ends the argument list.
 
 Examples:
 
@@ -221,15 +246,31 @@ COMMAND
 COMMAND arg
 COMMAND arg1 arg2
 COMMAND arg1 arg2 :arg3 still arg3
-:sender COMMAND arg1 arg2 :arg3 still arg3"
+:sender COMMAND arg1 arg2 :arg3 still arg3
+@tags COMMAND arg1 arg2 :arg3 still arg3
+@tags :sender COMMAND arg1 arg2 :arg3 still arg3"
   (let ((pos 0)
         (end (length line))
         sender
+        tags
         args)
+    ;; Optional tags.
+    (when (equal (string-match "@\\([^ ]+\\) " line pos) pos)
+      (setq pos (+ (length (match-string 0 line)) pos))
+      (dolist (raw-tag (string-split (match-string 1 line) ";"))
+        (if (string-match "^\\([^=]+\\)=\\(.*\\)" raw-tag)
+            (let* ((key (match-string 1 raw-tag))
+                   (escaped-value (match-string 2 raw-tag))
+                   (value (irc--parse-message-tag-value escaped-value)))
+              (when (zerop (length value))
+                (setq value nil))
+              (push (cons (intern key) value) tags))
+          (push (list (intern raw-tag)) tags))))
+
     ;; Optional sender.
     (when (equal (string-match ":\\([^ ]+\\) " line pos) pos)
       (setq pos (+ (length (match-string 0 line)) pos))
-      (setq sender (decode-coding-string  (match-string 1 line) 'undecided)))
+      (setq sender (decode-coding-string (match-string 1 line) 'undecided)))
 
     ;; COMMAND.
     (unless (equal (string-match "[^ ]+" line pos) pos)
@@ -247,7 +288,7 @@ COMMAND arg1 arg2 :arg3 still arg3
                                        'undecided)))
         (push arg args)
         (setq pos (+ arg-end pos))))
-    (cons sender (nreverse args))))
+    (append (list (nreverse tags) sender) (nreverse args))))
 
 (defun irc-userstring-nick (userstring)
   "Return the nick in a given USERSTRING.
