@@ -219,7 +219,6 @@ Common options:
      )
     ("DALnet" :host "irc.dal.net" :port (6667 . 6697) :tls t
      :nickserv-mask "^NickServ!service@dal\\.net$"
-     ;; FIXME: challenge only triggers with irssi, not with circe
      :nickserv-identify-challenge "This nick is owned by someone else\\. Please choose another\\."
      :nickserv-identify-command "PRIVMSG NickServ@services.dal.net :IDENTIFY {nick} {password}"
      :nickserv-identify-confirmation "Password accepted for \x02.*\x02\\.$"
