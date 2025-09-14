@@ -1359,9 +1359,15 @@ variable is set."
         (let ((var (intern (format "circe-%s"
                                    (substring (symbol-name (car todo)) 1))))
               (val (cadr todo)))
-          (if (boundp var)
-              (set (make-local-variable var) val)
-            (warn "Unknown option %s, ignored" (car todo)))))
+          (cond
+           ((boundp var)
+            (set (make-local-variable var) val))
+           ((memq var '(circe-lagmon-disabled circe-pingmon-disabled))
+            ;; the intent is to disable the module when it's not
+            ;; loaded up, so we can just safely ignore it
+            )
+           (t
+            (warn "Unknown option %s, ignored" (car todo))))))
       (setq todo (cddr todo)))))
 
 (defvar circe-server-reconnect-attempts 0
