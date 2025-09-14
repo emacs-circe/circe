@@ -578,6 +578,7 @@ strings."
     circe-format-server-netmerge
     circe-format-server-join
     circe-format-server-join-in-channel
+    circe-format-server-host-change
     circe-format-server-mode-change
     circe-format-server-nick-change-self
     circe-format-server-nick-change
@@ -900,7 +901,7 @@ The following format arguments are available:
   :group 'circe-format)
 
 (defcustom circe-format-server-nick-change "*** Nick change: {old-nick} ({userhost}) is now known as {new-nick}"
-  "Format for nick changes of the current user.
+  "Format for nick changes of other users.
 
 The following format arguments are available:
 
@@ -911,7 +912,7 @@ The following format arguments are available:
   :group 'circe-format)
 
 (defcustom circe-format-server-nick-regain "*** Nick regain: {old-nick} ({userhost}) is now known as {new-nick}"
-  "Format for nick changes of the current user.
+  "Format for nick regains of the current user.
 
 The following format arguments are available:
 
@@ -928,6 +929,20 @@ The following format arguments are available:
 
   oldname - The old realname this change was from
   newname - The new realname this change was to"
+  :type 'string
+  :group 'circe-format)
+
+(defcustom circe-format-server-host-change "*** Nick changed host: {nick} is now known as {userhost}"
+  "Format for username/host change of the current user.
+
+The following format arguments are available:
+
+  nick     - The nickname of the affected user
+  old-user - The old username this change was from
+  old-host - The old host this change was from
+  new-user - The new username this change was to
+  new-host - The new host this change was to
+  userhost - The new user@host string"
   :type 'string
   :group 'circe-format)
 
@@ -1431,9 +1446,10 @@ Do not use this directly, use `circe-reconnect'"
                                          circe-sasl-password)
                                     circe-sasl-external)
                             '("sasl"))
-                          '("standard-replies"
+                          '("chghost"
+                            "extended-join"
                             "setname"
-                            "extended-join"))
+                            "standard-replies"))
          :nickserv-nick (or circe-nickserv-nick
                             circe-nick)
          :nickserv-password (circe--validate-password :nickserv-password
@@ -3107,6 +3123,36 @@ Arguments are either of the two:
 
 (circe-set-display-handler "AUTHENTICATE" 'circe-display-ignore)
 (circe-set-display-handler "CAP" 'circe-display-ignore)
+
+(circe-set-display-handler "channel.chghost" 'circe-display-channel-chghost)
+(circe-set-display-handler "CHGHOST" 'circe-display-chghost)
+
+(defun circe-display-channel-chghost (nick old-userhost _command channel
+                                           old-user old-host new-user new-host
+                                           new-userhost)
+  (with-current-buffer (circe-server-get-or-create-chat-buffer
+                        channel 'circe-channel-mode)
+    (circe-display 'circe-format-server-host-change
+                      :nick nick
+                      :old-user old-user
+                      :old-host old-host
+                      :new-user new-user
+                      :new-host new-host
+                      :userhost new-userhost)))
+
+(defun circe-display-chghost (nick old-userhost _command new-user new-host)
+  (let ((old-user (irc-userstring-user old-userhost))
+        (old-host (irc-userstring-host old-userhost))
+        (new-userhost (irc-make-userstring nick new-user new-host)))
+    (with-current-buffer (circe-server-last-active-buffer)
+      (circe-display 'circe-format-server-host-change
+                  :nick nick
+                  :old-user old-user
+                  :old-host old-host
+                  :new-user new-user
+                  :new-host new-host
+                  :userhost new-userhost))))
+
 (circe-set-display-handler "conn.connected" 'circe-display-ignore)
 (circe-set-display-handler "conn.disconnected" 'circe-display-ignore)
 

@@ -258,12 +258,31 @@ USERSTRING is a typical nick!user@host prefix as used by IRC."
     userstring))
 
 (defun irc-userstring-userhost (userstring)
-  "Return the nick in a given USERSTRING.
+  "Return the userhost in a given USERSTRING.
 
 USERSTRING is a typical nick!user@host prefix as used by IRC."
   (if (string-match "\\`\\([^!]+\\)!\\([^@]+@.*\\)\\'" userstring)
       (match-string 2 userstring)
     nil))
+
+(defun irc-userstring-user (userstring)
+  "Return the user in a given USERSTRING.
+
+USERSTRING is a typical nick!user@host prefix as used by IRC."
+  (if (string-match "\\`\\([^!]+\\)!\\([^@]+\\)@.*\\'" userstring)
+      (match-string 2 userstring)
+    nil))
+
+(defun irc-userstring-host (userstring)
+  "Return the host in a given USERSTRING.
+
+USERSTRING is a typical nick!user@host prefix as used by IRC."
+  (if (string-match "\\`\\([^!]+\\)![^@]+\\(@.*\\)\\'" userstring)
+      (match-string 2 userstring)
+    nil))
+
+(defun irc-make-userstring (nick user host)
+  (format "%s!%s@%s" nick user host))
 
 (defun irc-event-emit (conn event &rest args)
   "Run the event handlers for EVENT in CONN with ARGS."
@@ -1015,6 +1034,8 @@ handler:
 
 Events emitted:
 
+\"channel.chghost\" sender channel old-user old-host new-user new-host
+                    new-userhost -- A user's userhost was changed in a channel
 \"channel.quit\" sender channel reason -- A user quit IRC and
     left this channel that way."
   (irc-handler-add table "001" ;; RPL_WELCOME
@@ -1029,6 +1050,8 @@ Events emitted:
                    #'irc-handle-state-tracking--QUIT)
   (irc-handler-add table "NICK"
                    #'irc-handle-state-tracking--NICK)
+  (irc-handler-add table "CHGHOST"
+                   #'irc-handle-state-tracking--CHGHOST)
   (irc-handler-add table "PRIVMSG"
                    #'irc-handle-state-tracking--PRIVMSG)
   (irc-handler-add table "353" ;; RPL_NAMREPLY
@@ -1198,6 +1221,15 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
       (setf (irc-user-folded-nick user) newnick-folded)
       (puthash (irc-user-folded-nick user) user user-table))))
 
+(defun irc-channel-update-user-userhost (channel nick new-user new-host)
+  "Update the user known as NICK on CHANNEL to new userhost.
+The new userhost consists of the combination of NICK, NEW-USER and
+NEW-HOST."
+  (let ((user (irc-channel-user channel nick)))
+    (when user
+      (setf (irc-user-userhost user)
+            (irc-make-userstring nick new-user new-host)))))
+
 (defun irc-handle-state-tracking--rpl-welcome (conn _event _sender target
                                                     &rest _ignored)
   (irc-connection-put conn :current-nick target))
@@ -1259,6 +1291,25 @@ USERSTRING should be a s tring of the form \"nick!user@host\"."
   ;; Update our own nick
   (when (irc-current-nick-p conn (irc-userstring-nick sender))
     (irc-connection-put conn :current-nick new-nick)))
+
+(defun irc-handle-state-tracking--CHGHOST (conn _event sender new-user new-host)
+  (let ((nick (irc-userstring-nick sender)))
+    ;; Update channels
+    (dolist (channel (irc-connection-channel-list conn))
+      (let ((user (irc-channel-user channel nick)))
+        (when user
+          (let ((old-user (irc-userstring-user sender))
+                (old-host (irc-userstring-host sender))
+                (new-userhost (irc-make-userstring nick new-user new-host)))
+            (irc-channel-update-user-userhost channel nick new-user new-host)
+            (irc-event-emit conn "channel.chghost"
+                            sender
+                            (irc-channel-name channel)
+                            old-user
+                            old-host
+                            new-user
+                            new-host
+                            new-userhost)))))))
 
 (defun irc-handle-state-tracking--PRIVMSG (conn _event sender target _message)
   (let ((channel (irc-connection-channel conn target))
