@@ -1457,6 +1457,7 @@ Do not use this directly, use `circe-reconnect'"
                             "extended-join"
                             "message-tags"
                             "setname"
+                            "server-time"
                             "standard-replies"))
          :nickserv-nick (or circe-nickserv-nick
                             circe-nick)
@@ -1609,7 +1610,8 @@ It is always possible to use the mynick or target formats."
                                        (null (cdr keywords)))
                                   (car keywords)
                                 keywords))))
-           (text (lui-format format keywords)))
+           (text (lui-format format keywords))
+           (time (and irc-message-tags (cdr (assoc 'time irc-message-tags)))))
       (when (circe--display-fool-p format keywords)
         (add-face-text-property 0 (length text)
                                 'circe-fool-face t text)
@@ -1619,8 +1621,10 @@ It is always possible to use the mynick or target formats."
       (when face
         (add-face-text-property 0 (length text)
                                 face t text))
-      (lui-insert text
-                  (memq format circe-format-not-tracked)))))
+      (if time
+          (let ((lui-time-stamp-time (encode-time (parse-time-string time))))
+            (lui-insert text (memq format circe-format-not-tracked)))
+        (lui-insert text (memq format circe-format-not-tracked))))))
 
 (defun circe-display-server-message (message)
   "Display MESSAGE as a server message."
