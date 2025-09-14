@@ -1445,6 +1445,7 @@ Do not use this directly, use `circe-reconnect'"
                                   (circe--nick-next
                                    (circe--nick-next circe-nick)))
          :user circe-user
+         ;; as per RFC 2812 section 3.1.3, request +i
          :mode 8
          :realname circe-realname
          :pass (circe--validate-password :pass circe-pass)
