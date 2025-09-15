@@ -222,7 +222,8 @@ the value."
                                                  (t (string
                                                      (aref m 1)))))
                                              string)))
-    (string-remove-suffix "\\" unescaped)))
+    ;; remove trailing backslash if any
+    (replace-regexp-in-string "\\\\\\'" "" unescaped)))
 
 (defun irc--parse (line)
   "Parse a line from IRC.
