@@ -257,7 +257,7 @@ COMMAND arg1 arg2 :arg3 still arg3
     ;; Optional tags.
     (when (equal (string-match "@\\([^ ]+\\) " line pos) pos)
       (setq pos (+ (length (match-string 0 line)) pos))
-      (dolist (raw-tag (string-split (match-string 1 line) ";"))
+      (dolist (raw-tag (split-string (match-string 1 line) ";"))
         (if (string-match "^\\([^=]+\\)=\\(.*\\)" raw-tag)
             (let* ((key (match-string 1 raw-tag))
                    (escaped-value (match-string 2 raw-tag))
