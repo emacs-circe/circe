@@ -202,14 +202,6 @@ Common options:
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
      )
-    ("Airlock" :host "irc.theairlock.net" :port (6667 . 7778) :tls t
-     :nickserv-mask "^NickServ!services@services\\.theairlock\\.net$"
-     :nickserv-identify-challenge "type \x02/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_\x02"
-     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
-     :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
-     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
-     :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
-     )
     ("Bitlbee" :host "localhost" :port 6667
      :nickserv-mask "\\(bitlbee\\|root\\)!\\(bitlbee\\|root\\)@"
      :nickserv-identify-challenge "use the \x02identify\x02 command to identify yourself"
@@ -294,7 +286,7 @@ Common options:
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password} {nick}"
      :nickserv-identify-confirmation "^You are successfully identified as \x02.*\x02\\.$"
      )
-    ("Quakenet" :host "irc.quakenet.org" :port 6667 :tls nil
+    ("QuakeNet" :host "irc.quakenet.org" :port 6667 :tls nil
      ;; due to lack of challenge string, none of the following will be used :(
      :nickserv-mask "^Q!TheQBot@CServe\\.quakenet\\.org$"
      :nickserv-identify-command "PRIVMSG Q@CServe.quakenet.org AUTH {nick} {password}"
@@ -320,6 +312,14 @@ Common options:
      :nickserv-mask "^NickServ!NickServ@services$"
      :nickserv-identify-challenge "This nickname is registered and protected\\."
      :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {nick} {password}"
+     :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
+     :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
+     :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
+     )
+    ("TheAirlock" :host "irc.theairlock.net" :port (6667 . 7778) :tls t
+     :nickserv-mask "^NickServ!services@services\\.theairlock\\.net$"
+     :nickserv-identify-challenge "type \x02/msg\\s-NickServ\\s-IDENTIFY\\s-\C-_password\C-_\x02"
+     :nickserv-identify-command "PRIVMSG NickServ :IDENTIFY {password}"
      :nickserv-identify-confirmation "Password accepted - you are now recognized\\."
      :nickserv-ghost-command "PRIVMSG NickServ :GHOST {nick} {password}"
      :nickserv-ghost-confirmation "Ghost with your nick has been killed\\."
