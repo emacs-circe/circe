@@ -132,7 +132,7 @@ replace it with the resulting URL."
         (kill-buffer buf)))))
 
 (defun lui-autopaste-service-paste.rs (text)
-  "Paste TEXT to 0x0.st and return the paste url."
+  "Paste TEXT to paste.rs and return the paste url."
   (let* ((url-request-method "POST")
          (url-request-extra-headers `(("Content-Type" . "text/plain")))
          (url-request-data text)
