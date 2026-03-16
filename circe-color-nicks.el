@@ -104,6 +104,11 @@ readability."
   :type 'boolean
   :group 'circe-color-nicks)
 
+(defcustom circe-color-nicks-persist nil
+  "Whether nicks should be colored with a persistent color."
+  :type 'boolean
+  :group 'circe-color-nicks)
+
 (defcustom circe-color-nicks-message-blacklist nil
   "Blacklist for nicks that shall never be highlighted inside
   images."
@@ -255,19 +260,35 @@ wasn't assigned already."
     (when (not color)
       ;; NOTE use this as entry point for taking NICK into account for
       ;; picking the new color
-      (setq color (circe-nick-color-pick))
+      (setq color (circe-nick-color-pick nick))
       (puthash nick color circe-nick-color-mapping))
     (puthash color (float-time) circe-nick-color-timestamps)
     color))
 
-(defun circe-nick-color-pick ()
-  "Picks either a color from the pool of unused colors, or the
-color that was used least recently (i.e. nicks that have it
-assigned have been least recently active)."
+(defun circe-nick-color-pick (nick)
+  "Picks a color used to highlight NICK.
+
+If `circe-nick-color-persist' is non-nil, the color is based on
+NICKs hash, otherwise it is taken from the pool of unused
+colors, or the color that was used least recently (i.e. nicks
+that have it assigned have been least recently active)."
   (if (zerop (hash-table-count circe-nick-color-mapping))
       (setq circe-nick-color-pool (circe-nick-color-generate-pool)))
-  (or (pop circe-nick-color-pool)
-      (circe-nick-color-pick-least-recent)))
+  (or
+   (when circe-color-nicks-persist (circe-nick-color-pick-persistent nick))
+   (pop circe-nick-color-pool)
+   (circe-nick-color-pick-least-recent)))
+
+(defun circe-nick-color-pick-persistent (nick)
+  "Pick a color for NICK based on its hash."
+  (unless circe-nick-color-pool
+    (setq circe-nick-color-pool (circe-nick-color-generate-pool)))
+
+  (let* ((hash (substring (md5 nick) 0 5))
+         (hex (string-to-number hash 16))
+         (len (length circe-nick-color-pool))
+         (index (mod hex len)))
+    (nth index circe-nick-color-pool)))
 
 (defun circe-nick-color-pick-least-recent ()
   "Pick the color that was used least recently.
