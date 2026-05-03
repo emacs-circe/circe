@@ -1,5 +1,6 @@
 # Circe, a Client for IRC in Emacs
 
+[![Casual Maintenance Intended](https://casuallymaintained.tech/badge.svg)](https://casuallymaintained.tech/)
 [![Build Status](https://github.com/emacs-circe/circe/actions/workflows/ci.yaml/badge.svg)](https://github.com/emacs-circe/circe/actions/workflows/ci.yaml)
 [![MELPA Stable](http://stable.melpa.org/packages/circe-badge.svg)](http://stable.melpa.org/#/circe)
 
