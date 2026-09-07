@@ -13,6 +13,10 @@ and integrates well with the rest of the editor, using standard Emacs
 key bindings and indicating activity in channels in the status bar so
 it stays out of your way unless you want to use it.
 
+Activity tracking abbreviates buffer names without comparing every name
+component against every other component, keeping mode-line updates fast
+when many buffers are open.
+
 Complexity-wise, it is somewhere between rcirc (very minimal) and ERC
 (very complex).
 

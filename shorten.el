@@ -157,11 +157,11 @@ any prefix."
         str)))
 
 (defun shorten-walk-internal (node path tail-count result-out)
-  (let ((others (mapcar #'car node)))
+  (let ((neighbors (shorten--token-neighbors (mapcar #'car node))))
     (setq tail-count (if (cdr node) 0 (1+ tail-count)))
     (dolist (entry node)
       (let* ((token (shorten-tree-token entry))
-             (shortened (shorten-one token others))
+             (shortened (shorten-one token (gethash token neighbors)))
              (path (cons shortened path))
              (fullname (shorten-tree-fullname entry))
              (descendants (shorten-tree-descendants entry))
@@ -178,6 +178,19 @@ any prefix."
           (shorten-walk-internal descendants path
                                  (if fullname -1 tail-count)
                                  result-out))))))
+
+(defun shorten--token-neighbors (tokens)
+  "Return a table of lexical neighbors for each string in TOKENS.
+TOKENS must contain distinct strings.  A token's longest shared prefix
+with any other token occurs with its lexical predecessor or successor."
+  (let ((sorted (sort (copy-sequence tokens) #'string<))
+        (neighbors (make-hash-table :test #'eq))
+        previous)
+    (while sorted
+      (puthash (car sorted) (delq nil (list previous (cadr sorted))) neighbors)
+      (setq previous (car sorted)
+            sorted (cdr sorted)))
+    neighbors))
 
 (defun shorten-walk (tree)
   "Takes a tree of the type made by `shorten-make-tree' and
