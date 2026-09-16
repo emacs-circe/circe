@@ -1,6 +1,11 @@
 We welcome patches to improve Circe. This file will help you set up a
 local development environment.
 
+Do note however, that contributions using LLMs are not welcome. This
+includes both code and technical writing. [Gentoo's LLM
+policy](https://wiki.gentoo.org/wiki/Project:Council/AI_policy) serves
+as a starting point on the why.
+
 ## Preparation
 
 You will need the following software installed:
